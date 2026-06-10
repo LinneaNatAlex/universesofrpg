@@ -1,0 +1,8 @@
+# Supabase local config — project ref from dashboard URL
+project_id = "qfataluxujybeiksfjjg"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
