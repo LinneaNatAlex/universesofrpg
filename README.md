@@ -35,6 +35,45 @@ Open [http://localhost:3000](http://localhost:3000).
 - Auth (signup / login via Supabase)
 - Like button (requires login)
 
+## Deploy on Netlify
+
+Repo: [github.com/LinneaNatAlex/universesofrpg](https://github.com/LinneaNatAlex/universesofrpg)
+
+### 1. Connect the site
+
+1. Go to [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import an existing project**
+2. Choose **GitHub** → select `universesofrpg`
+3. Build settings (auto-detected from `netlify.toml`):
+   - Build command: `npm run build`
+   - Publish directory: `.next`
+4. Click **Deploy**
+
+### 2. Environment variables
+
+In **Site configuration → Environment variables**, add:
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://qfataluxujybeiksfjjg.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | your `sb_publishable_...` key |
+
+Then trigger **Deploys → Trigger deploy → Clear cache and deploy**.
+
+### 3. Supabase auth URLs (required for login/signup)
+
+In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication → URL Configuration**:
+
+- **Site URL:** `https://YOUR-SITE.netlify.app`
+- **Redirect URLs:** add:
+  - `https://YOUR-SITE.netlify.app/auth/callback`
+  - `http://localhost:3000/auth/callback` (for local dev)
+
+Replace `YOUR-SITE` with your Netlify subdomain (e.g. `universesofrpg.netlify.app`).
+
+### 4. Database
+
+Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor if you have not already.
+
 ## License
 
 Private — all rights reserved.
