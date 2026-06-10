@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bangers, Comic_Neue, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const comicNeue = Comic_Neue({
+  variable: "--font-comic-neue",
   subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const bangers = Bangers({
+  variable: "--font-bangers",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 const geistMono = Geist_Mono({
@@ -26,12 +33,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${comicNeue.variable} ${bangers.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body
-        className="min-h-full flex flex-col pb-16 md:pb-0 bg-background text-foreground"
-        style={{ backgroundColor: "#0a0612", color: "#f0eaff" }}
-      >
+      <body className="min-h-full flex flex-col pb-16 md:pb-0 bg-background text-foreground">
         {children}
       </body>
     </html>

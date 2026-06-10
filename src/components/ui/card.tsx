@@ -6,15 +6,9 @@ interface CardProps {
   glow?: boolean;
 }
 
-export function Card({ children, className, glow }: CardProps) {
+export function Card({ children, className }: CardProps) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-border bg-surface/80 backdrop-blur-sm",
-        glow && "shadow-glow border-violet-500/30",
-        className
-      )}
-    >
+    <div className={cn("comic-panel", className)}>
       {children}
     </div>
   );

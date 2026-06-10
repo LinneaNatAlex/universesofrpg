@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { Sparkles } from "lucide-react";
 
@@ -49,11 +48,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8" glow>
+    <div className="comic-card w-full max-w-md p-8">
         <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="h-5 w-5 text-violet-400" />
-          <span className="font-bold">Sign in to the realm</span>
+          <Sparkles className="h-5 w-5 text-comic-red" />
+          <span className="font-comic text-xl">Sign in</span>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -85,18 +83,17 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" variant="glow" className="w-full" disabled={loading}>
-            {loading ? "Signing in…" : "Enter"}
+          <Button type="submit" variant="comic" className="w-full" disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
           New adventurer?{" "}
-          <Link href="/signup" className="text-violet-400 hover:underline">
-            Create account
+          <Link href="/signup" className="text-comic-red font-comic hover:underline">
+            Join free
           </Link>
         </p>
-      </Card>
     </div>
   );
 }

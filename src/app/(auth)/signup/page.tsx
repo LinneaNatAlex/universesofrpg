@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { Sparkles } from "lucide-react";
 
@@ -64,11 +63,10 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8" glow>
+    <div className="comic-card w-full max-w-md p-8">
         <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="h-5 w-5 text-violet-400" />
-          <span className="font-bold">Join the realm</span>
+          <Sparkles className="h-5 w-5 text-comic-red" />
+          <span className="font-comic text-xl">Join free</span>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -116,18 +114,17 @@ export default function SignupPage() {
             </p>
           )}
 
-          <Button type="submit" variant="glow" className="w-full" disabled={loading}>
+          <Button type="submit" variant="comic" className="w-full" disabled={loading}>
             {loading ? "Creating…" : "Create account"}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-violet-400 hover:underline">
+          <Link href="/login" className="text-comic-red font-comic hover:underline">
             Sign in
           </Link>
         </p>
-      </Card>
     </div>
   );
 }

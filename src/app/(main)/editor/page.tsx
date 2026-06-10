@@ -1,5 +1,5 @@
-import { CodePlayground } from "@/components/editor/CodePlayground";
+import { redirect } from "next/navigation";
 
 export default function EditorPage() {
-  return <CodePlayground />;
+  redirect("/create");
 }
