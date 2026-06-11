@@ -60,11 +60,14 @@ export async function setPlatformContent<T>(
   }
 
   const supabase = createServiceClient()!;
-  const { error } = await supabase.from("platform_content_state").upsert({
-    content_key: key,
-    payload,
-    updated_at: new Date().toISOString(),
-  });
+  const { error } = await supabase.from("platform_content_state").upsert(
+    {
+      content_key: key,
+      payload,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "content_key" }
+  );
 
   if (error) {
     return {

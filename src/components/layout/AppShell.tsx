@@ -19,6 +19,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ContentHydrator } from "@/components/content/ContentHydrator";
+import { ContentSyncNotice } from "@/components/content/ContentSyncNotice";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
 
@@ -169,6 +170,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
         <ContentHydrator />
+        <ContentSyncNotice />
         <PurchasesHydrator />
         <VerificationCheckoutReturn />
         <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 pb-24 md:pb-8">

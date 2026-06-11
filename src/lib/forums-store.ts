@@ -1,7 +1,7 @@
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { isFriend } from "@/lib/friends-store";
 import { readJson, writeJson } from "@/lib/browser-storage";
-import { pushForumsPlatformState } from "@/lib/content-sync";
+import { pushForumsPlatformState, scheduleForumsPlatformPush } from "@/lib/content-sync";
 import { findUserByUsername } from "@/lib/discover-users";
 import { MOCK_FORUMS } from "@/lib/mock-data";
 import { getPersonaByUsername } from "@/lib/personas";
@@ -122,7 +122,7 @@ function persist(): boolean {
   const state = buildForumsPersistState();
   const ok = writeJson(STORAGE_KEY, state);
   if (ok) {
-    void syncForumsToServer();
+    scheduleForumsPlatformPush(state);
   }
   return ok;
 }
@@ -142,7 +142,7 @@ function persistForumOverride(forum: RpgForum) {
     custom: overrides,
   };
   writeJson(STORAGE_KEY, next);
-  void pushForumsPlatformState(next);
+  scheduleForumsPlatformPush(next);
 }
 
 export function subscribeForums(listener: Listener): () => void {

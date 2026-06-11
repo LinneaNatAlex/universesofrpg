@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { isAdminUser } from "@/lib/admin";
 import { getPersonaByUsername } from "@/lib/personas";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -42,8 +43,39 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 }
 
-export async function requireSessionUser() {
-  const user = await getSessionUser();
+/** Cookie session first; fall back to Authorization: Bearer for API calls from the browser. */
+export async function getSessionUserFromRequest(
+  request?: Request
+): Promise<SessionUser | null> {
+  const fromCookies = await getSessionUser();
+  if (fromCookies) return fromCookies;
+
+  if (!request) return null;
+
+  const token = request.headers
+    .get("authorization")
+    ?.match(/^Bearer\s+(.+)$/i)?.[1]
+    ?.trim();
+  if (!token) return null;
+
+  const service = createServiceClient();
+  if (!service) return null;
+
+  const {
+    data: { user },
+    error,
+  } = await service.auth.getUser(token);
+  if (error || !user) return null;
+
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    username: usernameFromUser(user),
+  };
+}
+
+export async function requireSessionUser(request?: Request) {
+  const user = await getSessionUserFromRequest(request);
   if (!user) {
     return { ok: false as const, status: 401, error: "Sign in required" };
   }

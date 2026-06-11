@@ -25,7 +25,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireSessionUser();
+  const auth = await requireSessionUser(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

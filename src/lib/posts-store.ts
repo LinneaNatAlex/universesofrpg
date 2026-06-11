@@ -1,5 +1,5 @@
 import { readJson, writeJson } from "@/lib/browser-storage";
-import { pushPostsPlatformState } from "@/lib/content-sync";
+import { schedulePostsPlatformPush } from "@/lib/content-sync";
 import { MOCK_FEED } from "@/lib/mock-data";
 import { postHasCover } from "@/lib/post-cover";
 import {
@@ -139,6 +139,7 @@ export function applyPostsPersistState(state: PostsState): void {
 
 export async function syncPostsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  const { pushPostsPlatformState } = await import("@/lib/content-sync");
   return pushPostsPlatformState(buildPostsPersistState());
 }
 
@@ -147,7 +148,7 @@ function persist(): boolean {
   const state = buildPostsPersistState();
   const ok = writeJson(STORAGE_KEY, state);
   if (ok) {
-    void syncPostsToServer();
+    schedulePostsPlatformPush(state);
   }
   return ok;
 }

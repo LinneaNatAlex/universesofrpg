@@ -25,9 +25,11 @@ import {
  * When signed in, merges this browser's local drafts and pushes back to the server.
  */
 export function ContentHydrator() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
+
     let cancelled = false;
 
     void (async () => {
@@ -59,7 +61,7 @@ export function ContentHydrator() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, loading]);
 
   return null;
 }
