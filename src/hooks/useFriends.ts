@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getFriends, subscribeFriends } from "@/lib/friends-store";
+import { FRIENDS_SYNCED_EVENT } from "@/lib/friend-sync";
 import type { FriendLink } from "@/types/database";
 
 export function useFriends(ownerUsername: string | null): FriendLink[] {
@@ -12,6 +13,7 @@ export function useFriends(ownerUsername: string | null): FriendLink[] {
       setFriends([]);
       return;
     }
+
     const refresh = () => {
       const next = getFriends(ownerUsername);
       setFriends((prev) => {
@@ -24,8 +26,16 @@ export function useFriends(ownerUsername: string | null): FriendLink[] {
         return next;
       });
     };
+
     refresh();
-    return subscribeFriends(refresh);
+    const unsubFriends = subscribeFriends(refresh);
+    const onSynced = () => refresh();
+    window.addEventListener(FRIENDS_SYNCED_EVENT, onSynced);
+
+    return () => {
+      unsubFriends();
+      window.removeEventListener(FRIENDS_SYNCED_EVENT, onSynced);
+    };
   }, [ownerUsername]);
 
   return friends;

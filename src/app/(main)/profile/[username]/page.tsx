@@ -15,6 +15,7 @@ import { ProfileCreationsTab } from "@/components/profile/ProfileCreationsTab";
 import { ProfilePurchasesTab } from "@/components/profile/ProfilePurchasesTab";
 import { ProfileFriendsTab } from "@/components/profile/ProfileFriendsTab";
 import { ProfileFollowingTab } from "@/components/profile/ProfileFollowingTab";
+import { ProfileTabNav, type ProfileTabItem } from "@/components/profile/ProfileTabNav";
 import { usePurchasedPosts } from "@/hooks/usePurchasedPosts";
 import { ProfileFollowerCount } from "@/components/profile/ProfileFollowerCount";
 import { ProfileFollowButton } from "@/components/profile/ProfileFollowButton";
@@ -165,25 +166,41 @@ export default function ProfilePage() {
     );
   }
 
-  const tabs: { id: ProfileTab; label: string; icon: typeof User; count?: number }[] = [
-    { id: "persona", label: "Persona", icon: User },
-    { id: "creations", label: "Creations", icon: FolderOpen, count: creations.length },
+  const tabs: ProfileTabItem[] = [
+    { id: "persona", label: "Persona", shortLabel: "Persona", icon: User },
+    {
+      id: "creations",
+      label: "Creations",
+      shortLabel: "Works",
+      icon: FolderOpen,
+      count: creations.length,
+    },
     ...(showPurchasesTab
       ? [
           {
-            id: "purchases" as const,
+            id: "purchases",
             label: "Purchased",
+            shortLabel: "Bought",
             icon: ShoppingBag,
             count: purchaseCount,
           },
         ]
       : []),
     ...(showFriendsTab
-      ? [{ id: "friends" as const, label: "Friends", icon: Users, count: friends.length }]
+      ? [
+          {
+            id: "friends",
+            label: "Friends",
+            shortLabel: "Friends",
+            icon: Users,
+            count: friends.length,
+          },
+        ]
       : []),
     {
       id: "following",
       label: "Following",
+      shortLabel: "Follow",
       icon: BookOpen,
       count: followedTopics.length + followedCreators.length,
     },
@@ -253,34 +270,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <nav className="flex border-t-4 border-ink bg-comic-yellow/50">
-          {tabs.map(({ id, label, icon: Icon, count }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 px-4 py-3 font-comic text-sm border-r-2 border-ink last:border-r-0 transition-colors",
-                tab === id
-                  ? "bg-comic-red text-white"
-                  : "text-ink hover:bg-comic-yellow"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-              {count !== undefined && (
-                <span
-                  className={cn(
-                    "text-xs px-1.5 py-0.5 border border-ink",
-                    tab === id ? "bg-white/20" : "bg-surface"
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
+        <ProfileTabNav
+          tabs={tabs}
+          activeId={tab}
+          onChange={(id) => setTab(id as ProfileTab)}
+        />
       </section>
 
       {tab === "persona" ? (

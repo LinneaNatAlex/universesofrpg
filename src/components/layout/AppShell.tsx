@@ -21,6 +21,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { ContentSyncNotice } from "@/components/content/ContentSyncNotice";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
+import { FriendsHydrator } from "@/components/social/FriendsHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
 
 type NavItem = {
@@ -171,6 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AppShellHeader />
         <ContentHydrator />
         <ContentSyncNotice />
+        <FriendsHydrator />
         <PurchasesHydrator />
         <VerificationCheckoutReturn />
         <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 pb-24 md:pb-8">

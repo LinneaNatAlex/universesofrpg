@@ -6,6 +6,7 @@ import {
   subscribeFriendRequests,
   type FriendRelationship,
 } from "@/lib/friend-requests-store";
+import { FRIENDS_SYNCED_EVENT } from "@/lib/friend-sync";
 import { subscribeFriends } from "@/lib/friends-store";
 
 export function useFriendStatus(
@@ -26,9 +27,12 @@ export function useFriendStatus(
     refresh();
     const unsubFriends = subscribeFriends(refresh);
     const unsubRequests = subscribeFriendRequests(refresh);
+    const onSynced = () => refresh();
+    window.addEventListener(FRIENDS_SYNCED_EVENT, onSynced);
     return () => {
       unsubFriends();
       unsubRequests();
+      window.removeEventListener(FRIENDS_SYNCED_EVENT, onSynced);
     };
   }, [viewerUsername, targetUsername]);
 

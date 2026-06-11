@@ -1,4 +1,6 @@
+import type { FriendRequestsPlatformState } from "@/app/api/content/friend-requests/route";
 import { acceptsFriendRequests } from "@/lib/creator-preferences-store";
+import { scheduleFriendRequestsPush } from "@/lib/friend-sync";
 import { addMutualFriends, isFriend, removeMutualFriends } from "@/lib/friends-store";
 import { isVerifiedCreator } from "@/lib/verified-creators-store";
 import type { FriendRequest } from "@/types/database";
@@ -43,9 +45,31 @@ function ensureLoaded() {
   loadFromStorage();
 }
 
+export function buildFriendRequestsState(): FriendRequestsPlatformState {
+  ensureLoaded();
+  return { requests: [...requests] };
+}
+
+export function applyFriendRequestsState(state: FriendRequestsPlatformState): void {
+  ensureLoaded();
+  requests = sanitizeRequests(Array.isArray(state.requests) ? state.requests : []);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+  }
+  notify();
+}
+
+export async function syncFriendRequestsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const { pushFriendRequestsPlatformState } = await import("@/lib/friend-sync");
+  return pushFriendRequestsPlatformState(buildFriendRequestsState());
+}
+
 function persist() {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+  const state = buildFriendRequestsState();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.requests));
+  scheduleFriendRequestsPush(state);
 }
 
 export type FriendRelationship =
@@ -150,6 +174,7 @@ export function sendFriendRequest(
   requests = [request, ...requests];
   persist();
   notify();
+  void syncFriendRequestsToServer();
   return { ok: true, request };
 }
 
@@ -171,6 +196,7 @@ export function acceptFriendRequest(requestId: string, username: string): boolea
 
   persist();
   notify();
+  void syncFriendRequestsToServer();
   return true;
 }
 
@@ -184,6 +210,7 @@ export function rejectFriendRequest(requestId: string, username: string): boolea
   request.responded_at = new Date().toISOString();
   persist();
   notify();
+  void syncFriendRequestsToServer();
   return true;
 }
 
@@ -196,6 +223,7 @@ export function cancelFriendRequest(requestId: string, username: string): boolea
   requests = requests.filter((r) => r.id !== requestId);
   persist();
   notify();
+  void syncFriendRequestsToServer();
   return true;
 }
 

@@ -7,6 +7,7 @@ import {
   getOutgoingFriendRequests,
   subscribeFriendRequests,
 } from "@/lib/friend-requests-store";
+import { FRIENDS_SYNCED_EVENT } from "@/lib/friend-sync";
 import { getFriends, subscribeFriends } from "@/lib/friends-store";
 import type { FriendLink, FriendRequest } from "@/types/database";
 
@@ -50,9 +51,12 @@ export function useFriendInbox() {
     refresh();
     const unsubRequests = subscribeFriendRequests(refresh);
     const unsubFriends = subscribeFriends(refresh);
+    const onSynced = () => refresh();
+    window.addEventListener(FRIENDS_SYNCED_EVENT, onSynced);
     return () => {
       unsubRequests();
       unsubFriends();
+      window.removeEventListener(FRIENDS_SYNCED_EVENT, onSynced);
     };
   }, [actorUsername]);
 

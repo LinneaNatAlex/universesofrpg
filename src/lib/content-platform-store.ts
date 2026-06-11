@@ -2,7 +2,11 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
 
-export type PlatformContentKey = "posts" | "forums";
+export type PlatformContentKey =
+  | "posts"
+  | "forums"
+  | "friend_requests"
+  | "friends";
 
 const DATA_DIR = join(process.cwd(), "data");
 

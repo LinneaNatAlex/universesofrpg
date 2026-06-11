@@ -1,3 +1,5 @@
+import type { FriendsPlatformState } from "@/app/api/content/friends/route";
+import { scheduleFriendsPush } from "@/lib/friend-sync";
 import type { FriendLink } from "@/types/database";
 
 const friendsByOwner = new Map<string, FriendLink[]>();
@@ -38,13 +40,42 @@ function ensureLoaded() {
   loadFromStorage();
 }
 
+export function buildFriendsState(): FriendsPlatformState {
+  ensureLoaded();
+  const byOwner: Record<string, FriendLink[]> = {};
+  friendsByOwner.forEach((list, owner) => {
+    byOwner[owner] = list;
+  });
+  return { byOwner };
+}
+
+export function applyFriendsState(state: FriendsPlatformState): void {
+  ensureLoaded();
+  friendsByOwner.clear();
+  for (const [owner, list] of Object.entries(state.byOwner ?? {})) {
+    friendsByOwner.set(ownerKey(owner), Array.isArray(list) ? list : []);
+  }
+  if (typeof window !== "undefined") {
+    const data: Record<string, FriendLink[]> = {};
+    friendsByOwner.forEach((list, owner) => {
+      data[owner] = list;
+    });
+    localStorage.setItem(storageKey(), JSON.stringify(data));
+  }
+  notify();
+}
+
+export async function syncFriendsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const { pushFriendsPlatformState } = await import("@/lib/friend-sync");
+  return pushFriendsPlatformState(buildFriendsState());
+}
+
 function persist() {
   if (typeof window === "undefined") return;
-  const data: Record<string, FriendLink[]> = {};
-  friendsByOwner.forEach((list, owner) => {
-    data[owner] = list;
-  });
-  localStorage.setItem(storageKey(), JSON.stringify(data));
+  const state = buildFriendsState();
+  localStorage.setItem(storageKey(), JSON.stringify(state.byOwner));
+  scheduleFriendsPush(state);
 }
 
 export function subscribeFriends(listener: Listener): () => void {
@@ -107,11 +138,13 @@ export function addMutualFriends(
 ): void {
   addFriend(aUsername, bUsername, bDisplayName);
   addFriend(bUsername, aUsername, aDisplayName);
+  void syncFriendsToServer();
 }
 
 export function removeMutualFriends(aUsername: string, bUsername: string): void {
   removeFriend(aUsername, bUsername);
   removeFriend(bUsername, aUsername);
+  void syncFriendsToServer();
 }
 
 export function getFriendsForOwners(ownerUsernames: string[]): FriendLink[] {
