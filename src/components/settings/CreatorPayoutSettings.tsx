@@ -92,6 +92,35 @@ export function CreatorPayoutSettings() {
     }
   }, [refresh]);
 
+  async function handleReset() {
+    if (
+      !window.confirm(
+        "Clear payout setup for this user? Use this if Stripe locked the wrong country (e.g. USA). You will pick the country again and restart Stripe onboarding."
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/connect/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          acting_username: actingAsDemo ? sellerUsername : undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not reset payout setup.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reset payout setup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleOnboard() {
     setBusy(true);
     setError(null);
@@ -251,25 +280,38 @@ export function CreatorPayoutSettings() {
       )}
 
       {status?.configured && (
-        <Button
-          type="button"
-          variant="comic"
-          size="sm"
-          disabled={busy}
-          onClick={() => void handleOnboard()}
-        >
-          {busy ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              Opening Stripe…
-            </>
-          ) : (
-            <>
-              <ExternalLink className="h-4 w-4 mr-1.5" />
-              {ready ? "Manage payouts in Stripe" : "Set up payouts with Stripe"}
-            </>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="comic"
+            size="sm"
+            disabled={busy}
+            onClick={() => void handleOnboard()}
+          >
+            {busy ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                Opening Stripe…
+              </>
+            ) : (
+              <>
+                <ExternalLink className="h-4 w-4 mr-1.5" />
+                {ready ? "Manage payouts in Stripe" : "Set up payouts with Stripe"}
+              </>
+            )}
+          </Button>
+          {status.connected && !ready && (
+            <Button
+              type="button"
+              variant="comic-outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void handleReset()}
+            >
+              Wrong country? Start over
+            </Button>
           )}
-        </Button>
+        </div>
       )}
 
       <p className="text-xs text-ink-muted">

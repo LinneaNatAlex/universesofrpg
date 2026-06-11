@@ -111,6 +111,24 @@ export async function getConnectAccountByStripeId(
   );
 }
 
+export async function deleteConnectAccount(username: string): Promise<void> {
+  const key = userKey(username);
+
+  if (isServiceClientConfigured()) {
+    const supabase = createServiceClient()!;
+    const { error } = await supabase
+      .from("marketplace_connect_accounts")
+      .delete()
+      .eq("username", key);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const state = readFileState();
+  state.connectAccounts = state.connectAccounts.filter((a) => userKey(a.username) !== key);
+  writeFileState(state);
+}
+
 export async function upsertConnectAccount(
   input: ConnectAccountRecord
 ): Promise<void> {
