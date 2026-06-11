@@ -16,6 +16,7 @@ export function ProfileAvatarSettings() {
   const acting = useActingIdentity();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const targetUsername =
@@ -63,10 +64,12 @@ export function ProfileAvatarSettings() {
   async function handleFileChange(file: File | null) {
     if (!file) return;
     setUploadError(null);
+    setUploadNote(null);
     setSaving(true);
     try {
       const dataUrl = await compressAvatarFile(file);
       await persistAvatar(dataUrl);
+      setUploadNote("Photo saved — visible in feed, profile, and comments.");
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Could not upload image.");
     } finally {
@@ -76,9 +79,11 @@ export function ProfileAvatarSettings() {
 
   async function handleRemove() {
     setUploadError(null);
+    setUploadNote(null);
     setSaving(true);
     try {
       await persistAvatar(null);
+      setUploadNote("Photo removed.");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Could not remove photo.");
@@ -140,8 +145,19 @@ export function ProfileAvatarSettings() {
         </div>
       </div>
 
+      {uploadNote && !uploadError && (
+        <p className="text-xs font-comic text-emerald-700">{uploadNote}</p>
+      )}
       {uploadError && (
-        <p className="text-xs font-comic text-comic-red">{uploadError}</p>
+        <p className="text-xs font-comic text-comic-red leading-relaxed">{uploadError}</p>
+      )}
+      {acting?.isActingAsPersona && (
+        <p className="text-[10px] text-ink-muted leading-relaxed">
+          For demo personas (e.g. Lyra): add{" "}
+          <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to{" "}
+          <code className="font-mono">.env.local</code> and Netlify, and run{" "}
+          <code className="font-mono">004_profile_avatar_media.sql</code> in Supabase SQL Editor.
+        </p>
       )}
     </div>
   );

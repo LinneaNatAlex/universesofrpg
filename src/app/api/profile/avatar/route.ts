@@ -61,5 +61,7 @@ export async function PUT(request: Request) {
   return NextResponse.json({
     username: result.username,
     avatar_url: avatarUrl,
+    saved: true,
   });
 }
+

@@ -112,7 +112,13 @@ export async function saveProfileAvatar(
     };
   }
 
-  const media = await upsertAvatarMedia(target.username, avatarUrl);
+  const supabase = await createClient();
+  const isPersonaTarget = target.username !== authUsername.toLowerCase();
+
+  const media = await upsertAvatarMedia(target.username, avatarUrl, {
+    sessionClient: supabase,
+    requireSupabase: isPersonaTarget,
+  });
   if (!media.ok) return media;
 
   if (target.username === authUsername.toLowerCase()) {
