@@ -141,12 +141,21 @@ export function mergePostsState(
   local: PostsPlatformState,
   remote: PostsPlatformState
 ): PostsPlatformState {
+  const deletedCustomIds = mergeStringLists(
+    local.deletedCustomIds ?? [],
+    remote.deletedCustomIds ?? []
+  );
+  const deletedCustomSet = new Set(deletedCustomIds);
+
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? []) as FeedPost[],
+    custom: mergeById(local.custom ?? [], remote.custom ?? []).filter(
+      (post) => !deletedCustomSet.has(post.id)
+    ) as FeedPost[],
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []
     ),
+    deletedCustomIds,
     likeCounts: { ...(local.likeCounts ?? {}), ...(remote.likeCounts ?? {}) },
   };
 }
@@ -155,12 +164,21 @@ export function mergeForumsState(
   local: ForumsPlatformState,
   remote: ForumsPlatformState
 ): ForumsPlatformState {
+  const deletedCustomIds = mergeStringLists(
+    local.deletedCustomIds ?? [],
+    remote.deletedCustomIds ?? []
+  );
+  const deletedCustomSet = new Set(deletedCustomIds);
+
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? []) as RpgForum[],
+    custom: mergeById(local.custom ?? [], remote.custom ?? []).filter(
+      (forum) => !deletedCustomSet.has(forum.id)
+    ) as RpgForum[],
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []
     ),
+    deletedCustomIds,
   };
 }
 

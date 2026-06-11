@@ -10,12 +10,15 @@ import type { FeedPost } from "@/types/database";
 export interface PostsPlatformState {
   custom: FeedPost[];
   deletedMockIds: string[];
+  /** Tombstones — custom posts removed by creators/admins (survives server merge). */
+  deletedCustomIds?: string[];
   likeCounts?: Record<string, number>;
 }
 
 const EMPTY: PostsPlatformState = {
   custom: [],
   deletedMockIds: [],
+  deletedCustomIds: [],
   likeCounts: {},
 };
 
@@ -24,6 +27,7 @@ export async function GET() {
   return NextResponse.json({
     custom: Array.isArray(state.custom) ? state.custom : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
     likeCounts:
       state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
   });
@@ -46,6 +50,7 @@ export async function PUT(request: Request) {
     const state = sanitizePostsPlatformState({
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+      deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
       likeCounts:
         body.likeCounts && typeof body.likeCounts === "object" ? body.likeCounts : {},
     });

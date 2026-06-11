@@ -35,11 +35,19 @@ function sanitizePostForSync(post: FeedPost): FeedPost {
 }
 
 export function sanitizePostsPlatformState(state: PostsPlatformState): PostsPlatformState {
+  const deletedCustomIds = Array.isArray(state.deletedCustomIds)
+    ? state.deletedCustomIds
+    : [];
+  const deletedCustomSet = new Set(deletedCustomIds);
+
   return {
     custom: Array.isArray(state.custom)
-      ? state.custom.map(sanitizePostForSync)
+      ? state.custom
+          .filter((post) => !deletedCustomSet.has(post.id))
+          .map(sanitizePostForSync)
       : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    deletedCustomIds,
     likeCounts:
       state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
   };

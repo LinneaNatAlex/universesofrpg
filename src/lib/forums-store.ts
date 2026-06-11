@@ -36,7 +36,11 @@ function sortForums(list: RpgForum[]): RpgForum[] {
 }
 
 function loadState(): ForumsState {
-  return readJson<ForumsState>(STORAGE_KEY, { custom: [], deletedMockIds: [] });
+  return readJson<ForumsState>(STORAGE_KEY, {
+    custom: [],
+    deletedMockIds: [],
+    deletedCustomIds: [],
+  });
 }
 
 function normalizePartTitle(number: number, title: string | undefined): string {
@@ -70,6 +74,7 @@ function normalizeForum(forum: RpgForum): RpgForum {
 function mergeForums() {
   const state = loadState();
   const deleted = new Set(state.deletedMockIds);
+  const deletedCustom = new Set(state.deletedCustomIds ?? []);
   const map = new Map<string, RpgForum>();
 
   for (const mock of MOCK_FORUMS) {
@@ -78,6 +83,7 @@ function mergeForums() {
     }
   }
   for (const custom of state.custom) {
+    if (deletedCustom.has(custom.id)) continue;
     map.set(custom.id, normalizeForum(custom));
   }
 
@@ -93,10 +99,12 @@ function ensureLoaded() {
 
 export function buildForumsPersistState(): ForumsState {
   ensureLoaded();
+  const existing = loadState();
   const currentIds = new Set(forums.map((f) => f.id));
   return {
     custom: forums.filter((f) => !MOCK_FORUM_IDS.has(f.id)),
     deletedMockIds: MOCK_FORUMS.filter((f) => !currentIds.has(f.id)).map((f) => f.id),
+    deletedCustomIds: existing.deletedCustomIds ?? [],
   };
 }
 
@@ -105,6 +113,7 @@ export function applyForumsPersistState(state: ForumsState): void {
   writeJson(STORAGE_KEY, {
     custom: Array.isArray(state.custom) ? state.custom : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
   });
   storageLoaded = false;
   forums = [...MOCK_FORUMS];
@@ -131,6 +140,7 @@ function persist(): boolean {
 function persistForumOverride(forum: RpgForum) {
   if (!MOCK_FORUM_IDS.has(forum.id)) {
     persist();
+    void syncForumsToServer();
     return;
   }
 
@@ -143,6 +153,14 @@ function persistForumOverride(forum: RpgForum) {
   };
   writeJson(STORAGE_KEY, next);
   scheduleForumsPlatformPush(next);
+  void syncForumsToServer();
+}
+
+function trackDeletedCustomForumId(id: string): void {
+  if (MOCK_FORUM_IDS.has(id)) return;
+  const state = loadState();
+  const deletedCustomIds = [...new Set([...(state.deletedCustomIds ?? []), id])];
+  writeJson(STORAGE_KEY, { ...state, deletedCustomIds });
 }
 
 export function subscribeForums(listener: Listener): () => void {
@@ -367,6 +385,7 @@ export function deleteForumPost(
 
   saveForumChanges(forum);
   notify();
+  void syncForumsToServer();
   return true;
 }
 
@@ -477,7 +496,9 @@ export function deleteForum(forumId: string): boolean {
   forums = forums.filter((forum) => forum.id !== forumId);
   if (forums.length === before) return false;
 
+  trackDeletedCustomForumId(forumId);
   persist();
   notify();
+  void syncForumsToServer();
   return true;
 }

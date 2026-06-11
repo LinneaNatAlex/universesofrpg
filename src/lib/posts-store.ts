@@ -41,6 +41,8 @@ const STORAGE_KEY = "uorpg-posts-state";
 export interface PostsState {
   custom: FeedPost[];
   deletedMockIds: string[];
+  /** Tombstones for user-created posts removed by admin/creator. */
+  deletedCustomIds?: string[];
   /** Persisted like totals for mock posts (custom posts store counts on the post). */
   likeCounts?: Record<string, number>;
 }
@@ -62,10 +64,15 @@ function sortPosts(list: FeedPost[]): FeedPost[] {
 }
 
 function loadState(): PostsState {
-  const parsed = readJson<PostsState>(STORAGE_KEY, { custom: [], deletedMockIds: [] });
+  const parsed = readJson<PostsState>(STORAGE_KEY, {
+    custom: [],
+    deletedMockIds: [],
+    deletedCustomIds: [],
+  });
   return {
     custom: Array.isArray(parsed.custom) ? parsed.custom : [],
     deletedMockIds: Array.isArray(parsed.deletedMockIds) ? parsed.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(parsed.deletedCustomIds) ? parsed.deletedCustomIds : [],
     likeCounts:
       parsed.likeCounts && typeof parsed.likeCounts === "object" ? parsed.likeCounts : {},
   };
@@ -80,6 +87,7 @@ function applyLikeCount(post: FeedPost, likeCounts: Record<string, number>): Fee
 function mergePosts() {
   const state = loadState();
   const deleted = new Set(state.deletedMockIds);
+  const deletedCustom = new Set(state.deletedCustomIds ?? []);
   const likeCounts = state.likeCounts ?? {};
   const map = new Map<string, FeedPost>();
 
@@ -94,6 +102,7 @@ function mergePosts() {
 
   let customNeedsPersist = false;
   for (const custom of state.custom) {
+    if (deletedCustom.has(custom.id)) continue;
     const stripped = stripPaidCodeForStorage(ensureTemplatePreviewFields(custom));
     if (
       stripped.html_code !== custom.html_code ||
@@ -120,6 +129,7 @@ function ensureLoaded() {
 
 export function buildPostsPersistState(): PostsState {
   ensureLoaded();
+  const existing = loadState();
   const currentIds = new Set(posts.map((p) => p.id));
   const likeCounts: Record<string, number> = {};
   for (const post of posts) {
@@ -133,6 +143,7 @@ export function buildPostsPersistState(): PostsState {
   return {
     custom: posts.filter((p) => !MOCK_POST_IDS.has(p.id)),
     deletedMockIds: MOCK_FEED.filter((p) => !currentIds.has(p.id)).map((p) => p.id),
+    deletedCustomIds: existing.deletedCustomIds ?? [],
     likeCounts,
   };
 }
@@ -142,6 +153,7 @@ export function applyPostsPersistState(state: PostsState): void {
   writeJson(STORAGE_KEY, {
     custom: Array.isArray(state.custom) ? state.custom : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
     likeCounts:
       state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
   });
@@ -184,14 +196,25 @@ export function getPostFromStore(id: string): FeedPost | undefined {
   return posts.find((p) => p.id === id);
 }
 
+function trackDeletedCustomPostId(id: string): void {
+  if (MOCK_POST_IDS.has(id)) return;
+  const state = loadState();
+  const deletedCustomIds = [
+    ...new Set([...(state.deletedCustomIds ?? []), id]),
+  ];
+  writeJson(STORAGE_KEY, { ...state, deletedCustomIds });
+}
+
 export function deletePost(id: string): boolean {
   ensureLoaded();
   const before = posts.length;
   posts = posts.filter((p) => p.id !== id);
   if (posts.length < before) {
+    trackDeletedCustomPostId(id);
     removeVaultedCode(id);
     persist();
     notify();
+    void syncPostsToServer();
     return true;
   }
   return false;
@@ -204,6 +227,7 @@ export function setPostModeration(id: string, status: ModerationStatus): boolean
   post.moderation_status = status;
   persist();
   notify();
+  void syncPostsToServer();
   return true;
 }
 

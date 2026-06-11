@@ -9,11 +9,13 @@ import type { RpgForum } from "@/types/database";
 export interface ForumsPlatformState {
   custom: RpgForum[];
   deletedMockIds: string[];
+  deletedCustomIds?: string[];
 }
 
 const EMPTY: ForumsPlatformState = {
   custom: [],
   deletedMockIds: [],
+  deletedCustomIds: [],
 };
 
 export async function GET() {
@@ -21,6 +23,7 @@ export async function GET() {
   return NextResponse.json({
     custom: Array.isArray(state.custom) ? state.custom : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
   });
 }
 
@@ -41,6 +44,7 @@ export async function PUT(request: Request) {
     const state: ForumsPlatformState = {
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+      deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
     };
 
     const result = await setPlatformContent("forums", state);
