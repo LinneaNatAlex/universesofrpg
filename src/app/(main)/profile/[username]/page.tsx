@@ -51,9 +51,13 @@ export default function ProfilePage() {
   const personaPage = usePersonaProfile(username);
   const creations = useAuthorPosts(username, isOwnProfile);
   const showPurchasesTab = isOwnProfile;
-  const { posts: purchasedPosts, loading: purchasesLoading } = usePurchasedPosts(
-    showPurchasesTab ? username : null
-  );
+  const { entries: purchasedEntries, purchaseCount, loading: purchasesLoading } =
+    usePurchasedPosts(
+      showPurchasesTab && identity ? identity.username : null,
+      showPurchasesTab && identity?.isActingAsPersona && account
+        ? account.username
+        : null
+    );
   const [dynamicProfile, setDynamicProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -170,7 +174,7 @@ export default function ProfilePage() {
             id: "purchases" as const,
             label: "Purchased",
             icon: ShoppingBag,
-            count: purchasedPosts.length,
+            count: purchaseCount,
           },
         ]
       : []),
@@ -292,7 +296,11 @@ export default function ProfilePage() {
           editable={isOwnProfile}
         />
       ) : tab === "purchases" ? (
-        <ProfilePurchasesTab purchases={purchasedPosts} loading={purchasesLoading} />
+        <ProfilePurchasesTab
+          entries={purchasedEntries}
+          purchaseCount={purchaseCount}
+          loading={purchasesLoading}
+        />
       ) : tab === "friends" ? (
         <ProfileFriendsTab
           username={username}

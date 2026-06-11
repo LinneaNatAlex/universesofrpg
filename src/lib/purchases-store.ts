@@ -50,6 +50,20 @@ export function getPurchasedPostIds(username: string): string[] {
   return [...getPurchasedSet(username)];
 }
 
+export function syncPurchasedPostIds(username: string, postIds: string[]): void {
+  const set = getPurchasedSet(username);
+  let changed = false;
+  for (const id of postIds) {
+    if (!set.has(id)) {
+      set.add(id);
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  persist(username);
+  notify();
+}
+
 export function recordPurchase(username: string, postId: string): void {
   const set = getPurchasedSet(username);
   set.add(postId);

@@ -3,7 +3,10 @@ import { resolveBuyerUsername } from "@/lib/api-session-auth";
 import {
   hasPlatformPurchase,
   listPlatformPurchasesForBuyer,
+  type PlatformPurchase,
 } from "@/lib/marketplace-platform-store";
+import { resolvePlatformPostById } from "@/lib/resolve-platform-post";
+import type { FeedPost } from "@/types/database";
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -27,9 +30,28 @@ export async function GET(request: Request) {
   }
 
   const purchases = await listPlatformPurchasesForBuyer(buyerUsername);
+  const posts = await enrichPurchasedPosts(purchases);
+
   return NextResponse.json({
     username: buyerUsername,
     post_ids: purchases.map((p) => p.post_id),
     purchases,
+    posts,
   });
+}
+
+async function enrichPurchasedPosts(purchases: PlatformPurchase[]): Promise<FeedPost[]> {
+  const posts: FeedPost[] = [];
+  const seen = new Set<string>();
+
+  for (const purchase of purchases) {
+    if (seen.has(purchase.post_id)) continue;
+    const post = await resolvePlatformPostById(purchase.post_id);
+    if (post) {
+      seen.add(purchase.post_id);
+      posts.push(post);
+    }
+  }
+
+  return posts;
 }

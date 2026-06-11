@@ -5,41 +5,63 @@ import { useMemo, useState } from "react";
 import { Search, ShoppingBag } from "lucide-react";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { Badge } from "@/components/ui/badge";
+import type { PurchasedLibraryEntry } from "@/hooks/usePurchasedPosts";
 import { getPostTags, postMatchesSearchQuery, postMatchesTagFilter } from "@/lib/post-tags";
 import type { FeedPost } from "@/types/database";
 
 interface ProfilePurchasesTabProps {
-  purchases: FeedPost[];
+  entries: PurchasedLibraryEntry[];
+  purchaseCount: number;
   loading?: boolean;
 }
 
+function entryMatchesSearch(entry: PurchasedLibraryEntry, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (entry.post) {
+    return (
+      postMatchesSearchQuery(entry.post, query) ||
+      entry.post.type.replace("_", " ").toLowerCase().includes(q) ||
+      entry.post.author.username.toLowerCase().includes(q)
+    );
+  }
+  return (
+    entry.postId.toLowerCase().includes(q) ||
+    entry.sellerUsername.toLowerCase().includes(q)
+  );
+}
+
+function entryMatchesTag(entry: PurchasedLibraryEntry, tag: string | null): boolean {
+  if (!tag || !entry.post) return !tag;
+  return postMatchesTagFilter(entry.post, tag);
+}
+
 export function ProfilePurchasesTab({
-  purchases,
+  entries,
+  purchaseCount,
   loading = false,
 }: ProfilePurchasesTabProps) {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
+  const resolvedPosts = useMemo(
+    () => entries.map((e) => e.post).filter((p): p is FeedPost => p !== null),
+    [entries]
+  );
+
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const p of purchases) {
+    for (const p of resolvedPosts) {
       getPostTags(p).forEach((t) => tags.add(t));
     }
     return [...tags].sort();
-  }, [purchases]);
+  }, [resolvedPosts]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return purchases.filter((p) => {
-      const matchesTag = postMatchesTagFilter(p, activeTag);
-      const matchesQuery =
-        !q ||
-        postMatchesSearchQuery(p, query) ||
-        p.type.replace("_", " ").toLowerCase().includes(q) ||
-        p.author.username.toLowerCase().includes(q);
-      return matchesTag && matchesQuery;
-    });
-  }, [purchases, query, activeTag]);
+    return entries.filter(
+      (entry) => entryMatchesTag(entry, activeTag) && entryMatchesSearch(entry, query)
+    );
+  }, [entries, query, activeTag]);
 
   if (loading) {
     return (
@@ -98,24 +120,49 @@ export function ProfilePurchasesTab({
 
       <div className="flex items-center justify-between">
         <span className="text-xs font-comic text-ink-muted">
-          {filtered.length} of {purchases.length} purchases
+          {filtered.length} of {purchaseCount} purchases
         </span>
       </div>
 
       {filtered.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
-          {filtered.map((post) => (
-            <FeedCard key={post.id} post={post} />
-          ))}
+          {filtered.map((entry) =>
+            entry.post ? (
+              <FeedCard key={entry.postId} post={entry.post} />
+            ) : (
+              <Link
+                key={entry.postId}
+                href={`/post/${entry.postId}`}
+                className="comic-panel p-5 block hover:bg-comic-yellow/30 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <ShoppingBag className="h-5 w-5 text-comic-red shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="font-comic text-ink">Purchased listing</p>
+                    <p className="text-xs text-ink-muted mt-1">
+                      {entry.sellerUsername
+                        ? `by @${entry.sellerUsername}`
+                        : "Open to load full details"}
+                    </p>
+                    {entry.purchasedAt && (
+                      <p className="text-xs text-ink-muted mt-1">
+                        {new Date(entry.purchasedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            )
+          )}
         </div>
       ) : (
         <div className="comic-panel p-6 text-center space-y-3">
           <p className="font-comic text-ink-muted">
-            {purchases.length === 0
+            {purchaseCount === 0
               ? "No purchases yet."
               : "No purchases match your search or tag filter."}
           </p>
-          {purchases.length === 0 && (
+          {purchaseCount === 0 && (
             <Link
               href="/marketplace"
               className="inline-flex items-center gap-1.5 font-comic text-sm text-comic-red hover:underline"
