@@ -19,16 +19,13 @@ export function TopicShopGate({ forum, username, onPurchased }: TopicShopGatePro
   async function handlePurchase() {
     if (!forum.shop_post_id || price < 100) return;
 
-    const ok = await buy(
-      {
-        post_id: forum.shop_post_id,
-        title: forum.title,
-        price_cents: price,
-        seller_username: forum.creator_username,
-      },
-      onPurchased
-    );
-    if (ok) onPurchased();
+    const result = await buy({
+      post_id: forum.shop_post_id,
+      title: forum.title,
+      price_cents: price,
+      seller_username: forum.creator_username,
+    });
+    if (result === "unlocked") onPurchased();
   }
 
   return (

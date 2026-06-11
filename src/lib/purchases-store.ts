@@ -56,6 +56,16 @@ export function recordPurchase(username: string, postId: string): void {
   }
 }
 
+export function revokePurchase(username: string, postId: string): void {
+  const set = getPurchasedSet(username);
+  if (!set.delete(postId)) return;
+  persist(username);
+  notify();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PURCHASES_UPDATED_EVENT));
+  }
+}
+
 /** Merge server-side purchases (Stripe) into local cache for this user. */
 export async function hydratePurchasesFromServer(username: string): Promise<void> {
   const key = username.toLowerCase();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Lock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,9 @@ import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
-import { authFetchHeaders } from "@/lib/api-client-auth";
-import {
-  canViewCodeSource,
-  requiresCodePurchase,
-} from "@/lib/posts";
-import { recordPurchase, subscribePurchases } from "@/lib/purchases-store";
+import { requiresCodePurchase } from "@/lib/posts";
+import { subscribePurchases } from "@/lib/purchases-store";
+import { verifySourceAccess } from "@/lib/verify-marketplace-purchase";
 import type { FeedPost } from "@/types/database";
 
 type Tab = "html" | "css" | "js";
@@ -36,71 +33,59 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { buy, busy, error: buyError } = useMarketplaceBuy();
 
   const needsPurchase = requiresCodePurchase(post);
-  const viewer = { isLoggedIn, username: buyerUsername, inviteToken, isEditor };
+  const viewer = useMemo(
+    () => ({
+      isLoggedIn,
+      username: buyerUsername,
+      inviteToken,
+      isEditor,
+    }),
+    [isLoggedIn, buyerUsername, inviteToken, isEditor]
+  );
   const { bundle, loading, error: sourceError } = usePostSourceCode(
     post.id,
     unlocked,
     buyerUsername
   );
 
+  const refreshAccess = useCallback(async () => {
+    const next = await verifySourceAccess(post, viewer, buyerUsername);
+    setUnlocked(next);
+    if (!next) setJustPurchased(false);
+  }, [post, viewer, buyerUsername]);
+
   useEffect(() => {
-    const refresh = async () => {
-      let next = canViewCodeSource(post, viewer);
-
-      if (!next && buyerUsername && needsPurchase) {
-        try {
-          const headers = await authFetchHeaders();
-          const purchaseUrl = new URL("/api/marketplace/purchases", window.location.origin);
-          purchaseUrl.searchParams.set("post_id", post.id);
-          purchaseUrl.searchParams.set("acting_username", buyerUsername);
-          const res = await fetch(purchaseUrl.toString(), {
-            credentials: "include",
-            headers,
-            cache: "no-store",
-          });
-          if (res.ok) {
-            const data = (await res.json()) as { purchased?: boolean };
-            if (data.purchased) {
-              recordPurchase(buyerUsername, post.id);
-              next = true;
-            }
-          }
-        } catch {
-          // keep local cache
-        }
-      }
-
-      setUnlocked(next);
-    };
-
-    void refresh();
+    void refreshAccess();
     const unsub = subscribePurchases(() => {
-      void refresh();
+      void refreshAccess();
     });
     return unsub;
-  }, [post, isLoggedIn, buyerUsername, inviteToken, isEditor, needsPurchase]);
+  }, [refreshAccess]);
+
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) void refreshAccess();
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [refreshAccess]);
 
   async function handlePurchase() {
     if (!isLoggedIn) {
       window.location.href = "/login";
       return;
     }
-    const ok = await buy(
-      {
-        post_id: post.id,
-        title: post.title,
-        price_cents: post.price_cents,
-        seller_username: post.author.username,
-      },
-      () => {
-        setJustPurchased(true);
-        setUnlocked(true);
-      }
-    );
-    if (ok) {
+    const result = await buy({
+      post_id: post.id,
+      title: post.title,
+      price_cents: post.price_cents,
+      seller_username: post.author.username,
+    });
+    if (result === "unlocked") {
       setJustPurchased(true);
-      setUnlocked(true);
+      void refreshAccess();
     }
+    // "redirecting" — stay locked until Stripe confirms payment on return.
   }
 
   if (!unlocked) {
@@ -157,9 +142,21 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   }
 
   const sources: { id: Tab; label: string; code: string | null }[] = [
-    { id: "html", label: "HTML", code: bundle?.html_code ?? post.html_code },
-    { id: "css", label: "CSS", code: bundle?.css_code ?? post.css_code },
-    { id: "js", label: "JS", code: bundle?.js_code ?? post.js_code },
+    {
+      id: "html",
+      label: "HTML",
+      code: needsPurchase ? (bundle?.html_code ?? null) : (bundle?.html_code ?? post.html_code),
+    },
+    {
+      id: "css",
+      label: "CSS",
+      code: needsPurchase ? (bundle?.css_code ?? null) : (bundle?.css_code ?? post.css_code),
+    },
+    {
+      id: "js",
+      label: "JS",
+      code: needsPurchase ? (bundle?.js_code ?? null) : (bundle?.js_code ?? post.js_code),
+    },
   ];
 
   const active = sources.find((s) => s.id === tab) ?? sources[0];

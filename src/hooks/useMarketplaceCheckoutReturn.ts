@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
 import {
   clearPendingMarketplaceCheckout,
   readPendingMarketplaceCheckout,
 } from "@/lib/marketplace-checkout-pending";
-import { recordPurchase, PURCHASES_UPDATED_EVENT } from "@/lib/purchases-store";
+import {
+  recordPurchase,
+  PURCHASES_UPDATED_EVENT,
+  revokePurchase,
+} from "@/lib/purchases-store";
 
 const PROCESSED_SESSION_KEY = "uorpg_marketplace_processed_session";
 
@@ -19,6 +24,7 @@ export interface MarketplaceCheckoutReturnState {
 export function useMarketplaceCheckoutReturn(
   sellerUsername?: string | null
 ): MarketplaceCheckoutReturnState {
+  const identity = useActingIdentity();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -40,6 +46,11 @@ export function useMarketplaceCheckoutReturn(
     }
 
     if (purchase === "canceled") {
+      const pending = readPendingMarketplaceCheckout();
+      const buyer = identity?.username;
+      if (pending && buyer) {
+        revokePurchase(buyer, pending.post_id);
+      }
       setError("Checkout was canceled. You were not charged.");
       clearPendingMarketplaceCheckout();
       cleanUrl();
@@ -109,7 +120,7 @@ export function useMarketplaceCheckoutReturn(
         cleanUrl();
       })
       .finally(() => setConfirming(false));
-  }, [sellerUsername]);
+  }, [sellerUsername, identity?.username]);
 
   return {
     confirming,

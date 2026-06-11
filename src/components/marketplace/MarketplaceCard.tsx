@@ -55,21 +55,14 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
     }
     if (!identity?.username) return;
 
-    const ok = await buy(
-      {
-        post_id: post.id,
-        title: post.title,
-        price_cents: post.price_cents,
-        seller_username: post.author.username,
-      },
-      () => {
-        if (post.type === "code_template") {
-          window.location.href = `/post/${post.id}`;
-        }
-      }
-    );
+    const result = await buy({
+      post_id: post.id,
+      title: post.title,
+      price_cents: post.price_cents,
+      seller_username: post.author.username,
+    });
 
-    if (ok && post.type === "code_template") {
+    if (result === "unlocked" && post.type === "code_template") {
       window.location.href = `/post/${post.id}`;
     }
   }

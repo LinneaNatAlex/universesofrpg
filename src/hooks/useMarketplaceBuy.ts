@@ -11,19 +11,19 @@ import {
 const ALLOW_DEMO =
   process.env.NEXT_PUBLIC_ALLOW_DEMO_MARKETPLACE_PURCHASE === "true";
 
+/** redirecting = Stripe checkout opened; unlocked = demo/dev only after confirmed unlock */
+export type MarketplaceBuyResult = "redirecting" | "unlocked" | "failed";
+
 export function useMarketplaceBuy() {
   const identity = useActingIdentity();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function buy(
-    item: MarketplaceCheckoutItem,
-    onSuccess?: () => void
-  ): Promise<boolean> {
+  async function buy(item: MarketplaceCheckoutItem): Promise<MarketplaceBuyResult> {
     const buyerUsername = identity?.username;
     if (!buyerUsername) {
       setError("Sign in to purchase.");
-      return false;
+      return "failed";
     }
 
     setBusy(true);
@@ -32,7 +32,8 @@ export function useMarketplaceBuy() {
     const result = await startMarketplaceCheckout(item, buyerUsername);
 
     if (result.ok) {
-      return true;
+      // Redirecting to Stripe — payment is NOT complete yet.
+      return "redirecting";
     }
 
     if (
@@ -42,14 +43,13 @@ export function useMarketplaceBuy() {
         result.error.includes("Stripe"))
     ) {
       demoUnlockPurchase(buyerUsername, item.post_id);
-      onSuccess?.();
       setBusy(false);
-      return true;
+      return "unlocked";
     }
 
     setError(result.error);
     setBusy(false);
-    return false;
+    return "failed";
   }
 
   return { buy, busy, error, clearError: () => setError(null) };
