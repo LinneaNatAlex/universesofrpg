@@ -1,4 +1,5 @@
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
+import { migrateFeedPost } from "@/lib/persona-rename";
 import type { FeedPost } from "@/types/database";
 
 /** Keep platform sync under Netlify/Supabase body limits. */
@@ -17,20 +18,21 @@ function trimSyncField(value: string | null | undefined): string | null | undefi
 }
 
 function sanitizePostForSync(post: FeedPost): FeedPost {
+  const migrated = migrateFeedPost(post);
   return {
-    ...post,
-    description: trimSyncField(post.description) ?? post.description,
-    content: trimSyncField(post.content) ?? post.content,
-    plot_synopsis: trimSyncField(post.plot_synopsis) ?? post.plot_synopsis,
-    preview_image_url: trimSyncField(post.preview_image_url) ?? post.preview_image_url,
-    book_cover_url: trimSyncField(post.book_cover_url) ?? post.book_cover_url,
-    preview_html_code: trimSyncField(post.preview_html_code) ?? post.preview_html_code,
-    preview_css_code: trimSyncField(post.preview_css_code) ?? post.preview_css_code,
-    preview_js_code: trimSyncField(post.preview_js_code) ?? post.preview_js_code,
-    html_code: trimSyncField(post.html_code) ?? post.html_code,
-    css_code: trimSyncField(post.css_code) ?? post.css_code,
-    js_code: trimSyncField(post.js_code) ?? post.js_code,
-    bbcode: trimSyncField(post.bbcode) ?? post.bbcode,
+    ...migrated,
+    description: trimSyncField(migrated.description) ?? migrated.description,
+    content: trimSyncField(migrated.content) ?? migrated.content,
+    plot_synopsis: trimSyncField(migrated.plot_synopsis) ?? migrated.plot_synopsis,
+    preview_image_url: trimSyncField(migrated.preview_image_url) ?? migrated.preview_image_url,
+    book_cover_url: trimSyncField(migrated.book_cover_url) ?? migrated.book_cover_url,
+    preview_html_code: trimSyncField(migrated.preview_html_code) ?? migrated.preview_html_code,
+    preview_css_code: trimSyncField(migrated.preview_css_code) ?? migrated.preview_css_code,
+    preview_js_code: trimSyncField(migrated.preview_js_code) ?? migrated.preview_js_code,
+    html_code: trimSyncField(migrated.html_code) ?? migrated.html_code,
+    css_code: trimSyncField(migrated.css_code) ?? migrated.css_code,
+    js_code: trimSyncField(migrated.js_code) ?? migrated.js_code,
+    bbcode: trimSyncField(migrated.bbcode) ?? migrated.bbcode,
   };
 }
 

@@ -178,7 +178,7 @@ export function SettingsFriendsManager() {
         <ul className="space-y-1 max-h-56 overflow-auto">
           {suggestions.length === 0 ? (
             <li className="text-xs text-ink-muted italic px-1 py-2">
-              No matching creators — try hollowscribe or roninforge.
+              No matching creators — try leon_jezz or roninforge.
             </li>
           ) : (
             suggestions.slice(0, 12).map((u) => (

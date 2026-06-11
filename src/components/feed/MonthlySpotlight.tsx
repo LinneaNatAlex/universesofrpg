@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, MessageCircle, Sparkles, Eye } from "lucide-react";
+import { PostDetailLink } from "@/components/content/PostDetailLink";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
+import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LikeButton } from "@/components/feed/LikeButton";
@@ -34,6 +36,7 @@ function SpotlightVisual({ post }: { post: FeedPost }) {
 
 function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
   const { post, category } = pick;
+  const { isLoggedIn } = useAuth();
   const commentCount = useCommentCount(post.id);
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
@@ -49,11 +52,11 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
           {category.subtitle}
         </p>
 
-        <Link href={`/post/${post.id}`} className="block group mt-2">
+        <PostDetailLink post={post} className="block group mt-2">
           <h3 className="font-comic text-2xl md:text-3xl text-ink group-hover:text-comic-red leading-tight">
             {post.title}
           </h3>
-        </Link>
+        </PostDetailLink>
 
         <p className="text-sm text-ink-muted mt-1">
           by{" "}
@@ -87,12 +90,12 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
           )}
         </div>
 
-        <Link href={`/post/${post.id}`} className="inline-block mt-5">
+        <PostDetailLink post={post} className="inline-block mt-5">
           <Button variant="comic" size="sm">
             <Eye className="h-4 w-4 mr-1.5" />
-            View this pick
+            {post.type === "code_template" && !isLoggedIn ? "Sign in to view" : "View this pick"}
           </Button>
-        </Link>
+        </PostDetailLink>
       </div>
     </div>
   );

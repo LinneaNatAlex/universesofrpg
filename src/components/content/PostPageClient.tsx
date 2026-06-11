@@ -4,14 +4,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { LoginCTA } from "@/components/auth/LoginCTA";
 import { PostView } from "@/components/content/PostView";
 import { MarketplaceCheckoutReturn } from "@/components/stripe/MarketplaceCheckoutReturn";
+import { useAuth } from "@/hooks/useAuth";
 import { usePost } from "@/hooks/usePost";
+import { canViewPostDetail } from "@/lib/post-access";
 
 export function PostPageClient() {
   const params = useParams();
   const id = params.id as string;
   const post = usePost(id);
+  const { isLoggedIn, loading: authLoading } = useAuth();
 
   if (post === undefined) {
     return (
@@ -31,6 +35,20 @@ export function PostPageClient() {
         <Link href="/" className="font-comic text-comic-red hover:underline text-sm">
           ← Back to feed
         </Link>
+      </div>
+    );
+  }
+
+  if (!authLoading && !canViewPostDetail(post, isLoggedIn)) {
+    return (
+      <div className="space-y-6 max-w-lg mx-auto">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm font-comic text-ink-muted hover:text-comic-red"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to feed
+        </Link>
+        <LoginCTA message="Sign in to view code templates, live previews, and source access." />
       </div>
     );
   }

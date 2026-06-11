@@ -15,7 +15,7 @@ export const MOCK_FEED: FeedPost[] = [
     description: "A glowing fantasy profile layout with rune borders and inventory tabs.",
     plot_synopsis: null,
     content: null,
-    html_code: "<div class='rpg-card'><h1>Lyra Moonwhisper</h1><p>Level 42 · Arcane Weaver</p></div>",
+    html_code: "<div class='rpg-card'><h1>Chaz Copper</h1><p>Level 42 · Arcane Weaver</p></div>",
     css_code: ".rpg-card { padding: 2rem; border: 3px solid #e63946; border-radius: 4px; background: #1d3557; color: #f1faee; font-family: Georgia, serif; text-align: center; }",
     js_code: null,
     bbcode: null,
@@ -35,8 +35,8 @@ export const MOCK_FEED: FeedPost[] = [
     created_at: daysAgo(14),
     author: {
       id: "u1",
-      username: "lyra_weaver",
-      display_name: "Lyra Moonwhisper",
+      username: "chaz_copper",
+      display_name: "Chaz Copper",
       bio: "Building arcane UI for RPG personas.",
       avatar_url: null,
       banner_url: null,
@@ -111,8 +111,8 @@ export const MOCK_FEED: FeedPost[] = [
     created_at: daysAgo(9),
     author: {
       id: "u3",
-      username: "hollowscribe",
-      display_name: "Hollow Scribe",
+      username: "leon_jezz",
+      display_name: "Leon Jezz",
       bio: "Co-writing nightmares since 2019.",
       avatar_url: null,
       banner_url: null,
@@ -149,8 +149,8 @@ export const MOCK_FEED: FeedPost[] = [
     created_at: daysAgo(7),
     author: {
       id: "u1",
-      username: "lyra_weaver",
-      display_name: "Lyra Moonwhisper",
+      username: "chaz_copper",
+      display_name: "Chaz Copper",
       bio: "Building arcane UI for RPG personas.",
       avatar_url: null,
       banner_url: null,
@@ -224,8 +224,8 @@ export const MOCK_FEED: FeedPost[] = [
     created_at: daysAgo(2),
     author: {
       id: "u3",
-      username: "hollowscribe",
-      display_name: "Hollow Scribe",
+      username: "leon_jezz",
+      display_name: "Leon Jezz",
       bio: "Co-writing nightmares since 2019.",
       avatar_url: null,
       banner_url: null,
@@ -262,8 +262,8 @@ export const MOCK_FEED: FeedPost[] = [
     created_at: daysAgo(0),
     author: {
       id: "u1",
-      username: "lyra_weaver",
-      display_name: "Lyra Moonwhisper",
+      username: "chaz_copper",
+      display_name: "Chaz Copper",
       bio: "Building arcane UI for RPG personas.",
       avatar_url: null,
       banner_url: null,
@@ -282,9 +282,9 @@ export const EXPLORE_TAGS = [
 ];
 
 export const MOCK_FRIENDS = [
-  { username: "lyra_weaver", display_name: "Lyra Moonwhisper" },
+  { username: "chaz_copper", display_name: "Chaz Copper" },
   { username: "roninforge", display_name: "Ronin Forge" },
-  { username: "hollowscribe", display_name: "Hollow Scribe" },
+  { username: "leon_jezz", display_name: "Leon Jezz" },
 ];
 
 export const MOCK_FORUMS: RpgForum[] = [
@@ -294,7 +294,7 @@ export const MOCK_FORUMS: RpgForum[] = [
     plot_synopsis:
       "A slow-burn horror campaign at the edge of a breathing forest gate — Victorian dread, lantern light, and secrets best left unopened.",
     book_cover_url: "https://images.unsplash.com/photo-1509248961154-86b1d4b1d2f4?w=300&h=420&fit=crop",
-    creator_username: "hollowscribe",
+    creator_username: "leon_jezz",
     is_private: false,
     is_locked: false,
     locked_at: null,
@@ -302,7 +302,7 @@ export const MOCK_FORUMS: RpgForum[] = [
     shop_price_cents: null,
     category: "horror",
     tags: ["rpg", "campaign", "gothic", "play-by-post"],
-    members: ["lyra_weaver", "hollowscribe"],
+    members: ["chaz_copper", "leon_jezz"],
     chapters: [
       {
         number: 1,
@@ -316,13 +316,13 @@ export const MOCK_FORUMS: RpgForum[] = [
         posts: [
           {
             id: "fp1",
-            author_username: "hollowscribe",
+            author_username: "leon_jezz",
             body: "The path narrows. Your lantern sputters. Roll Perception.",
             created_at: new Date().toISOString(),
           },
           {
             id: "fp2",
-            author_username: "lyra_weaver",
+            author_username: "chaz_copper",
             body: "I steady the lantern and listen for footsteps that don't belong to us.",
             created_at: new Date().toISOString(),
           },

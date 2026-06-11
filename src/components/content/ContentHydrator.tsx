@@ -6,6 +6,7 @@ import {
   CONTENT_SYNCED_EVENT,
   fetchForumsPlatformState,
   fetchPostsPlatformState,
+  markContentSyncSettled,
   mergeForumsState,
   mergePostsState,
 } from "@/lib/content-sync";
@@ -54,6 +55,7 @@ export function ContentHydrator() {
       }
 
       if (!cancelled) {
+        markContentSyncSettled();
         window.dispatchEvent(new Event(CONTENT_SYNCED_EVENT));
       }
     })();

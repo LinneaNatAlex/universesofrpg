@@ -5,8 +5,8 @@ const STORAGE_KEY = "uorpg-editor-profiles";
 
 const SEED_EDITOR_PROFILES: EditorProfile[] = [
   {
-    username: "hollowscribe",
-    display_name: "Hollow Scribe",
+    username: "leon_jezz",
+    display_name: "Leon Jezz",
     level: "standard",
     rate_cents_min: 200,
     rate_cents_max: 1000,

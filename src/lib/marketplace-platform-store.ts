@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { migrateUsername } from "@/lib/persona-rename";
 import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
 
 export interface ConnectAccountRecord {
@@ -37,15 +38,29 @@ function emptyState(): MarketplaceFileState {
   return { connectAccounts: [], purchases: [] };
 }
 
+function migrateState(state: MarketplaceFileState): MarketplaceFileState {
+  return {
+    connectAccounts: (state.connectAccounts ?? []).map((row) => ({
+      ...row,
+      username: migrateUsername(row.username),
+    })),
+    purchases: (state.purchases ?? []).map((row) => ({
+      ...row,
+      buyer_username: migrateUsername(row.buyer_username),
+      seller_username: migrateUsername(row.seller_username),
+    })),
+  };
+}
+
 function readFileState(): MarketplaceFileState {
   try {
     if (!existsSync(DATA_PATH)) return emptyState();
     const raw = readFileSync(DATA_PATH, "utf8");
     const parsed = JSON.parse(raw) as MarketplaceFileState;
-    return {
+    return migrateState({
       connectAccounts: Array.isArray(parsed.connectAccounts) ? parsed.connectAccounts : [],
       purchases: Array.isArray(parsed.purchases) ? parsed.purchases : [],
-    };
+    });
   } catch {
     return emptyState();
   }

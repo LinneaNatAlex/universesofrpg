@@ -17,6 +17,8 @@ import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { PostDetailLink } from "@/components/content/PostDetailLink";
+import { postDetailHref } from "@/lib/post-access";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
 import type { FeedPost } from "@/types/database";
 
@@ -89,11 +91,11 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
           <PostCoverThumbnail post={post} size="md" coverOnly />
         </div>
 
-        <Link href={`/post/${post.id}`} className="block group">
+        <PostDetailLink post={post} className="block group">
           <h3 className="font-comic text-lg text-ink group-hover:text-comic-red leading-tight">
             {post.title}
           </h3>
-        </Link>
+        </PostDetailLink>
 
         <p className="text-xs text-ink-muted italic mt-2 line-clamp-2 flex-1">
           {post.plot_synopsis ?? post.description}
@@ -129,9 +131,9 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
             <ShoppingBag className="h-3.5 w-3.5 mr-1" />
             {busy ? "Opening checkout…" : "Buy now"}
           </Button>
-          <Link href={`/post/${post.id}`} className="flex-1">
+          <Link href={postDetailHref(post, isLoggedIn)} className="flex-1">
             <Button variant="comic-outline" size="sm" className="w-full">
-              Preview
+              {post.type === "code_template" && !isLoggedIn ? "Sign in" : "Preview"}
             </Button>
           </Link>
         </div>

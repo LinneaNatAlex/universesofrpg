@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { safeRedirectPath } from "@/lib/post-access";
 import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -13,12 +14,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [redirectTo, setRedirectTo] = useState("/");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") === "auth") {
       setError("Login failed. Try again.");
     }
+    setRedirectTo(safeRedirectPath(params.get("next")));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,7 +41,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("Supabase is not configured. Check .env.local");
@@ -67,13 +70,22 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-1.5">Password</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm text-muted">Password</label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-comic-red font-comic hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+              autoComplete="current-password"
             />
           </div>
 

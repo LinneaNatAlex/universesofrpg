@@ -1,11 +1,12 @@
+import { migrateEmbeddedText, migrateUsername } from "@/lib/persona-rename";
 import type { PersonaProfilePage } from "@/types/database";
 
 const MOCK_PERSONA_PAGES: PersonaProfilePage[] = [
   {
-    username: "lyra_weaver",
+    username: "chaz_copper",
     mode: "code",
     html_code: `<div class="persona">
-  <h1>Lyra Moonwhisper</h1>
+  <h1>Chaz Copper</h1>
   <p class="title">Arcane Weaver · Level 42</p>
   <p class="lore">Weaving rune-lit interfaces for RPG personas across the multiverse.</p>
   <ul class="stats">
@@ -44,12 +45,12 @@ const MOCK_PERSONA_PAGES: PersonaProfilePage[] = [
     updated_at: new Date().toISOString(),
   },
   {
-    username: "hollowscribe",
+    username: "leon_jezz",
     mode: "text",
     html_code: null,
     css_code: null,
     js_code: null,
-    text_content: `Hollow Scribe — Keeper of the Gate
+    text_content: `Leon Jezz — Keeper of the Gate
 
 Era: Victorian gothic · Location: Blackfen Woods
 
@@ -136,11 +137,25 @@ function persistCustom(pagesList: PersonaProfilePage[]) {
   localStorage.setItem(storageKey(), JSON.stringify([...custom, ...overrides]));
 }
 
+function migratePersonaPage(page: PersonaProfilePage): PersonaProfilePage {
+  const username = migrateUsername(page.username);
+  return {
+    ...page,
+    username,
+    html_code: migrateEmbeddedText(page.html_code) ?? page.html_code,
+    css_code: migrateEmbeddedText(page.css_code) ?? page.css_code,
+    js_code: migrateEmbeddedText(page.js_code) ?? page.js_code,
+    text_content: migrateEmbeddedText(page.text_content) ?? page.text_content,
+  };
+}
+
 function mergeStored() {
-  const stored = loadFromStorage();
-  const map = new Map(pages.map((p) => [p.username.toLowerCase(), p]));
+  const stored = loadFromStorage().map(migratePersonaPage);
+  const map = new Map(pages.map((p) => [p.username.toLowerCase(), migratePersonaPage(p)]));
   for (const s of stored) {
-    map.set(s.username.toLowerCase(), s);
+    const key = migrateUsername(s.username);
+    const prev = map.get(key);
+    map.set(key, prev ? { ...prev, ...s, username: key } : { ...s, username: key });
   }
   pages = [...map.values()];
 }

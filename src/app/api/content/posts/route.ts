@@ -24,13 +24,14 @@ const EMPTY: PostsPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<PostsPlatformState>("posts", EMPTY);
-  return NextResponse.json({
+  const sanitized = sanitizePostsPlatformState({
     custom: Array.isArray(state.custom) ? state.custom : [],
     deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
     deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
     likeCounts:
       state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
   });
+  return NextResponse.json(sanitized);
 }
 
 export async function PUT(request: Request) {

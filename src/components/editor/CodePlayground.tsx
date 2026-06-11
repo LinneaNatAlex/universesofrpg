@@ -26,7 +26,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 type Tab = "html" | "css" | "js";
 
 const DEFAULT_HTML = `<div class="hero">
-  <h1>Lyra Moonwhisper</h1>
+  <h1>Chaz Copper</h1>
   <p class="class">Arcane Weaver · Level 42</p>
 </div>`;
 

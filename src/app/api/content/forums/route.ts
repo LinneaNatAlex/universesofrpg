@@ -4,6 +4,7 @@ import {
   getPlatformContent,
   setPlatformContent,
 } from "@/lib/content-platform-store";
+import { sanitizeForumsPlatformState } from "@/lib/forums-platform-sanitize";
 import type { RpgForum } from "@/types/database";
 
 export interface ForumsPlatformState {
@@ -20,11 +21,13 @@ const EMPTY: ForumsPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<ForumsPlatformState>("forums", EMPTY);
-  return NextResponse.json({
-    custom: Array.isArray(state.custom) ? state.custom : [],
-    deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
-    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
-  });
+  return NextResponse.json(
+    sanitizeForumsPlatformState({
+      custom: Array.isArray(state.custom) ? state.custom : [],
+      deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+      deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
+    })
+  );
 }
 
 export async function PUT(request: Request) {
@@ -41,11 +44,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const state: ForumsPlatformState = {
+    const state = sanitizeForumsPlatformState({
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
       deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
-    };
+    });
 
     const result = await setPlatformContent("forums", state);
     if (!result.ok) {

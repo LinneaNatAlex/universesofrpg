@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
+
 import { Badge } from "@/components/ui/badge";
+import { PostDetailLink } from "@/components/content/PostDetailLink";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
+import { useAuth } from "@/hooks/useAuth";
 import { getPostTags } from "@/lib/post-tags";
 import type { FeedPost } from "@/types/database";
 
@@ -9,15 +12,18 @@ interface ExploreCardProps {
 }
 
 export function ExploreCard({ post }: ExploreCardProps) {
+  const { isLoggedIn } = useAuth();
   const tags = getPostTags(post);
 
   return (
-    <Link href={`/post/${post.id}`} className="comic-card block p-4 hover:no-underline group">
+    <PostDetailLink post={post} className="comic-card block p-4 hover:no-underline group">
       <div className="flex gap-3">
         <PostCoverThumbnail post={post} size="sm" coverOnly />
         <div className="min-w-0 flex-1">
           <Badge variant="free" className="mb-1.5 text-[10px]">
-            Free · sign up to read
+            {post.type === "code_template" && !isLoggedIn
+              ? "Template · sign in to view"
+              : "Free · sign up to read"}
           </Badge>
           <h3 className="font-comic text-base text-ink group-hover:text-comic-red leading-tight">
             {post.title}
@@ -42,6 +48,6 @@ export function ExploreCard({ post }: ExploreCardProps) {
           )}
         </div>
       </div>
-    </Link>
+    </PostDetailLink>
   );
 }

@@ -96,13 +96,15 @@ export function canViewCodeSource(
     !!(post.html_code?.trim() || post.css_code?.trim() || post.js_code?.trim());
   if (!hasInline && !vaulted) return false;
 
-  // Free templates — full source for everyone (no login or purchase).
+  if (!opts.isLoggedIn) return false;
+
+  // Free templates — full source for signed-in members (no purchase).
   if (!requiresCodePurchase(post)) {
     return true;
   }
 
   if (post.moderation_status === "pending" && opts.isEditor) return true;
-  if (!opts.isLoggedIn || !opts.username) return false;
+  if (!opts.username) return false;
   if (isAuthor(post, opts.username)) return true;
   return hasPurchased(opts.username, post.id);
 }

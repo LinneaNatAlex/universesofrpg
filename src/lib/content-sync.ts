@@ -1,6 +1,7 @@
 "use client";
 
 import { writeJson } from "@/lib/browser-storage";
+import { migrateFeedPost } from "@/lib/persona-rename";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +13,17 @@ const FORUMS_KEY = "uorpg-forums-state";
 
 export const CONTENT_SYNCED_EVENT = "uorpg-content-synced";
 export const CONTENT_SYNC_FAILED_EVENT = "uorpg-content-sync-failed";
+
+let contentSyncSettled = false;
+
+/** True after the first ContentHydrator run finishes (success or failure). */
+export function isContentSyncSettled(): boolean {
+  return contentSyncSettled;
+}
+
+export function markContentSyncSettled(): void {
+  contentSyncSettled = true;
+}
 
 export type ContentSyncFailure = {
   target: "posts" | "forums";
@@ -148,9 +160,9 @@ export function mergePostsState(
   const deletedCustomSet = new Set(deletedCustomIds);
 
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? []).filter(
-      (post) => !deletedCustomSet.has(post.id)
-    ) as FeedPost[],
+    custom: mergeById(local.custom ?? [], remote.custom ?? [])
+      .filter((post) => !deletedCustomSet.has(post.id))
+      .map((post) => migrateFeedPost(post as FeedPost)) as FeedPost[],
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []

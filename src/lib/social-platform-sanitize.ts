@@ -1,5 +1,11 @@
 import type { FriendRequestsPlatformState } from "@/app/api/content/friend-requests/route";
 import type { FriendsPlatformState } from "@/app/api/content/friends/route";
+import {
+  migrateFriendRequestsPlatformState,
+  migrateFriendsPlatformState,
+  migrateUsername,
+  migrateDisplayName,
+} from "@/lib/persona-rename";
 import type { FriendLink, FriendRequest, FriendRequestStatus } from "@/types/database";
 
 const MAX_REQUESTS = 5_000;
@@ -24,10 +30,16 @@ function sanitizeRequest(raw: FriendRequest): FriendRequest | null {
 
   return {
     id: String(raw.id).slice(0, 80),
-    from_username: from,
-    from_display_name: String(raw.from_display_name ?? from).slice(0, MAX_DISPLAY_NAME),
-    to_username: to,
-    to_display_name: String(raw.to_display_name ?? to).slice(0, MAX_DISPLAY_NAME),
+    from_username: migrateUsername(from),
+    from_display_name: migrateDisplayName(from, String(raw.from_display_name ?? from)).slice(
+      0,
+      MAX_DISPLAY_NAME
+    ),
+    to_username: migrateUsername(to),
+    to_display_name: migrateDisplayName(to, String(raw.to_display_name ?? to)).slice(
+      0,
+      MAX_DISPLAY_NAME
+    ),
     status: raw.status,
     created_at: raw.created_at ?? new Date().toISOString(),
     responded_at: raw.responded_at ?? null,
@@ -48,14 +60,18 @@ export function sanitizeFriendRequestsState(
     if (requests.length >= MAX_REQUESTS) break;
   }
 
-  return { requests };
+  return migrateFriendRequestsPlatformState({ requests });
 }
 
 function sanitizeFriendLink(raw: FriendLink): FriendLink | null {
   if (!raw?.username) return null;
+  const username = migrateUsername(normalizeUsername(raw.username));
   return {
-    username: normalizeUsername(raw.username),
-    display_name: String(raw.display_name ?? raw.username).slice(0, MAX_DISPLAY_NAME),
+    username,
+    display_name: migrateDisplayName(username, String(raw.display_name ?? raw.username)).slice(
+      0,
+      MAX_DISPLAY_NAME
+    ),
     added_at: raw.added_at ?? new Date().toISOString(),
   };
 }
@@ -82,5 +98,5 @@ export function sanitizeFriendsPlatformState(
     if (links.length > 0) byOwner[key] = links;
   }
 
-  return { byOwner };
+  return migrateFriendsPlatformState({ byOwner });
 }

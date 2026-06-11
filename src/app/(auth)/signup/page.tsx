@@ -78,7 +78,7 @@ export default function SignupPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-              placeholder="lyra_weaver"
+              placeholder="chaz_copper"
             />
           </div>
           <div>

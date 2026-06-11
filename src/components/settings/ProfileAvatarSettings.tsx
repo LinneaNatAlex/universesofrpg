@@ -153,7 +153,7 @@ export function ProfileAvatarSettings() {
       )}
       {acting?.isActingAsPersona && (
         <p className="text-[10px] text-ink-muted leading-relaxed">
-          For demo personas (e.g. Lyra): add{" "}
+          For demo personas (e.g. Chaz): add{" "}
           <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to{" "}
           <code className="font-mono">.env.local</code> and Netlify, and run{" "}
           <code className="font-mono">004_profile_avatar_media.sql</code> in Supabase SQL Editor.

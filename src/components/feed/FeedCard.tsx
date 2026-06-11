@@ -10,7 +10,10 @@ import {
   PenLine,
   Eye,
 } from "lucide-react";
+import { PostDetailLink } from "@/components/content/PostDetailLink";
 import { PostEngagementBar } from "@/components/feed/PostEngagementBar";
+import { useAuth } from "@/hooks/useAuth";
+import { postDetailHref } from "@/lib/post-access";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
@@ -41,6 +44,7 @@ interface FeedCardProps {
 }
 
 export function FeedCard({ post }: FeedCardProps) {
+  const { isLoggedIn } = useAuth();
   const Icon = TYPE_ICONS[post.type] ?? Code2;
   const synopsis = post.plot_synopsis ?? post.description ?? "";
   const coverOnly =
@@ -77,14 +81,14 @@ export function FeedCard({ post }: FeedCardProps) {
         </div>
 
         {/* Title */}
-        <Link href={`/post/${post.id}`} className="block group/title">
+        <PostDetailLink post={post} className="block group/title">
           <h3 className="font-comic text-xl text-ink group-hover/title:text-comic-red transition-colors">
             {post.title}
           </h3>
-        </Link>
+        </PostDetailLink>
 
         {/* Uniform cover + teaser for every post type */}
-        <Link href={`/post/${post.id}`} className="block mt-3 group/teaser">
+        <PostDetailLink post={post} className="block mt-3 group/teaser">
           <div className="flex gap-3 items-start">
             <PostCoverThumbnail
               post={post}
@@ -96,7 +100,7 @@ export function FeedCard({ post }: FeedCardProps) {
               {synopsis || "Open to read the full teaser…"}
             </p>
           </div>
-        </Link>
+        </PostDetailLink>
 
         {/* Tags */}
         <div className="mt-4 flex flex-wrap gap-1.5">
@@ -114,18 +118,18 @@ export function FeedCard({ post }: FeedCardProps) {
 
         {/* Footer */}
         <div className="mt-4 flex items-center justify-between border-t-2 border-ink border-dashed pt-3">
-          <Link
-            href={`/post/${post.id}`}
+          <PostDetailLink
+            post={post}
             className="inline-flex items-center gap-1 text-xs font-comic text-comic-red hover:underline"
           >
             <Eye className="h-3.5 w-3.5" />
-            View teaser
-          </Link>
+            {post.type === "code_template" && !isLoggedIn ? "Sign in to view" : "View teaser"}
+          </PostDetailLink>
           <PostEngagementBar
             postId={post.id}
             likeCount={post.like_count}
             isPaid={post.pricing !== "free"}
-            commentsHref={`/post/${post.id}#comments`}
+            commentsHref={postDetailHref(post, isLoggedIn, "comments")}
             className="relative z-10 gap-3"
           />
         </div>
