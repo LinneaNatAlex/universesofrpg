@@ -62,7 +62,6 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         price_cents: post.price_cents,
         seller_username: post.author.username,
       },
-      identity.username,
       () => {
         if (post.type === "code_template") {
           window.location.href = `/post/${post.id}`;

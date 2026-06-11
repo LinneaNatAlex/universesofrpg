@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api-session-auth";
+import { resolveBuyerUsername } from "@/lib/api-session-auth";
 import {
   calculatePlatformFeeCents,
   getMarketplaceCurrency,
@@ -18,21 +18,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const auth = await requireSessionUser();
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
   let body: {
     post_id?: string;
     title?: string;
     price_cents?: number;
     seller_username?: string;
+    buying_as_username?: string;
   };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const buyerAuth = await resolveBuyerUsername(body.buying_as_username, request);
+  if (!buyerAuth.ok) {
+    return NextResponse.json({ error: buyerAuth.error }, { status: buyerAuth.status });
   }
 
   const postId = body.post_id?.trim();
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const buyerUsername = auth.user.username;
+  const buyerUsername = buyerAuth.buyerUsername;
   if (buyerUsername === sellerUsername) {
     return NextResponse.json({ error: "You cannot buy your own listing." }, { status: 400 });
   }

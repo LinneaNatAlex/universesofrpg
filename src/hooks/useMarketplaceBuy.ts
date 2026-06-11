@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
 import {
   demoUnlockPurchase,
   startMarketplaceCheckout,
@@ -11,18 +12,24 @@ const ALLOW_DEMO =
   process.env.NEXT_PUBLIC_ALLOW_DEMO_MARKETPLACE_PURCHASE === "true";
 
 export function useMarketplaceBuy() {
+  const identity = useActingIdentity();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function buy(
     item: MarketplaceCheckoutItem,
-    buyerUsername: string,
     onSuccess?: () => void
   ): Promise<boolean> {
+    const buyerUsername = identity?.username;
+    if (!buyerUsername) {
+      setError("Sign in to purchase.");
+      return false;
+    }
+
     setBusy(true);
     setError(null);
 
-    const result = await startMarketplaceCheckout(item);
+    const result = await startMarketplaceCheckout(item, buyerUsername);
 
     if (result.ok) {
       return true;

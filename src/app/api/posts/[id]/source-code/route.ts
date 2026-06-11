@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api-session-auth";
+import { requireSessionUser, resolveBuyerUsername } from "@/lib/api-session-auth";
 import { getPostCodeFromDb, savePostCodeToDb } from "@/lib/post-code-vault-server";
 import {
   canAccessPostSourceCode,
@@ -22,7 +22,13 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Template not found." }, { status: 404 });
   }
 
-  const allowed = await canAccessPostSourceCode(post, auth.user);
+  const actingUsername = new URL(request.url).searchParams.get("acting_username");
+  const buyerAuth = await resolveBuyerUsername(actingUsername, request);
+  if (!buyerAuth.ok) {
+    return NextResponse.json({ error: buyerAuth.error }, { status: buyerAuth.status });
+  }
+
+  const allowed = await canAccessPostSourceCode(post, buyerAuth.buyerUsername);
   if (!allowed) {
     return NextResponse.json({ error: "Purchase required to view source." }, { status: 403 });
   }

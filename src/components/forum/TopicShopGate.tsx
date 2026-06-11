@@ -26,7 +26,6 @@ export function TopicShopGate({ forum, username, onPurchased }: TopicShopGatePro
         price_cents: price,
         seller_username: forum.creator_username,
       },
-      username,
       onPurchased
     );
     if (ok) onPurchased();

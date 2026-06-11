@@ -6,7 +6,7 @@ import { Lock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useAccountIdentity } from "@/hooks/useAccountIdentity";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
@@ -27,8 +27,8 @@ interface CodeSourcePanelProps {
 
 export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { isLoggedIn } = useAuth();
-  const account = useAccountIdentity();
-  const buyerUsername = account?.username ?? null;
+  const identity = useActingIdentity();
+  const buyerUsername = identity?.username ?? null;
   const { isEditor } = useEditor();
   const [tab, setTab] = useState<Tab>("html");
   const [unlocked, setUnlocked] = useState(false);
@@ -37,7 +37,11 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
 
   const needsPurchase = requiresCodePurchase(post);
   const viewer = { isLoggedIn, username: buyerUsername, inviteToken, isEditor };
-  const { bundle, loading, error: sourceError } = usePostSourceCode(post.id, unlocked);
+  const { bundle, loading, error: sourceError } = usePostSourceCode(
+    post.id,
+    unlocked,
+    buyerUsername
+  );
 
   useEffect(() => {
     const refresh = async () => {
@@ -46,10 +50,14 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
       if (!next && buyerUsername && needsPurchase) {
         try {
           const headers = await authFetchHeaders();
-          const res = await fetch(
-            `/api/marketplace/purchases?post_id=${encodeURIComponent(post.id)}`,
-            { credentials: "include", headers, cache: "no-store" }
-          );
+          const purchaseUrl = new URL("/api/marketplace/purchases", window.location.origin);
+          purchaseUrl.searchParams.set("post_id", post.id);
+          purchaseUrl.searchParams.set("acting_username", buyerUsername);
+          const res = await fetch(purchaseUrl.toString(), {
+            credentials: "include",
+            headers,
+            cache: "no-store",
+          });
           if (res.ok) {
             const data = (await res.json()) as { purchased?: boolean };
             if (data.purchased) {
@@ -77,8 +85,6 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
       window.location.href = "/login";
       return;
     }
-    if (!buyerUsername) return;
-
     const ok = await buy(
       {
         post_id: post.id,
@@ -86,7 +92,6 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
         price_cents: post.price_cents,
         seller_username: post.author.username,
       },
-      buyerUsername,
       () => {
         setJustPurchased(true);
         setUnlocked(true);

@@ -4,11 +4,16 @@ import { authFetchHeaders } from "@/lib/api-client-auth";
 import type { PostCodeBundle } from "@/lib/post-code-vault";
 
 export async function fetchPostSourceCode(
-  postId: string
+  postId: string,
+  actingUsername?: string | null
 ): Promise<{ ok: true; bundle: PostCodeBundle } | { ok: false; error: string }> {
   try {
     const headers = await authFetchHeaders();
-    const res = await fetch(`/api/posts/${postId}/source-code`, {
+    const url = new URL(`/api/posts/${postId}/source-code`, window.location.origin);
+    if (actingUsername?.trim()) {
+      url.searchParams.set("acting_username", actingUsername.trim());
+    }
+    const res = await fetch(url.toString(), {
       credentials: "include",
       headers,
       cache: "no-store",

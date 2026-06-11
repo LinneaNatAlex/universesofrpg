@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { fetchPostSourceCode } from "@/lib/post-source-code-client";
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
 
-export function usePostSourceCode(postId: string, enabled: boolean) {
+export function usePostSourceCode(
+  postId: string,
+  enabled: boolean,
+  actingUsername?: string | null
+) {
   const [bundle, setBundle] = useState<PostCodeBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +30,7 @@ export function usePostSourceCode(postId: string, enabled: boolean) {
     setLoading(true);
     setError(null);
 
-    void fetchPostSourceCode(postId).then((result) => {
+    void fetchPostSourceCode(postId, actingUsername).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setBundle(result.bundle);
@@ -39,7 +43,7 @@ export function usePostSourceCode(postId: string, enabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [postId, enabled]);
+  }, [postId, enabled, actingUsername]);
 
   return { bundle, loading, error };
 }

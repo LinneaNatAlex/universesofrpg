@@ -119,3 +119,38 @@ export async function resolveSellerUsername(
     error: "You can only set up payouts for your own account.",
   };
 }
+
+/**
+ * Resolve which buyer username marketplace purchases apply to.
+ * Admins may buy as a demo persona; regular users always use their account username.
+ */
+export async function resolveBuyerUsername(
+  actingUsername?: string | null,
+  request?: Request
+): Promise<
+  | { ok: true; user: SessionUser; buyerUsername: string }
+  | { ok: false; status: number; error: string }
+> {
+  const auth = await requireSessionUser(request);
+  if (!auth.ok) return auth;
+
+  const acting = actingUsername?.trim().toLowerCase();
+  if (!acting || acting === auth.user.username) {
+    return { ok: true, user: auth.user, buyerUsername: auth.user.username };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user: supabaseUser },
+  } = await supabase.auth.getUser();
+
+  if (supabaseUser && isAdminUser(supabaseUser) && getPersonaByUsername(acting)) {
+    return { ok: true, user: auth.user, buyerUsername: acting };
+  }
+
+  return {
+    ok: false,
+    status: 403,
+    error: "You can only purchase as your own account or an admin demo persona.",
+  };
+}

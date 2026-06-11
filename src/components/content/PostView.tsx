@@ -63,7 +63,8 @@ export function PostView({ post: rawPost }: PostViewProps) {
   const canViewSource = canViewCodeSource(rawPost, viewer);
   const { bundle: purchasedSource } = usePostSourceCode(
     rawPost.id,
-    canViewSource && requiresCodePurchase(rawPost)
+    canViewSource && requiresCodePurchase(rawPost),
+    identity?.username ?? null
   );
   const previewBundle =
     purchasedSource ?? getCodeTemplatePreviewBundle(rawPost, viewer);

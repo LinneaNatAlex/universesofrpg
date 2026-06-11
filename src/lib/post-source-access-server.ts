@@ -12,18 +12,18 @@ function requiresCodePurchase(post: FeedPost): boolean {
 
 export async function canAccessPostSourceCode(
   post: FeedPost,
-  user: SessionUser,
+  buyerUsername: string,
   isEditor = false
 ): Promise<boolean> {
   if (post.type !== "code_template") return false;
 
   if (!requiresCodePurchase(post)) return true;
   if (post.moderation_status === "pending" && isEditor) return true;
-  if (user.username.toLowerCase() === post.author.username.toLowerCase()) {
+  if (buyerUsername.toLowerCase() === post.author.username.toLowerCase()) {
     return true;
   }
 
-  return hasPlatformPurchase(user.username, post.id);
+  return hasPlatformPurchase(buyerUsername, post.id);
 }
 
 export async function canManagePostSourceCode(

@@ -64,7 +64,9 @@ export async function hydratePurchasesFromServer(username: string): Promise<void
   try {
     const { authFetchHeaders } = await import("@/lib/api-client-auth");
     const headers = await authFetchHeaders();
-    const res = await fetch("/api/marketplace/purchases", {
+    const url = new URL("/api/marketplace/purchases", window.location.origin);
+    url.searchParams.set("acting_username", username);
+    const res = await fetch(url.toString(), {
       credentials: "include",
       headers,
       cache: "no-store",

@@ -9,14 +9,18 @@ export interface MarketplaceCheckoutItem {
 }
 
 export async function startMarketplaceCheckout(
-  item: MarketplaceCheckoutItem
+  item: MarketplaceCheckoutItem,
+  buyingAsUsername?: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/stripe/marketplace-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(item),
+      body: JSON.stringify({
+        ...item,
+        buying_as_username: buyingAsUsername ?? undefined,
+      }),
     });
 
     const data = (await res.json().catch(() => ({}))) as {
