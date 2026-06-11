@@ -73,16 +73,30 @@ export async function POST(request: Request) {
       await upsertConnectAccount(record);
     }
 
+    const account = await stripe.accounts.retrieve(accountId);
+    const ready = account.charges_enabled && account.details_submitted;
+
+    if (ready) {
+      const login = await stripe.accounts.createLoginLink(accountId);
+      return NextResponse.json({
+        url: login.url,
+        stripe_account_id: accountId,
+        mode: "express_dashboard",
+      });
+    }
+
+    const linkType = account.details_submitted ? "account_update" : "account_onboarding";
     const link = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/settings?tab=applications&connect=refresh`,
       return_url: `${origin}/settings?tab=applications&connect=success`,
-      type: "account_onboarding",
+      type: linkType,
     });
 
     return NextResponse.json({
       url: link.url,
       stripe_account_id: accountId,
+      mode: linkType,
     });
   } catch (err) {
     const message =
