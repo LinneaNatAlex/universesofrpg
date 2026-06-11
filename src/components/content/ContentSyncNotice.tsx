@@ -28,6 +28,11 @@ export function ContentSyncNotice() {
     >
       <p className="font-comic text-base mb-1">Not saved live</p>
       <p className="opacity-95 leading-snug">{failure.error}</p>
+      <p className="opacity-90 text-xs mt-2 leading-snug">
+        Changes stay in this browser only until sync works. On Netlify: set{" "}
+        <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code>, run migrations 005 + 006,
+        redeploy, then save again on the live site.
+      </p>
       <button
         type="button"
         onClick={() => setFailure(null)}

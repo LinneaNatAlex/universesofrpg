@@ -227,11 +227,13 @@ export function addPost(input: NewPostInput): FeedPost {
   if (input.pricing !== "free" && !postHasCover(input)) {
     throw new Error("Paid listings require a cover image before they can be published.");
   }
+  const now = new Date().toISOString();
   const id = `post-${Date.now()}`;
   const post: FeedPost = stripPaidCodeForStorage({
     ...input,
     id,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
     like_count: 0,
     comment_count: 0,
   });
@@ -243,6 +245,7 @@ export function addPost(input: NewPostInput): FeedPost {
     );
   }
   notify();
+  void syncPostsToServer();
   return post;
 }
 
@@ -269,7 +272,10 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
     throw new Error("Paid listings require a cover image before they can be saved.");
   }
 
-  const updated = stripPaidCodeForStorage(merged);
+  const updated = stripPaidCodeForStorage({
+    ...merged,
+    updated_at: new Date().toISOString(),
+  });
   posts[idx] = updated;
   posts = sortPosts(posts);
   if (!persist()) {
@@ -278,5 +284,6 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
     );
   }
   notify();
+  void syncPostsToServer();
   return updated;
 }

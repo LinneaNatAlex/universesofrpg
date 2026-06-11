@@ -41,11 +41,18 @@ export function saveVaultedCode(postId: string, bundle: PostCodeBundle): boolean
   };
   const ok = saveVault(vault);
   if (ok) {
-    void import("@/lib/post-source-code-client").then(({ pushPostSourceCodeToServer }) =>
-      pushPostSourceCodeToServer(postId, bundle)
-    );
+    void syncVaultedCodeToServer(postId);
   }
   return ok;
+}
+
+/** Push vaulted template source to Supabase (required for buyers on other devices). */
+export async function syncVaultedCodeToServer(postId: string): Promise<boolean> {
+  const bundle = getVaultedCode(postId);
+  if (!bundle) return true;
+
+  const { pushPostSourceCodeToServer } = await import("@/lib/post-source-code-client");
+  return pushPostSourceCodeToServer(postId, bundle);
 }
 
 export function removeVaultedCode(postId: string): void {

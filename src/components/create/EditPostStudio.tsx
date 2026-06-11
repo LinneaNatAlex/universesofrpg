@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { usePost } from "@/hooks/usePost";
+import { liveSyncErrorMessage, syncCreationLive } from "@/lib/live-content-sync";
 import { updatePost } from "@/lib/posts-store";
 import { canEditPost, getPostForEditing } from "@/lib/posts";
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
@@ -41,6 +42,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
   const [sourceReady, setSourceReady] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [remoteBundle, setRemoteBundle] = useState<PostCodeBundle | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const editable = useMemo(() => {
     if (!post) return undefined;
@@ -153,7 +156,27 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
     );
   }
 
-  function handleSaveWriting() {
+  async function finishLiveSave(savedPost: typeof post) {
+    if (!savedPost) return;
+    setSaving(true);
+    setSyncError(null);
+
+    const result = await syncCreationLive(savedPost);
+    const message = liveSyncErrorMessage(result);
+    setSaving(false);
+
+    if (message) {
+      setSyncError(
+        `${message} Add SUPABASE_SERVICE_ROLE_KEY on Netlify, run migrations 005 and 006, then save again while logged in on the live site.`
+      );
+      return;
+    }
+
+    router.push(`/post/${savedPost.id}`);
+    router.refresh();
+  }
+
+  async function handleSaveWriting() {
     if (!title.trim() || !synopsis.trim()) return;
     if (writingTags.length === 0) {
       alert("Add at least one tag so readers can find your work.");
@@ -183,8 +206,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       return;
     }
 
-    router.push(`/post/${post.id}`);
-    router.refresh();
+    await finishLiveSave(post);
   }
 
   const isCode = post.type === "code_template";
@@ -218,10 +240,22 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         onPriceCentsChange={setPriceCents}
       />
 
+      {syncError && (
+        <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-red/10 border-2 border-comic-red">
+          {syncError}
+        </p>
+      )}
+
       {sourceError && isCode && (
         <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-yellow/50 border-2 border-ink">
           Could not load saved source from the server ({sourceError}). You can still edit from
           preview fields — save once to sync full code for buyers.
+        </p>
+      )}
+
+      {saving && (
+        <p className="comic-panel px-4 py-3 text-sm font-comic text-ink bg-comic-yellow/50 border-2 border-ink">
+          Syncing to live server…
         </p>
       )}
 
@@ -233,9 +267,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             priceCents={priceCents}
             editPostId={post.id}
             initialValues={codeInitialValues}
-            onPublished={() => {
-              router.push(`/post/${post.id}`);
-              router.refresh();
+            onPublished={async () => {
+              await finishLiveSave(post);
             }}
           />
         ) : (
@@ -278,8 +311,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
               className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm leading-relaxed"
             />
           </div>
-          <Button variant="comic" onClick={handleSaveWriting}>
-            Save changes
+          <Button variant="comic" onClick={() => void handleSaveWriting()} disabled={saving}>
+            {saving ? "Syncing…" : "Save changes"}
           </Button>
         </Card>
       )}

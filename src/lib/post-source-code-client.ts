@@ -54,6 +54,10 @@ export async function pushPostSourceCodeToServer(
       headers,
       body: JSON.stringify(bundle),
     });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      console.warn("[source-sync]", data.error ?? res.status);
+    }
     return res.ok;
   } catch {
     return false;

@@ -43,10 +43,17 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-function mergeById<T extends { id: string; created_at?: string }>(
-  a: T[],
-  b: T[]
-): T[] {
+function itemRevisionTime(item: {
+  created_at?: string;
+  updated_at?: string;
+}): number {
+  const stamp = item.updated_at ?? item.created_at ?? 0;
+  return new Date(stamp).getTime();
+}
+
+function mergeById<
+  T extends { id: string; created_at?: string; updated_at?: string },
+>(a: T[], b: T[]): T[] {
   const map = new Map<string, T>();
   for (const item of a) map.set(item.id, item);
   for (const item of b) {
@@ -55,9 +62,10 @@ function mergeById<T extends { id: string; created_at?: string }>(
       map.set(item.id, item);
       continue;
     }
-    const prevTime = new Date(prev.created_at ?? 0).getTime();
-    const nextTime = new Date(item.created_at ?? 0).getTime();
-    map.set(item.id, nextTime >= prevTime ? item : prev);
+    map.set(
+      item.id,
+      itemRevisionTime(item) >= itemRevisionTime(prev) ? item : prev
+    );
   }
   return [...map.values()];
 }

@@ -59,7 +59,9 @@ interface CodePlaygroundProps {
   priceCents?: number;
   editPostId?: string;
   initialValues?: CodePlaygroundInitialValues;
-  onPublished?: (result: { pending: boolean; postId: string }) => void;
+  onPublished?: (
+    result: { pending: boolean; postId: string }
+  ) => void | Promise<void>;
 }
 
 export function CodePlayground({
@@ -97,7 +99,7 @@ export function CodePlayground({
 
   const previewHtml = injectThemeMusic(html, musicUrl);
 
-  function handlePublish() {
+  async function handlePublish() {
     if (!title.trim()) {
       alert("Add a title before publishing.");
       return;
@@ -161,7 +163,7 @@ export function CodePlayground({
       return;
     }
 
-    onPublished?.({ pending: moderation === "pending", postId });
+    await onPublished?.({ pending: moderation === "pending", postId });
   }
 
   const editorValue = tab === "html" ? html : tab === "css" ? css : js;

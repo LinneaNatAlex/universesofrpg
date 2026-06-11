@@ -208,6 +208,8 @@ export interface Post {
   like_count: number;
   comment_count: number;
   created_at: string;
+  /** Bumped on every edit — used when merging local vs live Supabase state. */
+  updated_at?: string;
   author?: Profile;
 }
 
