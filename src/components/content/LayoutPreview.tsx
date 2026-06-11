@@ -8,13 +8,23 @@ import {
 import {
   TEMPLATE_DESKTOP_MIN_WIDTH,
   TEMPLATE_DESKTOP_WIDTH,
+  TEMPLATE_MOBILE_LANDSCAPE_WIDTH,
   TEMPLATE_MOBILE_WIDTH,
   TEMPLATE_PREVIEW_FRAME_HEIGHT,
+  mobilePreviewDimensions,
+  type MobileOrientation,
   type TemplateViewportMode,
 } from "@/lib/template-viewport";
 import { usePinchPanZoom } from "@/hooks/usePinchPanZoom";
 import { cn } from "@/lib/utils";
-import { Monitor, RotateCcw, Smartphone, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  Monitor,
+  RotateCcw,
+  RotateCw,
+  Smartphone,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
 const COMPACT_IFRAME_CSS = `
   html, body {
@@ -168,18 +178,37 @@ export function LayoutPreview({
   const previewId = useId();
   const frameWrapperRef = useRef<HTMLDivElement>(null);
   const [viewportMode, setViewportMode] = useState<TemplateViewportMode>(defaultViewport);
+  const [mobileOrientation, setMobileOrientation] =
+    useState<MobileOrientation>("portrait");
   const [desktopLayoutWidth, setDesktopLayoutWidth] = useState(TEMPLATE_DESKTOP_WIDTH);
   const userJs = js?.trim() ? `${js};` : "";
   const isFull = mode === "full";
   const viewportToggle = showViewportToggle ?? isFull;
+  const mobileDims =
+    viewportMode === "mobile"
+      ? mobilePreviewDimensions(mobileOrientation)
+      : null;
   const viewportWidth =
-    viewportMode === "mobile" ? TEMPLATE_MOBILE_WIDTH : desktopLayoutWidth;
+    viewportMode === "mobile"
+      ? (mobileDims?.layoutWidth ?? TEMPLATE_MOBILE_WIDTH)
+      : desktopLayoutWidth;
+  const mobileFrameHeight =
+    mobileDims?.frameHeight ?? TEMPLATE_PREVIEW_FRAME_HEIGHT;
   const mobileZoomEnabled = isFull && viewportToggle && viewportMode === "mobile";
-  const mobileZoom = usePinchPanZoom(mobileZoomEnabled);
+  const mobileZoom = usePinchPanZoom(mobileZoomEnabled, { panAtBaseScale: true });
 
   useEffect(() => {
     mobileZoom.reset();
-  }, [html, css, js, viewportMode, viewportWidth, previewId, mobileZoom.reset]);
+  }, [
+    html,
+    css,
+    js,
+    viewportMode,
+    mobileOrientation,
+    viewportWidth,
+    previewId,
+    mobileZoom.reset,
+  ]);
 
   useEffect(() => {
     if (!isFull || !viewportToggle || viewportMode !== "desktop") return;
@@ -209,8 +238,17 @@ export function LayoutPreview({
       : `width=${viewportWidth}, initial-scale=1`;
   const srcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="${viewportMeta}"><style>${iframeCss}${css}</style></head><body><div id="preview-root">${html}</div><script>${iframeScript}<\/script></body></html>`;
 
+  const mobileMaxWidth =
+    mobileOrientation === "landscape"
+      ? TEMPLATE_MOBILE_LANDSCAPE_WIDTH
+      : TEMPLATE_MOBILE_WIDTH;
+
   const iframeStyle = {
-    height: isFull ? TEMPLATE_PREVIEW_FRAME_HEIGHT : height,
+    height: isFull
+      ? viewportMode === "mobile"
+        ? mobileFrameHeight
+        : TEMPLATE_PREVIEW_FRAME_HEIGHT
+      : height,
     width:
       isFull && viewportToggle && viewportMode === "desktop"
         ? "100%"
@@ -223,13 +261,13 @@ export function LayoutPreview({
         : undefined,
     maxWidth:
       viewportMode === "mobile" && viewportToggle
-        ? `min(100%, ${TEMPLATE_MOBILE_WIDTH}px)`
+        ? `min(100%, ${mobileMaxWidth}px)`
         : undefined,
   } as const;
 
   const iframeEl = (
     <iframe
-      key={`${previewId}-${viewportMode}-${viewportWidth}`}
+      key={`${previewId}-${viewportMode}-${mobileOrientation}-${viewportWidth}`}
       title="Layout preview"
       srcDoc={srcDoc}
       sandbox={TEMPLATE_IFRAME_SANDBOX}
@@ -271,7 +309,10 @@ export function LayoutPreview({
             <span className="flex items-center gap-1 normal-case">
               <button
                 type="button"
-                onClick={() => setViewportMode("desktop")}
+                onClick={() => {
+                  setViewportMode("desktop");
+                  setMobileOrientation("portrait");
+                }}
                 className={cn(
                   "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
                   viewportMode === "desktop"
@@ -285,7 +326,9 @@ export function LayoutPreview({
               </button>
               <button
                 type="button"
-                onClick={() => setViewportMode("mobile")}
+                onClick={() => {
+                  setViewportMode("mobile");
+                }}
                 className={cn(
                   "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
                   viewportMode === "mobile"
@@ -299,6 +342,29 @@ export function LayoutPreview({
               </button>
               {viewportMode === "mobile" && (
                 <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOrientation((o) =>
+                        o === "portrait" ? "landscape" : "portrait"
+                      );
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
+                      mobileOrientation === "landscape"
+                        ? "bg-comic-yellow text-ink"
+                        : "bg-surface text-ink hover:bg-comic-yellow"
+                    )}
+                    aria-pressed={mobileOrientation === "landscape"}
+                    title={
+                      mobileOrientation === "portrait"
+                        ? "Rotate to landscape"
+                        : "Rotate to portrait"
+                    }
+                  >
+                    <RotateCw className="h-3 w-3" />
+                    {mobileOrientation === "portrait" ? "Landscape" : "Portrait"}
+                  </button>
                   <button
                     type="button"
                     onClick={mobileZoom.zoomOut}
@@ -342,8 +408,8 @@ export function LayoutPreview({
         {mobileZoomEnabled ? (
           <div
             ref={mobileZoom.containerRef}
-            className="w-full max-w-full overflow-hidden scrollbar-none"
-            style={{ height: TEMPLATE_PREVIEW_FRAME_HEIGHT }}
+            className="w-full max-w-full overflow-hidden scrollbar-none touch-none cursor-grab active:cursor-grabbing"
+            style={{ height: mobileFrameHeight }}
           >
             <div
               className="mx-auto origin-top"
@@ -353,7 +419,13 @@ export function LayoutPreview({
                 transform: `translate(${mobileZoom.transform.x}px, ${mobileZoom.transform.y}px) scale(${mobileZoom.transform.scale})`,
               }}
             >
-              {iframeEl}
+              <div
+                className={cn(
+                  mobileZoom.isPanning && "pointer-events-none select-none"
+                )}
+              >
+                {iframeEl}
+              </div>
             </div>
           </div>
         ) : (
@@ -362,7 +434,8 @@ export function LayoutPreview({
       </div>
       {mobileZoomEnabled && (
         <p className="px-3 py-1.5 text-[10px] font-comic text-ink-muted border-t-2 border-dashed border-ink">
-          Pinch to zoom · drag when zoomed · +/- buttons above
+          Drag to pan and see more · pinch or +/- to zoom · Landscape flips phone
+          orientation
         </p>
       )}
     </div>

@@ -253,3 +253,52 @@ export async function listPlatformPurchasesForBuyer(
 
   return readFileState().purchases.filter((p) => userKey(p.buyer_username) === buyer);
 }
+
+export async function countPlatformPurchasesForPost(postId: string): Promise<number> {
+  if (isServiceClientConfigured()) {
+    const supabase = createServiceClient()!;
+    const { count, error } = await supabase
+      .from("marketplace_purchases")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", postId);
+    if (error) {
+      console.error("[marketplace-platform] purchase count failed", error);
+      return 0;
+    }
+    return count ?? 0;
+  }
+
+  return readFileState().purchases.filter((p) => p.post_id === postId).length;
+}
+
+export async function countPlatformPurchasesForPosts(
+  postIds: string[]
+): Promise<Record<string, number>> {
+  const unique = [...new Set(postIds.filter(Boolean))];
+  const counts: Record<string, number> = {};
+  for (const id of unique) counts[id] = 0;
+  if (unique.length === 0) return counts;
+
+  if (isServiceClientConfigured()) {
+    const supabase = createServiceClient()!;
+    const { data, error } = await supabase
+      .from("marketplace_purchases")
+      .select("post_id")
+      .in("post_id", unique);
+    if (error) {
+      console.error("[marketplace-platform] batch purchase count failed", error);
+      return counts;
+    }
+    for (const row of data ?? []) {
+      counts[row.post_id] = (counts[row.post_id] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  for (const purchase of readFileState().purchases) {
+    if (unique.includes(purchase.post_id)) {
+      counts[purchase.post_id] = (counts[purchase.post_id] ?? 0) + 1;
+    }
+  }
+  return counts;
+}

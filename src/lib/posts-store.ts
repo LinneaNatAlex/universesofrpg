@@ -1,7 +1,24 @@
 import { readJson, writeJson } from "@/lib/browser-storage";
 import { MOCK_FEED } from "@/lib/mock-data";
 import { postHasCover } from "@/lib/post-cover";
+import {
+  removeVaultedCode,
+  vaultPostCodeFromPost,
+} from "@/lib/post-code-vault";
 import type { FeedPost, ModerationStatus } from "@/types/database";
+
+function isPaidCodeTemplate(post: Pick<FeedPost, "type" | "pricing">): boolean {
+  return post.type === "code_template" && post.pricing !== "free";
+}
+
+/** Keep paid template source in the vault — not on the public post record. */
+function stripPaidCodeForStorage(post: FeedPost): FeedPost {
+  if (!isPaidCodeTemplate(post)) return post;
+  if (!post.html_code?.trim() || !post.css_code?.trim()) return post;
+
+  vaultPostCodeFromPost(post.id, post.html_code, post.css_code, post.js_code);
+  return { ...post, html_code: null, css_code: null, js_code: null };
+}
 
 const MOCK_POST_IDS = new Set(MOCK_FEED.map((p) => p.id));
 const STORAGE_KEY = "uorpg-posts-state";
@@ -53,14 +70,30 @@ function mergePosts() {
 
   for (const mock of MOCK_FEED) {
     if (!deleted.has(mock.id)) {
-      map.set(mock.id, applyLikeCount({ ...mock }, likeCounts));
+      map.set(
+        mock.id,
+        applyLikeCount(stripPaidCodeForStorage({ ...mock }), likeCounts)
+      );
     }
   }
+
+  let customNeedsPersist = false;
   for (const custom of state.custom) {
-    map.set(custom.id, applyLikeCount(custom, likeCounts));
+    const stripped = stripPaidCodeForStorage(custom);
+    if (
+      stripped.html_code !== custom.html_code ||
+      stripped.css_code !== custom.css_code ||
+      stripped.js_code !== custom.js_code
+    ) {
+      customNeedsPersist = true;
+    }
+    map.set(stripped.id, applyLikeCount(stripped, likeCounts));
   }
 
   posts = sortPosts([...map.values()]);
+  if (customNeedsPersist) {
+    persist();
+  }
 }
 
 function ensureLoaded() {
@@ -113,6 +146,7 @@ export function deletePost(id: string): boolean {
   const before = posts.length;
   posts = posts.filter((p) => p.id !== id);
   if (posts.length < before) {
+    removeVaultedCode(id);
     persist();
     notify();
     return true;
@@ -150,13 +184,14 @@ export function addPost(input: NewPostInput): FeedPost {
   if (input.pricing !== "free" && !postHasCover(input)) {
     throw new Error("Paid listings require a cover image before they can be published.");
   }
-  const post: FeedPost = {
+  const id = `post-${Date.now()}`;
+  const post: FeedPost = stripPaidCodeForStorage({
     ...input,
-    id: `post-${Date.now()}`,
+    id,
     created_at: new Date().toISOString(),
     like_count: 0,
     comment_count: 0,
-  };
+  });
   posts = [post, ...posts];
   if (!persist()) {
     posts = posts.filter((p) => p.id !== post.id);

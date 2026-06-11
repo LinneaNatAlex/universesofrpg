@@ -7,6 +7,7 @@ import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LikeButton } from "@/components/feed/LikeButton";
+import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
 import { useCommentCount } from "@/hooks/useCommentCount";
 import { useMonthlySpotlight } from "@/hooks/useMonthlySpotlight";
 import { requiresCodePurchase } from "@/lib/posts";
@@ -71,6 +72,7 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
             <MessageCircle className="h-4 w-4" />
             {commentCount}
           </span>
+          {post.pricing !== "free" && <PurchaseCount postId={post.id} />}
           {post.pricing !== "free" ? (
             <Badge variant="paid" className="text-[10px]">
               Premium · sign up to preview

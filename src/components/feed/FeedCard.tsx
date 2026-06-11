@@ -121,6 +121,7 @@ export function FeedCard({ post }: FeedCardProps) {
           <PostEngagementBar
             postId={post.id}
             likeCount={post.like_count}
+            isPaid={post.pricing !== "free"}
             commentsHref={`/post/${post.id}#comments`}
             className="relative z-10 gap-3"
           />

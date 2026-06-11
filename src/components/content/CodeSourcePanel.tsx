@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
-import { canViewCodeSource, requiresCodePurchase } from "@/lib/posts";
+import {
+  canViewCodeSource,
+  requiresCodePurchase,
+  resolvePostForViewer,
+} from "@/lib/posts";
 import { subscribePurchases } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
@@ -22,6 +27,7 @@ interface CodeSourcePanelProps {
 export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
+  const { isEditor } = useEditor();
   const username = identity?.username ?? null;
   const [tab, setTab] = useState<Tab>("html");
   const [unlocked, setUnlocked] = useState(false);
@@ -29,17 +35,18 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { buy, busy, error: buyError } = useMarketplaceBuy();
 
   const needsPurchase = requiresCodePurchase(post);
+  const viewer = { isLoggedIn, username, inviteToken, isEditor };
 
   useEffect(() => {
     const refresh = () => {
-      setUnlocked(
-        canViewCodeSource(post, { isLoggedIn, username, inviteToken })
-      );
+      setUnlocked(canViewCodeSource(post, viewer));
     };
     refresh();
     const unsub = subscribePurchases(refresh);
     return unsub;
-  }, [post, isLoggedIn, username, inviteToken]);
+  }, [post, isLoggedIn, username, inviteToken, isEditor]);
+
+  const sourcePost = unlocked ? resolvePostForViewer(post, viewer) : post;
 
   async function handlePurchase() {
     if (!isLoggedIn) {
@@ -78,8 +85,8 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
           <p className="text-sm text-ink-muted mt-2 max-w-md mx-auto leading-relaxed">
             {needsPurchase ? (
               <>
-                You can preview the live template above, but HTML, CSS, and JavaScript stay hidden
-                until you purchase this listing.
+                You can see the cover preview above, but HTML, CSS, and JavaScript stay hidden until
+                you purchase this listing.
               </>
             ) : (
               <>Sign in to view and fork the source code for this free template.</>
@@ -121,9 +128,9 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   }
 
   const sources: { id: Tab; label: string; code: string | null }[] = [
-    { id: "html", label: "HTML", code: post.html_code },
-    { id: "css", label: "CSS", code: post.css_code },
-    { id: "js", label: "JS", code: post.js_code },
+    { id: "html", label: "HTML", code: sourcePost.html_code },
+    { id: "css", label: "CSS", code: sourcePost.css_code },
+    { id: "js", label: "JS", code: sourcePost.js_code },
   ];
 
   const active = sources.find((s) => s.id === tab) ?? sources[0];

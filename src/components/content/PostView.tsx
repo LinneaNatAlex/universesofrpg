@@ -10,7 +10,14 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-import { canViewCodePreview, canViewFullContent, requiresCodePurchase } from "@/lib/posts";
+import { useEditor } from "@/hooks/useEditor";
+import {
+  canViewCodeLivePreview,
+  canViewCodePreview,
+  canViewFullContent,
+  requiresCodePurchase,
+  resolvePostForViewer,
+} from "@/lib/posts";
 import { moderationStatusLabel } from "@/lib/moderation";
 import { CodeSourcePanel } from "@/components/content/CodeSourcePanel";
 import { LoginCTA } from "@/components/auth/LoginCTA";
@@ -35,14 +42,25 @@ function isStoryLike(type: FeedPost["type"]) {
   );
 }
 
-export function PostView({ post }: PostViewProps) {
+export function PostView({ post: rawPost }: PostViewProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
+  const { isEditor } = useEditor();
   const [editorChatId, setEditorChatId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
+
+  const viewer = {
+    isLoggedIn,
+    username: identity?.username ?? null,
+    inviteToken: invite,
+    isEditor,
+  };
+  const post = resolvePostForViewer(rawPost, viewer);
   const fullAccess = canViewFullContent(isLoggedIn, invite, post.invite_token);
   const codeIsFree = post.type === "code_template" && !requiresCodePurchase(post);
+  const showLiveCodePreview = canViewCodeLivePreview(rawPost, viewer);
+  const showCodeSection = canViewCodePreview(rawPost);
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   const accessMessage =
@@ -120,26 +138,37 @@ export function PostView({ post }: PostViewProps) {
         </div>
       </header>
 
-      {/* Code — everyone sees live template; source requires login or purchase */}
-      {canViewCodePreview(post) && post.html_code && post.css_code && (
+      {/* Code templates — cover teaser until purchase; live preview + source after unlock */}
+      {showCodeSection && (
         <section className="space-y-4">
           <div>
-            <p className="font-comic text-sm text-ink mb-2">Live template preview</p>
-            <LayoutPreview
-              html={post.html_code}
-              css={post.css_code}
-              js={post.js_code}
-              mode="full"
-              height={240}
-              sourceLocked={requiresCodePurchase(post)}
-              defaultViewport="desktop"
-            />
+            <p className="font-comic text-sm text-ink mb-2">
+              {showLiveCodePreview ? "Live template preview" : "Template preview"}
+            </p>
+            {showLiveCodePreview && post.html_code && post.css_code ? (
+              <LayoutPreview
+                html={post.html_code}
+                css={post.css_code}
+                js={post.js_code}
+                mode="full"
+                height={240}
+                sourceLocked={requiresCodePurchase(post)}
+                defaultViewport="desktop"
+              />
+            ) : rawPost.preview_image_url ? (
+              <AssetTeaserPreview
+                src={rawPost.preview_image_url}
+                alt={post.title}
+                fullAccess
+                hint="Purchase to unlock the live template and full HTML, CSS, and JavaScript source."
+              />
+            ) : null}
           </div>
           <div>
             <p className="font-comic text-sm text-ink mb-2">
               {codeIsFree ? "Source code — free to copy" : "Source code"}
             </p>
-            <CodeSourcePanel post={post} inviteToken={invite} />
+            <CodeSourcePanel post={rawPost} inviteToken={invite} />
           </div>
         </section>
       )}
@@ -188,7 +217,11 @@ export function PostView({ post }: PostViewProps) {
 
       <div className="comic-panel px-4 py-3 flex items-center justify-between border-2 border-ink">
         <p className="text-xs font-comic text-ink-muted uppercase">Community</p>
-        <PostEngagementBar postId={post.id} likeCount={post.like_count} />
+        <PostEngagementBar
+          postId={post.id}
+          likeCount={post.like_count}
+          isPaid={post.pricing !== "free"}
+        />
       </div>
 
       <div id="comments">

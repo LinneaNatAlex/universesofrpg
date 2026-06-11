@@ -1,10 +1,18 @@
 import { getCommentCount } from "@/lib/mock-comments";
+import { getVaultedCode } from "@/lib/post-code-vault";
 import { hasPurchased } from "@/lib/purchases-store";
 import { getPostFromStore, getAllPosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
 function withCommentCount(post: FeedPost): FeedPost {
   return { ...post, comment_count: getCommentCount(post.id) };
+}
+
+export interface PostViewerContext {
+  isLoggedIn: boolean;
+  username: string | null;
+  inviteToken?: string | null;
+  isEditor?: boolean;
 }
 
 export function getPostById(id: string): FeedPost | undefined {
@@ -38,28 +46,71 @@ export function requiresCodePurchase(post: FeedPost): boolean {
   return post.pricing !== "free" || post.is_code_locked;
 }
 
+function isAuthor(post: FeedPost, username: string | null): boolean {
+  if (!username) return false;
+  return post.author.username.toLowerCase() === username.toLowerCase();
+}
+
+function mergeVaultedCode(post: FeedPost): FeedPost {
+  const vaulted = getVaultedCode(post.id);
+  if (!vaulted) return post;
+  return {
+    ...post,
+    html_code: vaulted.html_code,
+    css_code: vaulted.css_code,
+    js_code: vaulted.js_code,
+  };
+}
+
 export function canViewCodeSource(
   post: FeedPost,
-  opts: {
-    isLoggedIn: boolean;
-    username: string | null;
-    inviteToken?: string | null;
-  }
+  opts: PostViewerContext
 ): boolean {
   if (post.type !== "code_template") return false;
-  if (!post.html_code && !post.css_code && !post.js_code) return false;
+
+  const vaulted = getVaultedCode(post.id);
+  const hasInline =
+    !!(post.html_code?.trim() || post.css_code?.trim() || post.js_code?.trim());
+  if (!hasInline && !vaulted) return false;
 
   // Free templates — full source for everyone (no login or purchase).
   if (!requiresCodePurchase(post)) {
     return true;
   }
 
+  if (post.moderation_status === "pending" && opts.isEditor) return true;
   if (!opts.isLoggedIn || !opts.username) return false;
-  if (post.author.username.toLowerCase() === opts.username.toLowerCase()) return true;
+  if (isAuthor(post, opts.username)) return true;
   return hasPurchased(opts.username, post.id);
 }
 
-/** Layout preview is always visible for code templates with source present. */
+/** Live iframe preview — only when source is unlocked (free, purchased, author, or editor review). */
+export function canViewCodeLivePreview(
+  post: FeedPost,
+  opts: PostViewerContext
+): boolean {
+  if (post.type !== "code_template") return false;
+  if (!requiresCodePurchase(post)) {
+    const withCode = mergeVaultedCode(post);
+    return !!(withCode.html_code && withCode.css_code);
+  }
+  return canViewCodeSource(post, opts);
+}
+
+/** Attach vaulted source when the viewer is allowed to see it. */
+export function resolvePostForViewer(
+  post: FeedPost,
+  opts: PostViewerContext
+): FeedPost {
+  if (!canViewCodeSource(post, opts)) return post;
+  return mergeVaultedCode(post);
+}
+
 export function canViewCodePreview(post: FeedPost): boolean {
-  return post.type === "code_template" && !!(post.html_code && post.css_code);
+  if (post.type !== "code_template") return false;
+  if (requiresCodePurchase(post)) {
+    return !!post.preview_image_url?.trim();
+  }
+  const withCode = mergeVaultedCode(post);
+  return !!(withCode.html_code && withCode.css_code);
 }

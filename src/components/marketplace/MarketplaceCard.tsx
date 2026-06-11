@@ -17,6 +17,7 @@ import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {
@@ -79,7 +80,13 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
       <div className="comic-card-inner p-4 flex flex-col flex-1">
         {/* Price strip */}
         <div className="flex items-center justify-between mb-3 px-3 py-2 border-2 border-ink -mx-1 -mt-1 bg-comic-red text-white">
-          <span className="font-comic text-lg">{formatPrice(post.price_cents)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-comic text-lg">{formatPrice(post.price_cents)}</span>
+            <PurchaseCount
+              postId={post.id}
+              className="text-white/90 text-[10px]"
+            />
+          </div>
           <Badge variant="comic" className="bg-comic-yellow text-ink">
             <Icon className="h-3 w-3 mr-1 inline" />
             {TYPE_LABELS[post.type]}
