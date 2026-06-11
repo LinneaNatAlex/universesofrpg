@@ -8,6 +8,7 @@ import { useActingIdentity } from "@/hooks/useActingIdentity";
 
 interface ConnectStatus {
   configured: boolean;
+  missing_env?: string[];
   connected?: boolean;
   charges_enabled: boolean;
   payouts_enabled: boolean;
@@ -134,9 +135,19 @@ export function CreatorPayoutSettings() {
       )}
 
       {!loading && status && !status.configured && (
-        <p className="text-sm text-comic-red font-comic">
-          Stripe is not configured on the server. Add STRIPE_SECRET_KEY to enable payouts.
-        </p>
+        <div className="text-sm text-comic-red font-comic space-y-1">
+          <p>Stripe is not configured on the server.</p>
+          {status.missing_env && status.missing_env.length > 0 ? (
+            <p className="text-xs font-sans text-ink">
+              Missing on Netlify (then redeploy):{" "}
+              <strong>{status.missing_env.join(", ")}</strong>
+            </p>
+          ) : (
+            <p className="text-xs font-sans text-ink">
+              Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, then redeploy.
+            </p>
+          )}
+        </div>
       )}
 
       {!loading && status?.configured && (

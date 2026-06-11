@@ -9,8 +9,14 @@ import {
 
 export async function GET(request: Request) {
   if (!isStripeConnectConfigured()) {
+    const missing_env: string[] = [];
+    if (!process.env.STRIPE_SECRET_KEY?.trim()) missing_env.push("STRIPE_SECRET_KEY");
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim()) {
+      missing_env.push("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY");
+    }
     return NextResponse.json({
       configured: false,
+      missing_env,
       charges_enabled: false,
       payouts_enabled: false,
       details_submitted: false,
