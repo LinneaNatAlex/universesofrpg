@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { addPost } from "@/lib/posts-store";
+import { initialModerationStatus } from "@/lib/moderation";
+import { injectThemeMusic } from "@/lib/template-preview";
+import { LayoutPreview } from "@/components/content/LayoutPreview";
+import { CoverImageField } from "@/components/create/CoverImageField";
+import { isValidCoverSource } from "@/lib/post-cover";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { PricingType } from "@/types/database";
 import { Eye, Code2, Lock } from "lucide-react";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -36,17 +44,81 @@ const DEFAULT_JS = `// Interactive RPG elements`;
 
 interface CodePlaygroundProps {
   loggedIn?: boolean;
+  pricing?: PricingType;
+  priceCents?: number;
+  onPublished?: (result: { pending: boolean; postId: string }) => void;
 }
 
-export function CodePlayground({ loggedIn = false }: CodePlaygroundProps) {
+export function CodePlayground({
+  loggedIn = false,
+  pricing = "free",
+  priceCents = 499,
+  onPublished,
+}: CodePlaygroundProps) {
+  const identity = useActingIdentity();
   const [tab, setTab] = useState<Tab>("html");
   const [html, setHtml] = useState(DEFAULT_HTML);
   const [css, setCss] = useState(DEFAULT_CSS);
   const [js, setJs] = useState(DEFAULT_JS);
   const [showPreview, setShowPreview] = useState(true);
   const [codeLocked, setCodeLocked] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
 
-  const srcDoc = `<!DOCTYPE html><html><head><style>${css}</style></head><body>${html}<script>${js}<\/script></body></html>`;
+  const previewHtml = injectThemeMusic(html, musicUrl);
+
+  function handlePublish() {
+    if (!title.trim()) {
+      alert("Add a title before publishing.");
+      return;
+    }
+    if (!identity?.profile) {
+      alert("Could not resolve creator identity. If you are admin, pick a creator in the header.");
+      return;
+    }
+    if (!isValidCoverSource(coverUrl)) {
+      alert(
+        "Add a cover image — upload a screenshot or paste an image URL for the Shop and Explore thumbnail."
+      );
+      return;
+    }
+
+    const moderation = initialModerationStatus(pricing);
+
+    let post;
+    try {
+      post = addPost({
+        author_id: identity.authorId,
+        author: identity.profile,
+        type: "code_template",
+        title: title.trim(),
+        description: description.trim() || "Code template",
+        plot_synopsis: null,
+        content: null,
+        html_code: previewHtml,
+        css_code: css,
+        js_code: js,
+        bbcode: null,
+        preview_image_url: coverUrl.trim(),
+        book_cover_url: null,
+        invite_token: null,
+        pricing,
+        price_cents: pricing === "free" ? 0 : priceCents,
+        is_code_locked: pricing !== "free" ? true : codeLocked,
+        moderation_status: moderation,
+        is_ai_generated: false,
+        tags: ["profile", "code"],
+        style_tags: [],
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not publish your template.");
+      return;
+    }
+
+    onPublished?.({ pending: moderation === "pending", postId: post.id });
+  }
 
   const editorValue = tab === "html" ? html : tab === "css" ? css : js;
   const setEditorValue = (v: string) => {
@@ -78,16 +150,58 @@ export function CodePlayground({ loggedIn = false }: CodePlaygroundProps) {
               <Eye className="h-4 w-4 mr-1" />
               {showPreview ? "Hide preview" : "Show preview"}
             </Button>
-            <Button
-              variant="comic"
-              size="sm"
-              onClick={() => alert("Published (Supabase wiring coming next).")}
-            >
+            <Button variant="comic" size="sm" onClick={handlePublish}>
               Publish template
             </Button>
           </div>
         )}
       </div>
+
+      {loggedIn && (
+        <Card className="p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-comic text-ink mb-1">Template title</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
+              placeholder="Neon Arcane Profile Theme"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-comic text-ink mb-1">Short description</label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
+              placeholder="A glowing fantasy profile layout…"
+            />
+          </div>
+          <CoverImageField
+            value={coverUrl}
+            onChange={setCoverUrl}
+            required
+            label="Cover image (screenshot)"
+            hint="Screenshot your live template preview and upload it here, or paste a hosted image URL. Shown in Explore and the Shop."
+            placeholder="https://…/template-screenshot.png"
+          />
+          <div>
+            <label className="block text-sm font-comic text-ink mb-1">
+              Theme music URL (optional)
+            </label>
+            <input
+              value={musicUrl}
+              onChange={(e) => setMusicUrl(e.target.value)}
+              className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
+              placeholder="https://…/your-track.mp3"
+            />
+            <p className="text-xs text-ink-muted mt-1">
+              Adds a play button inside the template preview. You can also embed{" "}
+              <code className="font-mono">&lt;audio&gt;</code> in your HTML.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <div className={`grid gap-4 ${showPreview ? "lg:grid-cols-2" : "grid-cols-1"}`}>
         <Card className="overflow-hidden flex flex-col min-h-[480px]">
@@ -124,18 +238,14 @@ export function CodePlayground({ loggedIn = false }: CodePlaygroundProps) {
         </Card>
 
         {showPreview && (
-          <Card className="overflow-hidden min-h-[480px] flex flex-col">
-            <div className="comic-panel-header px-4 py-2 text-sm font-comic flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Live preview
-            </div>
-            <iframe
-              title="Live preview"
-              srcDoc={srcDoc}
-              sandbox="allow-scripts"
-              className="flex-1 w-full bg-white border-0 min-h-[400px]"
-            />
-          </Card>
+          <LayoutPreview
+            html={previewHtml}
+            css={css}
+            js={js}
+            mode="full"
+            defaultViewport="desktop"
+            className="min-h-[480px]"
+          />
         )}
       </div>
     </div>

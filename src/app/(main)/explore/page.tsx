@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ShoppingBag, TrendingUp } from "lucide-react";
 import { EXPLORE_TAGS } from "@/lib/mock-data";
+import {
+  collectTagsFromPosts,
+  mergeTagLists,
+  postMatchesSearchQuery,
+  postMatchesTagFilter,
+} from "@/lib/post-tags";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
 import { ExploreCard } from "@/components/explore/ExploreCard";
 import { LoginCTA } from "@/components/auth/LoginCTA";
@@ -14,27 +20,28 @@ export default function ExplorePage() {
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  const allPosts = useFeedPosts();
+  const { posts: allPosts } = useFeedPosts();
+
+  const freeCatalog = useMemo(
+    () => allPosts.filter((p) => p.pricing === "free"),
+    [allPosts]
+  );
+
+  const browseTags = useMemo(
+    () => mergeTagLists(EXPLORE_TAGS, collectTagsFromPosts(freeCatalog)),
+    [freeCatalog]
+  );
 
   const freePosts = useMemo(() => {
-    return allPosts
-      .filter((p) => p.pricing === "free")
-      .filter((p) => {
-        const q = query.toLowerCase();
-        const matchesQuery =
-          !q ||
-          p.title.toLowerCase().includes(q) ||
-          p.author.display_name.toLowerCase().includes(q) ||
-          p.author.username.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.includes(q)) ||
-          p.style_tags.some((t) => t.includes(q));
-        const matchesTag =
-          !activeTag ||
-          p.tags.includes(activeTag) ||
-          p.style_tags.includes(activeTag);
-        return matchesQuery && matchesTag;
-      });
-  }, [allPosts, query, activeTag]);
+    return freeCatalog.filter(
+      (p) => postMatchesTagFilter(p, activeTag) && postMatchesSearchQuery(p, query)
+    );
+  }, [freeCatalog, query, activeTag]);
+
+  function handleTagClick(tag: string) {
+    setQuery("");
+    setActiveTag((current) => (current === tag ? null : tag));
+  }
 
   const trendingCreators = useMemo(() => {
     const seen = new Set<string>();
@@ -73,7 +80,7 @@ export default function ExplorePage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search free works, creators, tags…"
+          placeholder="Search titles, creators, or tags (#poem, rpg, letters…)"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-muted"
         />
       </div>
@@ -103,18 +110,21 @@ export default function ExplorePage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setActiveTag(null)}
+            onClick={() => {
+              setQuery("");
+              setActiveTag(null);
+            }}
             className={`font-comic text-xs px-3 py-1 border-2 border-ink ${
               !activeTag ? "bg-comic-red text-white" : "bg-surface hover:bg-comic-yellow"
             }`}
           >
             All
           </button>
-          {EXPLORE_TAGS.map((tag) => (
+          {browseTags.map((tag) => (
             <button
               key={tag}
               type="button"
-              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              onClick={() => handleTagClick(tag)}
               className={`font-comic text-xs px-3 py-1 border-2 border-ink ${
                 activeTag === tag ? "bg-comic-yellow" : "bg-surface hover:bg-comic-yellow/50"
               }`}
@@ -129,6 +139,9 @@ export default function ExplorePage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-comic text-lg text-ink">
             {freePosts.length} free {freePosts.length === 1 ? "work" : "works"}
+            {activeTag && (
+              <span className="text-sm text-ink-muted font-normal"> · #{activeTag}</span>
+            )}
           </h2>
           <span className="text-xs font-comic text-ink-muted">Teasers · sign up to read more</span>
         </div>

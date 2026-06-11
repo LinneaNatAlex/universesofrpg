@@ -4,11 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAllComments } from "@/lib/mock-comments";
 import { getAllReports } from "@/lib/mock-reports";
+import { getAllForums, subscribeForums } from "@/lib/forums-store";
 import { getAllPosts, subscribePosts } from "@/lib/posts-store";
 import { subscribeComments } from "@/lib/mock-comments";
 import { subscribeReports } from "@/lib/mock-reports";
 import { PersonaSwitcher } from "@/components/admin/PersonaSwitcher";
 import { DEMO_PERSONAS } from "@/lib/personas";
+import {
+  getAllEditorApplications,
+  subscribeEditorApplications,
+} from "@/lib/editor-applications-store";
+import { getAllEditorProfiles, subscribeEditorProfiles } from "@/lib/editor-profiles-store";
+import {
+  getAllVerificationSubscriptions,
+  subscribeVerificationPayments,
+} from "@/lib/verification-payments-store";
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -16,6 +26,10 @@ export default function AdminDashboardPage() {
     pending: 0,
     comments: 0,
     openReports: 0,
+    editorApplications: 0,
+    licensedEditors: 0,
+    activeVerifications: 0,
+    topics: 0,
   });
 
   useEffect(() => {
@@ -26,24 +40,54 @@ export default function AdminDashboardPage() {
         pending: posts.filter((p) => p.moderation_status === "pending").length,
         comments: getAllComments().length,
         openReports: getAllReports().filter((r) => r.status === "open").length,
+        editorApplications: getAllEditorApplications().filter((a) => a.status === "pending")
+          .length,
+        licensedEditors: getAllEditorProfiles().length,
+        activeVerifications: getAllVerificationSubscriptions().filter(
+          (s) => s.status === "active"
+        ).length,
+        topics: getAllForums().length,
       });
     }
     refresh();
     const u1 = subscribePosts(refresh);
     const u2 = subscribeComments(refresh);
     const u3 = subscribeReports(refresh);
+    const u4 = subscribeEditorApplications(refresh);
+    const u5 = subscribeEditorProfiles(refresh);
+    const u6 = subscribeVerificationPayments(refresh);
+    const u7 = subscribeForums(refresh);
     return () => {
       u1();
       u2();
       u3();
+      u4();
+      u5();
+      u6();
+      u7();
     };
   }, []);
 
   const cards = [
     { label: "Total posts", value: stats.posts, href: "/admin/posts" },
-    { label: "Pending approval", value: stats.pending, href: "/admin/posts" },
-    { label: "Comments", value: stats.comments, href: "/admin/comments" },
-    { label: "Open reports", value: stats.openReports, href: "/admin/reports" },
+    { label: "RPG topics", value: stats.topics, href: "/admin/topics" },
+    { label: "Pending posts", value: stats.pending, href: "/admin/posts" },
+    {
+      label: "Editor applications",
+      value: stats.editorApplications,
+      href: "/admin/editors",
+      hint: "pending",
+    },
+    {
+      label: "Licensed editors",
+      value: stats.licensedEditors,
+      href: "/admin/editors",
+    },
+    {
+      label: "Active verifications",
+      value: stats.activeVerifications,
+      href: "/admin/verification",
+    },
   ];
 
   return (
@@ -71,7 +115,10 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <Link key={c.label} href={c.href} className="comic-card p-5 block hover:no-underline">
-            <p className="font-comic text-xs uppercase text-ink-muted">{c.label}</p>
+            <p className="font-comic text-xs uppercase text-ink-muted">
+              {c.label}
+              {"hint" in c && c.hint ? ` (${c.hint})` : ""}
+            </p>
             <p className="font-comic text-4xl text-comic-red mt-2">{c.value}</p>
           </Link>
         ))}

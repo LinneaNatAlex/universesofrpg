@@ -19,7 +19,8 @@ export const MOCK_FEED: FeedPost[] = [
     css_code: ".rpg-card { padding: 2rem; border: 3px solid #e63946; border-radius: 4px; background: #1d3557; color: #f1faee; font-family: Georgia, serif; text-align: center; }",
     js_code: null,
     bbcode: null,
-    preview_image_url: null,
+    preview_image_url:
+      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&h=560&fit=crop",
     book_cover_url: null,
     invite_token: "invite-neon-arcane",
     pricing: "free",
@@ -96,7 +97,7 @@ export const MOCK_FEED: FeedPost[] = [
     js_code: null,
     bbcode: "[b]GM:[/b] Roll for sanity.",
     preview_image_url: null,
-    book_cover_url: "https://images.unsplash.com/photo-1509248961154-86b1d4b1d2f4?w=400&h=560&fit=crop",
+    book_cover_url: "https://images.unsplash.com/photo-1448375240586-882707db889b?w=400&h=560&fit=crop",
     invite_token: null,
     pricing: "free",
     price_cents: 0,
@@ -180,7 +181,7 @@ export const MOCK_FEED: FeedPost[] = [
     is_ai_generated: false,
     tags: ["avatar", "art", "anime"],
     style_tags: ["anime", "comics"],
-    like_count: 34,
+    like_count: 62,
     comment_count: 0,
     created_at: daysAgo(4),
     author: {
@@ -209,7 +210,7 @@ export const MOCK_FEED: FeedPost[] = [
     js_code: null,
     bbcode: null,
     preview_image_url: null,
-    book_cover_url: "https://images.unsplash.com/photo-1509248961154-86b1d4b1d2f4?w=400&h=560&fit=crop",
+    book_cover_url: "https://images.unsplash.com/photo-1518709268805-4e9042af9b33?w=400&h=560&fit=crop",
     invite_token: null,
     pricing: "one_time",
     price_cents: 799,
@@ -245,7 +246,8 @@ export const MOCK_FEED: FeedPost[] = [
     css_code: ".ledger { padding: 2rem; background: #f4e4bc; border: 3px double #8b4513; }",
     js_code: null,
     bbcode: null,
-    preview_image_url: null,
+    preview_image_url:
+      "https://images.unsplash.com/photo-1621357877523-abe879dcc084?w=400&h=560&fit=crop",
     book_cover_url: null,
     invite_token: null,
     pricing: "one_time",
@@ -275,7 +277,8 @@ export const MOCK_FEED: FeedPost[] = [
 export const EXPLORE_TAGS = [
   "fantasy", "sci-fi", "horror", "romance", "cyberpunk", "anime",
   "retro", "comics", "dark", "collab", "story", "character",
-  "profile", "letters", "mystical", "modern", "steampunk", "noir",
+  "profile", "letters", "poem", "poetry", "rpg", "writing",
+  "fiction", "essay", "lore", "mystical", "modern", "steampunk", "noir",
 ];
 
 export const MOCK_FRIENDS = [
@@ -288,12 +291,22 @@ export const MOCK_FORUMS: RpgForum[] = [
   {
     id: "f1",
     title: "The Hollow Gate",
+    plot_synopsis:
+      "A slow-burn horror campaign at the edge of a breathing forest gate — Victorian dread, lantern light, and secrets best left unopened.",
     book_cover_url: "https://images.unsplash.com/photo-1509248961154-86b1d4b1d2f4?w=300&h=420&fit=crop",
+    creator_username: "hollowscribe",
+    is_private: false,
+    is_locked: false,
+    locked_at: null,
+    shop_post_id: null,
+    shop_price_cents: null,
+    category: "horror",
+    tags: ["rpg", "campaign", "gothic", "play-by-post"],
     members: ["lyra_weaver", "hollowscribe"],
     chapters: [
       {
         number: 1,
-        title: "Lantern at the Edge",
+        title: "Part 1: Lantern at the Edge",
         meta: {
           era: "Victorian gothic",
           season: "Late autumn",

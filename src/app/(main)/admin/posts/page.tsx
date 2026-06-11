@@ -9,6 +9,8 @@ import {
   subscribePosts,
 } from "@/lib/posts-store";
 import { Badge } from "@/components/ui/badge";
+import { moderationStatusLabel } from "@/lib/moderation";
+import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { FeedPost } from "@/types/database";
 import { Trash2, Check, X } from "lucide-react";
@@ -35,9 +37,14 @@ export default function AdminPostsPage() {
               by @{post.author.username} · {post.type}
             </p>
           </div>
-          <Badge variant={post.moderation_status === "approved" ? "free" : "paid"}>
-            {post.moderation_status}
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={post.pricing === "free" ? "free" : "paid"}>
+              {post.pricing === "free" ? "Free" : formatPrice(post.price_cents)}
+            </Badge>
+            <Badge variant={post.moderation_status === "approved" ? "free" : "paid"}>
+              {moderationStatusLabel(post.moderation_status)}
+            </Badge>
+          </div>
           <div className="flex flex-wrap gap-2">
             {post.moderation_status !== "approved" && (
               <Button

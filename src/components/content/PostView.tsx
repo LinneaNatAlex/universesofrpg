@@ -2,16 +2,25 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  getEditorReviewConversationForPost,
+  subscribeMessages,
+} from "@/lib/messages-store";
 import { useAuth } from "@/hooks/useAuth";
-import { canViewFullContent } from "@/lib/posts";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { ReportDialog } from "@/components/reports/ReportDialog";
+import { canViewCodePreview, canViewFullContent, requiresCodePurchase } from "@/lib/posts";
+import { moderationStatusLabel } from "@/lib/moderation";
+import { CodeSourcePanel } from "@/components/content/CodeSourcePanel";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { BookBackCover } from "@/components/content/BookBackCover";
 import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { Badge } from "@/components/ui/badge";
 import { CommentSection } from "@/components/comments/CommentSection";
+import { PostEngagementBar } from "@/components/feed/PostEngagementBar";
 import type { FeedPost } from "@/types/database";
-import { Lock } from "lucide-react";
 
 interface PostViewProps {
   post: FeedPost;
@@ -28,9 +37,12 @@ function isStoryLike(type: FeedPost["type"]) {
 
 export function PostView({ post }: PostViewProps) {
   const { isLoggedIn } = useAuth();
+  const identity = useActingIdentity();
+  const [editorChatId, setEditorChatId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
   const fullAccess = canViewFullContent(isLoggedIn, invite, post.invite_token);
+  const codeIsFree = post.type === "code_template" && !requiresCodePurchase(post);
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   const accessMessage =
@@ -38,9 +50,42 @@ export function PostView({ post }: PostViewProps) {
       ? "This work is free — join to unlock the full content."
       : "Sign in to preview. Purchase is required for premium downloads.";
 
+  const isAuthor =
+    identity?.username.toLowerCase() === post.author.username.toLowerCase();
+
+  useEffect(() => {
+    if (post.moderation_status !== "pending") {
+      setEditorChatId(null);
+      return;
+    }
+    const refresh = () => {
+      const conv = getEditorReviewConversationForPost(post.id);
+      setEditorChatId(conv?.id ?? null);
+    };
+    refresh();
+    return subscribeMessages(refresh);
+  }, [post.id, post.moderation_status]);
+
   return (
-    <article className="space-y-6 max-w-3xl mx-auto">
-      {!fullAccess && (
+    <article
+      className={`space-y-6 mx-auto ${
+        post.type === "code_template" ? "max-w-7xl" : "max-w-3xl"
+      }`}
+    >
+      {post.moderation_status === "pending" && (
+        <div className="comic-panel px-4 py-2 text-xs font-comic text-comic-red text-center bg-comic-yellow/40 space-y-1">
+          <p>
+            {moderationStatusLabel(post.moderation_status)} — visible to you and editors until
+            approved.
+          </p>
+          {isAuthor && editorChatId && (
+            <Link href={`/messages/${editorChatId}`} className="text-comic-red underline">
+              Open editor chat about this listing →
+            </Link>
+          )}
+        </div>
+      )}
+      {!fullAccess && !codeIsFree && (
         <p className="comic-panel px-4 py-2 text-xs font-comic text-ink-muted text-center">
           You&apos;re viewing a teaser. Sign up to unlock full content
           {post.pricing !== "free" ? " (premium may require purchase)." : "."}
@@ -54,27 +99,48 @@ export function PostView({ post }: PostViewProps) {
           @{post.author.username}
         </Link>
         <h1 className="font-comic text-3xl md:text-4xl text-ink">{post.title}</h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="comic">{post.type.replace("_", " ")}</Badge>
           {post.pricing === "free" ? (
             <Badge variant="free">Free</Badge>
           ) : (
             <Badge variant="paid">Paid</Badge>
           )}
+          {isLoggedIn && identity && (
+            <ReportDialog
+              targetType="post"
+              reporterUsername={identity.username}
+              reporterDisplayName={identity.displayName}
+              postId={post.id}
+              postTitle={post.title}
+              label="Report post"
+              className="ml-auto"
+            />
+          )}
         </div>
       </header>
 
-      {/* Code — guests see layout only */}
-      {post.type === "code_template" && post.html_code && post.css_code && (
+      {/* Code — everyone sees live template; source requires login or purchase */}
+      {canViewCodePreview(post) && post.html_code && post.css_code && (
         <section className="space-y-4">
-          <LayoutPreview html={post.html_code} css={post.css_code} js={post.js_code} />
-          {fullAccess ? (
-            <div className="comic-panel p-4 font-mono text-xs overflow-auto max-h-64">
-              <pre>{post.html_code}</pre>
-            </div>
-          ) : (
-            <LoginCTA message="Join free to view and fork the source code." />
-          )}
+          <div>
+            <p className="font-comic text-sm text-ink mb-2">Live template preview</p>
+            <LayoutPreview
+              html={post.html_code}
+              css={post.css_code}
+              js={post.js_code}
+              mode="full"
+              height={240}
+              sourceLocked={requiresCodePurchase(post)}
+              defaultViewport="desktop"
+            />
+          </div>
+          <div>
+            <p className="font-comic text-sm text-ink mb-2">
+              {codeIsFree ? "Source code — free to copy" : "Source code"}
+            </p>
+            <CodeSourcePanel post={post} inviteToken={invite} />
+          </div>
         </section>
       )}
 
@@ -120,13 +186,14 @@ export function PostView({ post }: PostViewProps) {
         </section>
       )}
 
-      {post.is_code_locked && fullAccess && (
-        <p className="flex items-center gap-2 text-sm text-ink-muted">
-          <Lock className="h-4 w-4" /> Premium code blocks are locked until purchase.
-        </p>
-      )}
+      <div className="comic-panel px-4 py-3 flex items-center justify-between border-2 border-ink">
+        <p className="text-xs font-comic text-ink-muted uppercase">Community</p>
+        <PostEngagementBar postId={post.id} likeCount={post.like_count} />
+      </div>
 
-      <CommentSection postId={post.id} />
+      <div id="comments">
+        <CommentSection postId={post.id} />
+      </div>
     </article>
   );
 }

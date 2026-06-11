@@ -17,11 +17,9 @@ function sortByNewest(posts: FeedPost[]): FeedPost[] {
   );
 }
 
-export function useFeedPosts(limit?: number): FeedPost[] {
-  const [posts, setPosts] = useState<FeedPost[]>(() => {
-    const enriched = sortByNewest(enrich(getAllPosts()));
-    return limit !== undefined ? enriched.slice(0, limit) : enriched;
-  });
+export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolean } {
+  const [ready, setReady] = useState(false);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
 
   useEffect(() => {
     const refresh = () => {
@@ -29,6 +27,7 @@ export function useFeedPosts(limit?: number): FeedPost[] {
       setPosts(limit !== undefined ? enriched.slice(0, limit) : enriched);
     };
     refresh();
+    setReady(true);
     const unsubPosts = subscribePosts(refresh);
     const unsubComments = subscribeComments(refresh);
     return () => {
@@ -37,5 +36,5 @@ export function useFeedPosts(limit?: number): FeedPost[] {
     };
   }, [limit]);
 
-  return posts;
+  return { posts, ready };
 }

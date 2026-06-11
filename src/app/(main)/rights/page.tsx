@@ -52,8 +52,59 @@ export default function RightsPage() {
             Premium listings must accurately describe what the buyer receives (file types, word
             count, licence scope).
           </li>
+          <li>
+            Include a visible creator watermark on work you sell or share so buyers and viewers
+            always know who made it — see <strong>Creator attribution &amp; watermarks</strong>.
+          </li>
           <li>Respect other players in forums — no real-world harassment or doxxing.</li>
         </ul>
+      </InfoSection>
+
+      <InfoSection title="Creator attribution & watermarks">
+        <p>
+          Work on Universes of RPG is made by real creators. To protect authorship and give proper
+          credit, the platform requires clear <strong>creator attribution</strong> on content that
+          originates from someone else — whether it is free, purchased, or embedded in a profile.
+        </p>
+        <p>
+          <strong>Text and writing</strong> (stories, forum posts, comments) already show the
+          author on the platform — that counts as attribution. <strong>Images, templates, audio,
+          and downloadable assets</strong> should include a visible watermark or credit line where
+          practical, since those formats do not always show who made them automatically.
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            <strong>Creators</strong> must ensure listings they publish (especially images,
+            templates, and assets) include a clear watermark or attribution line identifying the
+            creator — typically display name and/or @username and a link back to the original work
+            on Universes of RPG where technically possible.
+          </li>
+          <li>
+            <strong>Buyers and users</strong> who purchase or use another creator&apos;s work must
+            keep that watermark intact. Purchasing a licence does not remove the obligation to
+            show who made the work.
+          </li>
+          <li>
+            <strong>After purchase</strong>, you may use the content in your RPG profiles, games,
+            and personal projects as allowed by the licence — but the watermark (or equivalent
+            on-screen credit) must remain visible and must still point to the creator and the
+            original listing unless the creator has granted a separate written exception.
+          </li>
+          <li>
+            Removing, obscuring, cropping out, or replacing another creator&apos;s watermark
+            without permission is a violation of these terms and may result in loss of access,
+            refunds at the platform&apos;s discretion, or account action.
+          </li>
+          <li>
+            When you fork, remix, or build on someone else&apos;s template or asset, your new work
+            should credit the original creator in addition to any watermark on the source material.
+          </li>
+        </ul>
+        <p>
+          Platform previews, Shop teasers, and downloaded deliverables may embed watermarks
+          automatically as this feature rolls out. Until then, creators and buyers are still bound
+          by the attribution rules above.
+        </p>
       </InfoSection>
 
       <InfoSection title="Buyer & licence terms">
@@ -66,6 +117,10 @@ export default function RightsPage() {
           <li>You may use assets and stories in your own RPG games and profiles.</li>
           <li>You may not resell, re-upload, or redistribute the files as-is on other marketplaces.</li>
           <li>You may not claim authorship of work you did not create.</li>
+          <li>
+            You must keep creator watermarks and attribution on purchased or used work, as
+            described in <strong>Creator attribution &amp; watermarks</strong> above.
+          </li>
         </ul>
         <p>
           Creators may offer extended licences (commercial use, streaming, etc.) — read each
@@ -79,6 +134,55 @@ export default function RightsPage() {
           unless marked as premium with a broader licence. Forking and learning from layout
           previews is encouraged for members; copying locked source without purchase is not.
         </p>
+        <p>
+          Templates applied to your profile must retain the original creator&apos;s watermark or
+          credit when the theme was made by someone else — including after you buy premium source
+          code.
+        </p>
+      </InfoSection>
+
+      <InfoSection title="Content moderation & editors">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            <strong>Free content</strong> is auto-approved when published and appears in Explore
+            once live.
+          </li>
+          <li>
+            <strong>Paid Shop content</strong> (code, stories, assets) requires approval from a
+            certified editor before listing.
+          </li>
+          <li>
+            Editor decisions are logged in an audit trail. Admins may override any editor decision.
+          </li>
+          <li>
+            Users may dispute editor reviews once the dispute system ships; until then, contact
+            the site maintainer.
+          </li>
+        </ul>
+      </InfoSection>
+
+      <InfoSection title="Editor programme & independent contractors">
+        <p>
+          Editors on Universes of RPG are <strong>independent contractors</strong>, not employees
+          of the platform. By applying and accepting an editor licence you agree that:
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            You are responsible for taxes, reporting, and compliance in your own jurisdiction.
+          </li>
+          <li>
+            Editor applications must be your own original work. AI-generated applications are not
+            accepted and are screened with automated tools.
+          </li>
+          <li>
+            Review fees (when Stripe freelancer payouts launch) are set within platform rate
+            ranges; the platform may take a commission (e.g. 10–20%).
+          </li>
+          <li>
+            Editors may lose their licence for bias, low-quality reviews, abuse, or repeated
+            community reports. Trust scores and admin audits apply.
+          </li>
+        </ul>
       </InfoSection>
 
       <InfoSection title="Platform & moderation">

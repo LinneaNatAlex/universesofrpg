@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
   ShoppingBag,
   Code2,
@@ -11,11 +10,13 @@ import {
   PenLine,
   Store,
 } from "lucide-react";
-import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
+import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { recordPurchase } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {
@@ -42,6 +43,7 @@ interface MarketplaceCardProps {
 
 export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const { isLoggedIn } = useAuth();
+  const identity = useActingIdentity();
   const Icon = TYPE_ICONS[post.type];
 
   function handlePurchase() {
@@ -49,8 +51,17 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
       window.location.href = "/login";
       return;
     }
+    if (!identity?.username) return;
+
+    recordPurchase(identity.username, post.id);
+
+    if (post.type === "code_template") {
+      window.location.href = `/post/${post.id}`;
+      return;
+    }
+
     alert(
-      `Purchase flow for "${post.title}" (${formatPrice(post.price_cents)}) — Stripe coming soon.`
+      `Purchased "${post.title}" (${formatPrice(post.price_cents)}). Stripe checkout ships soon — access saved locally for demo.`
     );
   }
 
@@ -66,32 +77,9 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
           </Badge>
         </div>
 
-        {/* Cover / preview */}
-        {post.book_cover_url ? (
-          <div className="comic-cover mx-auto mb-3">
-            <Image
-              src={post.book_cover_url}
-              alt=""
-              width={120}
-              height={168}
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        ) : post.type === "digital_asset" && post.preview_image_url ? (
-          <AssetTeaserPreview
-            src={post.preview_image_url}
-            alt={post.title}
-            fullAccess={isLoggedIn}
-            compact
-            className="mb-3"
-            hint="Sign in to preview the full pack before buying."
-          />
-        ) : post.type === "code_template" ? (
-          <div className="comic-panel h-24 mb-3 flex items-center justify-center bg-comic-blue/10">
-            <Code2 className="h-8 w-8 text-comic-blue opacity-60" />
-          </div>
-        ) : null}
+        <div className="mx-auto mb-3 flex justify-center">
+          <PostCoverThumbnail post={post} size="md" coverOnly />
+        </div>
 
         <Link href={`/post/${post.id}`} className="block group">
           <h3 className="font-comic text-lg text-ink group-hover:text-comic-red leading-tight">

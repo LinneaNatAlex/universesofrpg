@@ -79,7 +79,6 @@ body {
   border: 3px solid var(--ink);
   box-shadow: 4px 4px 0 var(--comic-red);
   overflow: hidden;
-  width: fit-content;
 }
 
 .comic-avatar {
@@ -128,6 +127,12 @@ body {
   margin-top: 1.5rem;
 }
 
+/* RPG topic reader — book-like page; grows with content (no hard A4 cap) */
+.topic-a4-page {
+  min-height: 12rem;
+  background: linear-gradient(180deg, #fffef8 0%, #f8f4e8 100%);
+}
+
 /* Protected asset teaser — discourage copy / drag */
 .asset-teaser-guard {
   -webkit-user-select: none;
@@ -173,77 +178,37 @@ details summary::marker {
   padding: 1rem;
 }
 
-/* Main page scroll — invisible bar, scrolling still works */
+/* Hidden scrollbars everywhere — scroll still works (wheel, touch, keys) */
+*,
 html,
 body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-html {
-  scrollbar-gutter: stable;
-}
-
+*::-webkit-scrollbar,
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
+  background: transparent;
 }
 
-/* Inner scroll areas — thin, subtle, comic-tinted on hover */
+.scrollbar-none,
 .scrollbar-subtle,
 .overflow-auto,
 .overflow-y-auto,
-.overflow-x-auto {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(26, 26, 46, 0.22) transparent;
-}
-
-.scrollbar-subtle::-webkit-scrollbar,
-.overflow-auto::-webkit-scrollbar,
-.overflow-y-auto::-webkit-scrollbar,
-.overflow-x-auto::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.scrollbar-subtle::-webkit-scrollbar-track,
-.overflow-auto::-webkit-scrollbar-track,
-.overflow-y-auto::-webkit-scrollbar-track,
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-subtle::-webkit-scrollbar-thumb,
-.overflow-auto::-webkit-scrollbar-thumb,
-.overflow-y-auto::-webkit-scrollbar-thumb,
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background-color: rgba(26, 26, 46, 0.18);
-  border-radius: 999px;
-}
-
-.scrollbar-subtle::-webkit-scrollbar-thumb:hover,
-.overflow-auto::-webkit-scrollbar-thumb:hover,
-.overflow-y-auto::-webkit-scrollbar-thumb:hover,
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(230, 57, 70, 0.4);
-}
-
-.scrollbar-subtle::-webkit-scrollbar-corner,
-.overflow-auto::-webkit-scrollbar-corner,
-.overflow-y-auto::-webkit-scrollbar-corner,
-.overflow-x-auto::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* Fully hidden scrollbars (code panels, etc.) */
-.scrollbar-none {
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-x-scroll,
+.overflow-y-scroll,
+iframe {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.scrollbar-none::-webkit-scrollbar {
+iframe::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

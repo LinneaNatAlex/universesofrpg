@@ -2,105 +2,33 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  Code2,
-  Heart,
-  MessageCircle,
-  Sparkles,
-  UserCircle,
-  ImageIcon,
-  PenLine,
-  Eye,
-} from "lucide-react";
-import { LayoutPreview } from "@/components/content/LayoutPreview";
+import { ChevronLeft, ChevronRight, MessageCircle, Sparkles, Eye } from "lucide-react";
+import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
-import { useAuth } from "@/hooks/useAuth";
+import { LikeButton } from "@/components/feed/LikeButton";
 import { useCommentCount } from "@/hooks/useCommentCount";
 import { useMonthlySpotlight } from "@/hooks/useMonthlySpotlight";
-import {
-  formatSpotlightMonth,
-  SPOTLIGHT_TYPE_HINTS,
-  type SpotlightPick,
-} from "@/lib/featured";
+import { requiresCodePurchase } from "@/lib/posts";
+import { formatSpotlightMonth, type SpotlightPick } from "@/lib/featured";
 import type { FeedPost } from "@/types/database";
-
-const TYPE_ICONS = {
-  character_sheet: UserCircle,
-  code_template: Code2,
-  story_segment: BookOpen,
-  digital_asset: ImageIcon,
-  collab_thread: MessageCircle,
-  text_writing: PenLine,
-};
 
 const ROTATE_MS = 6000;
 
 function SpotlightVisual({ post }: { post: FeedPost }) {
-  const { isLoggedIn } = useAuth();
-  const coverUrl = post.book_cover_url;
-  const assetUrl = post.type === "digital_asset" ? post.preview_image_url : null;
+  const coverOnly = post.pricing !== "free" || requiresCodePurchase(post);
 
-  if (assetUrl) {
-    return (
-      <div className="w-[160px] shrink-0 mx-auto md:mx-0">
-        <AssetTeaserPreview
-          src={assetUrl}
-          alt={post.title}
-          fullAccess={isLoggedIn}
-          compact
-          className="!h-[224px]"
-        />
-      </div>
-    );
-  }
-
-  if (coverUrl) {
-    return (
-      <div className="comic-cover mx-auto md:mx-0 shrink-0">
-        <Image
-          src={coverUrl}
-          alt=""
-          width={160}
-          height={224}
-          className="object-cover w-[160px] h-[224px]"
-          unoptimized
-        />
-      </div>
-    );
-  }
-
-  if (post.type === "code_template" && post.html_code && post.css_code) {
-    return (
-      <div className="w-full max-w-[200px] shrink-0 min-w-0 mx-auto md:mx-0">
-        <LayoutPreview
-          html={post.html_code}
-          css={post.css_code}
-          js={post.js_code}
-          height={176}
-        />
-      </div>
-    );
-  }
-
-  const Icon = TYPE_ICONS[post.type];
   return (
-    <div className="w-[160px] h-[224px] shrink-0 border-[3px] border-ink bg-comic-yellow/40 flex flex-col items-center justify-center gap-2 mx-auto md:mx-0">
-      <Icon className="h-12 w-12 text-comic-red opacity-70" />
-      <span className="font-comic text-xs text-ink-muted uppercase px-2 text-center">
-        {SPOTLIGHT_TYPE_HINTS[post.type] ?? post.type}
-      </span>
-    </div>
+    <PostCoverThumbnail
+      post={post}
+      size="lg"
+      coverOnly={coverOnly}
+      className="mx-auto md:mx-0 shrink-0"
+    />
   );
 }
 
 function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
-  const { isLoggedIn } = useAuth();
   const { post, category } = pick;
   const commentCount = useCommentCount(post.id);
   const synopsis = post.plot_synopsis ?? post.description ?? "";
@@ -138,12 +66,7 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
         </p>
 
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4 text-sm font-comic text-ink-muted">
-          {isLoggedIn && (
-            <span className="flex items-center gap-1">
-              <Heart className="h-4 w-4 text-comic-red" />
-              {post.like_count}
-            </span>
-          )}
+          <LikeButton postId={post.id} initialCount={post.like_count} />
           <span className="flex items-center gap-1">
             <MessageCircle className="h-4 w-4" />
             {commentCount}

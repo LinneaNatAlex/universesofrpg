@@ -20,7 +20,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I sell my creations?",
-    a: "Yes — that is what the Shop is for. Creators set prices on premium listings. Stripe checkout is being integrated; until then, purchase buttons show a placeholder flow.",
+    a: "Yes — that is what the Shop is for. Creators set prices on premium listings. Paid posts are held as pending until a certified editor approves them. Free posts publish immediately. Stripe checkout is being integrated; until then, purchase buttons show a placeholder flow.",
+  },
+  {
+    q: "What are Editors?",
+    a: "Editors are certified community reviewers who approve paid Shop listings before they go live. They apply with a writing sample, code excerpt, or certificate — AI-written applications are screened and rejected. Admins grant editor levels (Junior, Standard, Senior). Editors are independent contractors; see Rights for payment terms.",
+  },
+  {
+    q: "How do I become an Editor?",
+    a: "Sign in and visit Apply to become an Editor. Submit your motivation and an original sample (not AI-generated). An admin reviews your application and grants a licence level. Approved editors get a badge on their profile, access to the Editor Portal review queue, and can message creators directly about pending Shop listings.",
   },
   {
     q: "What content types are supported?",
@@ -40,15 +48,19 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the private forum work?",
-    a: "Forums are member-only spaces for ongoing RPG games. You invite friends, organise chapters, and attach metadata (era, season, location, when). Think of it as a structured play-by-post room.",
+    a: "RPG Topics are play-by-post stories with friends. Add a short teaser synopsis when you create one, organise parts (not every post is a new part), and optionally mark the topic private. When the story is finished, the creator can lock it and publish to the Shop so readers buy the full arc.",
   },
   {
     q: "Is AI-generated content allowed?",
     a: "Creators should label AI-assisted work honestly. Moderators can review flagged content. We encourage human creativity and clear attribution — see our Rights page for ownership rules.",
   },
   {
+    q: "Can I send private messages?",
+    a: "Yes. Friends can DM each other from the Message button on a profile, or start a group chat under Messages → New group. Editors can open a review thread with a creator from the Editor Portal while a paid listing is pending.",
+  },
+  {
     q: "How do I report a problem or inappropriate content?",
-    a: "Reporting tools are being expanded. Admins can review posts, comments, and reports from the Admin panel. If you are a user with a concern, contact the site maintainer directly until in-app reporting ships.",
+    a: "Use Report on posts, comments, chat members, or profiles. Reports are saved locally in demo mode and appear in Admin → Reports. Admins can resolve, dismiss, add notes, or delete reported posts.",
   },
   {
     q: "I signed up but did not receive a confirmation email.",

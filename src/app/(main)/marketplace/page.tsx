@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MarketplaceCard } from "@/components/marketplace/MarketplaceCard";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
 import { Filter, ShoppingBag, Compass } from "lucide-react";
+import { postHasCover } from "@/lib/post-cover";
 import type { FeedPost } from "@/types/database";
 
 const CATEGORY_FILTERS = ["All", "Fantasy", "Sci-fi", "Horror", "Anime"] as const;
@@ -49,8 +50,11 @@ export default function MarketplacePage() {
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>("All");
   const [sort, setSort] = useState<SortId>("featured");
 
-  const allPosts = useFeedPosts();
-  const paidPosts = useMemo(() => allPosts.filter(isPaidListing), [allPosts]);
+  const { posts: allPosts } = useFeedPosts();
+  const paidPosts = useMemo(
+    () => allPosts.filter((p) => isPaidListing(p) && postHasCover(p)),
+    [allPosts]
+  );
   const freeCount = allPosts.length - paidPosts.length;
 
   const items = useMemo(() => {
@@ -67,7 +71,7 @@ export default function MarketplacePage() {
             <h1 className="font-comic text-3xl">RPG Shop</h1>
             <p className="text-sm opacity-90 mt-1 max-w-lg">
               Premium RPG content — character packs, themes, story arcs, and asset bundles.
-              Free works live in Explore, not here.
+              Every listing needs a cover image. Free works live in Explore, not here.
             </p>
           </div>
         </div>
