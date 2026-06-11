@@ -39,11 +39,7 @@ export function saveVaultedCode(postId: string, bundle: PostCodeBundle): boolean
     css_code: bundle.css_code,
     js_code: bundle.js_code ?? null,
   };
-  const ok = saveVault(vault);
-  if (ok) {
-    void syncVaultedCodeToServer(postId);
-  }
-  return ok;
+  return saveVault(vault);
 }
 
 /** Push vaulted template source to Supabase (required for buyers on other devices). */

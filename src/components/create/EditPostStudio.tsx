@@ -215,7 +215,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       return;
     }
 
-    await finishLiveSave(post);
+    await finishLiveSave(getPostForEditing(post.id) ?? post);
   }
 
   const isCode = post.type === "code_template";
@@ -277,7 +277,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             editPostId={post.id}
             initialValues={codeInitialValues}
             onPublished={async () => {
-              await finishLiveSave(post);
+              const saved = getPostForEditing(post.id) ?? post;
+              await finishLiveSave(saved);
             }}
           />
         ) : (

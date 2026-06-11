@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { formatAuthError } from "@/lib/auth-error-messages";
+import { authCallbackUrl } from "@/lib/site-url";
 import { Sparkles } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -20,13 +22,13 @@ export default function ForgotPasswordPage() {
 
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
+      const redirectTo = `${authCallbackUrl(window.location.origin)}?next=/reset-password`;
       const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       });
 
       if (authError) {
-        setError(authError.message);
+        setError(formatAuthError(authError.message));
         return;
       }
 

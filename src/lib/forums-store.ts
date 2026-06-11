@@ -258,6 +258,7 @@ export function createForum(input: NewForumInput): RpgForum {
     );
   }
   notify();
+  void syncForumsToServer();
   return forum;
 }
 

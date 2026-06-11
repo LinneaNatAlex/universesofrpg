@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { formatAuthError } from "@/lib/auth-error-messages";
+import { authCallbackUrl } from "@/lib/site-url";
 import { Sparkles } from "lucide-react";
 
 export default function SignupPage() {
@@ -39,12 +41,12 @@ export default function SignupPage() {
             username: cleanUsername,
             display_name: cleanUsername,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: authCallbackUrl(window.location.origin),
         },
       });
 
       if (authError) {
-        setError(authError.message);
+        setError(formatAuthError(authError.message));
         return;
       }
 

@@ -1,4 +1,9 @@
+import type { CommentsPlatformState } from "@/app/api/content/comments/route";
 import { readJson, writeJson } from "@/lib/browser-storage";
+import {
+  pushCommentsPlatformState,
+  scheduleCommentsPlatformPush,
+} from "@/lib/content-sync";
 import { addPostCommentNotification } from "@/lib/notifications-store";
 import { getPostFromStore } from "@/lib/posts-store";
 import type { Comment } from "@/types/database";
@@ -69,10 +74,7 @@ export const MOCK_COMMENTS: Comment[] = [
   },
 ];
 
-interface CommentsState {
-  custom: Comment[];
-  deletedMockIds: string[];
-}
+export type CommentsState = CommentsPlatformState;
 
 let comments: Comment[] = [...MOCK_COMMENTS];
 let storageLoaded = false;
@@ -110,14 +112,38 @@ function ensureLoaded() {
   mergeComments();
 }
 
+export function buildCommentsPersistState(): CommentsState {
+  ensureLoaded();
+  const currentIds = new Set(comments.map((c) => c.id));
+  return {
+    custom: comments.filter((c) => !MOCK_COMMENT_IDS.has(c.id)),
+    deletedMockIds: MOCK_COMMENTS.filter((c) => !currentIds.has(c.id)).map((c) => c.id),
+  };
+}
+
+export function applyCommentsPersistState(state: CommentsState): void {
+  if (typeof window === "undefined") return;
+  writeJson(STORAGE_KEY, {
+    custom: Array.isArray(state.custom) ? state.custom : [],
+    deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+  });
+  storageLoaded = false;
+  comments = [...MOCK_COMMENTS];
+  ensureLoaded();
+  notify();
+}
+
+export async function syncCommentsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  return pushCommentsPlatformState(buildCommentsPersistState());
+}
+
 function persist() {
   if (typeof window === "undefined") return;
   ensureLoaded();
-  const currentIds = new Set(comments.map((c) => c.id));
-  writeJson(STORAGE_KEY, {
-    custom: comments.filter((c) => !MOCK_COMMENT_IDS.has(c.id)),
-    deletedMockIds: MOCK_COMMENTS.filter((c) => !currentIds.has(c.id)).map((c) => c.id),
-  });
+  const state = buildCommentsPersistState();
+  writeJson(STORAGE_KEY, state);
+  scheduleCommentsPlatformPush(state);
 }
 
 export function subscribeComments(listener: Listener): () => void {
@@ -162,6 +188,8 @@ export function addComment(comment: Comment): void {
       excerpt: comment.body,
     });
   }
+
+  void syncCommentsToServer();
 }
 
 export function getAllComments(): Comment[] {
@@ -178,6 +206,7 @@ export function deleteComment(id: string): boolean {
   if (comments.length < before) {
     persist();
     notify();
+    void syncCommentsToServer();
     return true;
   }
   return false;

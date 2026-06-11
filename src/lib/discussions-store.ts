@@ -1,4 +1,9 @@
+import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import { readJson, writeJson } from "@/lib/browser-storage";
+import {
+  pushDiscussionsPlatformState,
+  scheduleDiscussionsPlatformPush,
+} from "@/lib/content-sync";
 import {
   discussionPopularityScore,
   normalizeDiscussionCategory,
@@ -131,11 +136,7 @@ const SEED_REPLIES: DiscussionReply[] = [
 
 const SEED_REPLY_IDS = new Set(SEED_REPLIES.map((r) => r.id));
 
-interface DiscussionsState {
-  customThreads: DiscussionThread[];
-  customReplies: DiscussionReply[];
-  deletedMockThreadIds: string[];
-}
+export type DiscussionsState = DiscussionsPlatformState;
 
 let threads: DiscussionThread[] = [];
 let replies: DiscussionReply[] = [];
@@ -196,16 +197,43 @@ function ensureLoaded() {
   mergeData();
 }
 
-function persist() {
-  if (typeof window === "undefined") return;
+export function buildDiscussionsPersistState(): DiscussionsState {
   ensureLoaded();
   const currentIds = new Set(threads.map((t) => t.id));
-  const state: DiscussionsState = {
+  return {
     customThreads: threads.filter((t) => !MOCK_THREAD_IDS.has(t.id)),
     customReplies: replies.filter((r) => !SEED_REPLY_IDS.has(r.id)),
     deletedMockThreadIds: SEED_THREADS.filter((t) => !currentIds.has(t.id)).map((t) => t.id),
   };
+}
+
+export function applyDiscussionsPersistState(state: DiscussionsState): void {
+  if (typeof window === "undefined") return;
+  writeJson(STORAGE_KEY, {
+    customThreads: Array.isArray(state.customThreads) ? state.customThreads : [],
+    customReplies: Array.isArray(state.customReplies) ? state.customReplies : [],
+    deletedMockThreadIds: Array.isArray(state.deletedMockThreadIds)
+      ? state.deletedMockThreadIds
+      : [],
+  });
+  storageLoaded = false;
+  threads = [];
+  replies = [];
+  ensureLoaded();
+  notify();
+}
+
+export async function syncDiscussionsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  return pushDiscussionsPlatformState(buildDiscussionsPersistState());
+}
+
+function persist() {
+  if (typeof window === "undefined") return;
+  ensureLoaded();
+  const state = buildDiscussionsPersistState();
   writeJson(STORAGE_KEY, state);
+  scheduleDiscussionsPlatformPush(state);
 }
 
 function syncReplyCounts() {
@@ -275,6 +303,7 @@ export function createDiscussionThread(input: NewDiscussionInput): DiscussionThr
   threads = [thread, ...threads];
   persist();
   notify();
+  void syncDiscussionsToServer();
   return thread;
 }
 
@@ -301,6 +330,7 @@ export function addDiscussionReply(input: {
   thread.last_activity_at = reply.created_at;
   persist();
   notify();
+  void syncDiscussionsToServer();
   return reply;
 }
 

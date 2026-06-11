@@ -5,6 +5,8 @@ import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/s
 export type PlatformContentKey =
   | "posts"
   | "forums"
+  | "comments"
+  | "discussions"
   | "friend_requests"
   | "friends";
 

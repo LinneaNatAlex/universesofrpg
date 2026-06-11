@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
-import { addPost } from "@/lib/posts-store";
+import { liveSyncErrorMessage, syncCreationLive } from "@/lib/live-content-sync";
+import { addPost, getPostFromStore } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { PricingFields } from "@/components/create/PricingFields";
@@ -43,6 +44,30 @@ export function CreateStudio() {
   const [pricing, setPricing] = useState<PricingType>("free");
   const [priceCents, setPriceCents] = useState(499);
   const [publishNote, setPublishNote] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function finishLivePublish(postId: string) {
+    const saved = getPostFromStore(postId);
+    if (!saved) return;
+
+    setSaving(true);
+    setSyncError(null);
+
+    const result = await syncCreationLive(saved);
+    const message = liveSyncErrorMessage(result);
+    setSaving(false);
+
+    if (message) {
+      setSyncError(
+        `${message} Add SUPABASE_SERVICE_ROLE_KEY on Netlify, run migrations 005 and 006, then publish again while logged in on the live site.`
+      );
+      return;
+    }
+
+    router.push(`/post/${postId}`);
+    router.refresh();
+  }
 
   if (loading) {
     return <div className="comic-panel p-8 text-center font-comic">Loading…</div>;
@@ -60,7 +85,7 @@ export function CreateStudio() {
     );
   }
 
-  function handlePublishWriting() {
+  async function handlePublishWriting() {
     if (!title.trim() || !synopsis.trim()) return;
     if (synopsisExceedsWordLimit(synopsis)) {
       alert(`Teaser / synopsis must be ${SYNOPSIS_MAX_WORDS} words or fewer for the back cover.`);
@@ -116,12 +141,9 @@ export function CreateStudio() {
       setPublishNote(
         "Submitted for editor review. Your paid listing will appear in the Shop once approved."
       );
-      router.push(`/post/${post.id}`);
-      return;
     }
 
-    router.push(`/post/${post.id}`);
-    router.refresh();
+    await finishLivePublish(post.id);
   }
 
   return (
@@ -174,19 +196,30 @@ export function CreateStudio() {
         </p>
       )}
 
+      {syncError && (
+        <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-red/10 border-2 border-comic-red">
+          {syncError}
+        </p>
+      )}
+
+      {saving && (
+        <p className="comic-panel px-4 py-3 text-sm font-comic text-ink bg-comic-yellow/50 border-2 border-ink">
+          Syncing to live server…
+        </p>
+      )}
+
       {mode === "code" && (
         <CodePlayground
           loggedIn
           pricing={pricing}
           priceCents={priceCents}
-          onPublished={({ pending, postId }) => {
+          onPublished={async ({ pending, postId }) => {
             if (pending) {
               setPublishNote(
                 "Submitted for editor review. Your paid template will appear in the Shop once approved."
               );
             }
-            router.push(`/post/${postId}`);
-            router.refresh();
+            await finishLivePublish(postId);
           }}
         />
       )}

@@ -2,14 +2,17 @@
 
 import { writeJson } from "@/lib/browser-storage";
 import { migrateFeedPost } from "@/lib/persona-rename";
+import type { CommentsPlatformState } from "@/app/api/content/comments/route";
+import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { createClient } from "@/lib/supabase/client";
-import type { FeedPost } from "@/types/database";
-import type { RpgForum } from "@/types/database";
+import type { Comment, DiscussionReply, DiscussionThread, FeedPost, RpgForum } from "@/types/database";
 
 const POSTS_KEY = "uorpg-posts-state";
 const FORUMS_KEY = "uorpg-forums-state";
+const COMMENTS_KEY = "uorpg-comments-state";
+const DISCUSSIONS_KEY = "uorpg-discussions-state";
 
 export const CONTENT_SYNCED_EVENT = "uorpg-content-synced";
 export const CONTENT_SYNC_FAILED_EVENT = "uorpg-content-sync-failed";
@@ -25,14 +28,18 @@ export function markContentSyncSettled(): void {
   contentSyncSettled = true;
 }
 
+export type ContentSyncTarget = "posts" | "forums" | "comments" | "discussions";
+
 export type ContentSyncFailure = {
-  target: "posts" | "forums";
+  target: ContentSyncTarget;
   status: number;
   error: string;
 };
 
 let postsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let forumsPushTimer: ReturnType<typeof setTimeout> | null = null;
+let commentsPushTimer: ReturnType<typeof setTimeout> | null = null;
+let discussionsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushChain: Promise<void> = Promise.resolve();
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -95,9 +102,15 @@ function dispatchSyncFailure(failure: ContentSyncFailure): void {
   );
 }
 
+type PlatformState =
+  | PostsPlatformState
+  | ForumsPlatformState
+  | CommentsPlatformState
+  | DiscussionsPlatformState;
+
 async function pushPlatformState(
-  target: "posts" | "forums",
-  state: PostsPlatformState | ForumsPlatformState
+  target: ContentSyncTarget,
+  state: PlatformState
 ): Promise<boolean> {
   try {
     const headers = await authHeaders();
@@ -144,6 +157,26 @@ export async function fetchForumsPlatformState(): Promise<ForumsPlatformState | 
     const res = await fetch("/api/content/forums", { cache: "no-store" });
     if (!res.ok) return null;
     return (await res.json()) as ForumsPlatformState;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchCommentsPlatformState(): Promise<CommentsPlatformState | null> {
+  try {
+    const res = await fetch("/api/content/comments", { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as CommentsPlatformState;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchDiscussionsPlatformState(): Promise<DiscussionsPlatformState | null> {
+  try {
+    const res = await fetch("/api/content/discussions", { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as DiscussionsPlatformState;
   } catch {
     return null;
   }
@@ -212,6 +245,80 @@ export function pushForumsPlatformState(state: ForumsPlatformState): Promise<boo
   });
 }
 
+function discussionThreadRevisionTime(thread: DiscussionThread): number {
+  const stamp = thread.last_activity_at ?? thread.created_at ?? 0;
+  return new Date(stamp).getTime();
+}
+
+export function mergeCommentsState(
+  local: CommentsPlatformState,
+  remote: CommentsPlatformState
+): CommentsPlatformState {
+  return {
+    custom: mergeById(local.custom ?? [], remote.custom ?? []) as Comment[],
+    deletedMockIds: mergeStringLists(
+      local.deletedMockIds ?? [],
+      remote.deletedMockIds ?? []
+    ),
+  };
+}
+
+export function mergeDiscussionsState(
+  local: DiscussionsPlatformState,
+  remote: DiscussionsPlatformState
+): DiscussionsPlatformState {
+  const threadMap = new Map<string, DiscussionThread>();
+  for (const thread of local.customThreads ?? []) threadMap.set(thread.id, thread);
+  for (const thread of remote.customThreads ?? []) {
+    const prev = threadMap.get(thread.id);
+    if (!prev) {
+      threadMap.set(thread.id, thread);
+      continue;
+    }
+    threadMap.set(
+      thread.id,
+      discussionThreadRevisionTime(thread) >= discussionThreadRevisionTime(prev)
+        ? thread
+        : prev
+    );
+  }
+
+  const deletedMockThreadIds = mergeStringLists(
+    local.deletedMockThreadIds ?? [],
+    remote.deletedMockThreadIds ?? []
+  );
+  const deleted = new Set(deletedMockThreadIds);
+
+  return {
+    customThreads: [...threadMap.values()].filter((thread) => !deleted.has(thread.id)),
+    customReplies: mergeById(
+      local.customReplies ?? [],
+      remote.customReplies ?? []
+    ) as DiscussionReply[],
+    deletedMockThreadIds,
+  };
+}
+
+export function pushCommentsPlatformState(state: CommentsPlatformState): Promise<boolean> {
+  return new Promise((resolve) => {
+    pushChain = pushChain.then(async () => {
+      const ok = await pushPlatformState("comments", state);
+      resolve(ok);
+    });
+  });
+}
+
+export function pushDiscussionsPlatformState(
+  state: DiscussionsPlatformState
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    pushChain = pushChain.then(async () => {
+      const ok = await pushPlatformState("discussions", state);
+      resolve(ok);
+    });
+  });
+}
+
 /** Debounced live save after rapid local edits (likes, moderation, etc.). */
 export function schedulePostsPlatformPush(state: PostsPlatformState): void {
   if (typeof window === "undefined") return;
@@ -231,10 +338,36 @@ export function scheduleForumsPlatformPush(state: ForumsPlatformState): void {
   }, 400);
 }
 
+export function scheduleCommentsPlatformPush(state: CommentsPlatformState): void {
+  if (typeof window === "undefined") return;
+  if (commentsPushTimer) clearTimeout(commentsPushTimer);
+  commentsPushTimer = setTimeout(() => {
+    commentsPushTimer = null;
+    void pushCommentsPlatformState(state);
+  }, 400);
+}
+
+export function scheduleDiscussionsPlatformPush(state: DiscussionsPlatformState): void {
+  if (typeof window === "undefined") return;
+  if (discussionsPushTimer) clearTimeout(discussionsPushTimer);
+  discussionsPushTimer = setTimeout(() => {
+    discussionsPushTimer = null;
+    void pushDiscussionsPlatformState(state);
+  }, 400);
+}
+
 export function saveMergedPostsState(state: PostsPlatformState): void {
   writeJson(POSTS_KEY, state);
 }
 
 export function saveMergedForumsState(state: ForumsPlatformState): void {
   writeJson(FORUMS_KEY, state);
+}
+
+export function saveMergedCommentsState(state: CommentsPlatformState): void {
+  writeJson(COMMENTS_KEY, state);
+}
+
+export function saveMergedDiscussionsState(state: DiscussionsPlatformState): void {
+  writeJson(DISCUSSIONS_KEY, state);
 }

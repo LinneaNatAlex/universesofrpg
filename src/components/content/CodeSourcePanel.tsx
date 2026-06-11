@@ -175,7 +175,7 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
       )}
       {loading && (
         <p className="px-4 py-2 text-xs font-comic text-ink-muted border-b-2 border-ink">
-          Loading source from server…
+          Loading source…
         </p>
       )}
       {sourceError && !loading && (

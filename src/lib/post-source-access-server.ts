@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
 import { hasPlatformPurchase } from "@/lib/marketplace-platform-store";
+import { migrateUsername } from "@/lib/persona-rename";
 import { getPersonaByUsername } from "@/lib/personas";
 import type { SessionUser } from "@/lib/api-session-auth";
 import type { FeedPost } from "@/types/database";
@@ -19,7 +20,8 @@ export async function canAccessPostSourceCode(
 
   if (!requiresCodePurchase(post)) return true;
   if (post.moderation_status === "pending" && isEditor) return true;
-  if (buyerUsername.toLowerCase() === post.author.username.toLowerCase()) {
+  const authorUsername = migrateUsername(post.author.username);
+  if (buyerUsername.toLowerCase() === authorUsername) {
     return true;
   }
 
@@ -30,7 +32,8 @@ export async function canManagePostSourceCode(
   post: FeedPost,
   user: SessionUser
 ): Promise<boolean> {
-  if (user.username.toLowerCase() === post.author.username.toLowerCase()) {
+  const authorUsername = migrateUsername(post.author.username);
+  if (user.username.toLowerCase() === authorUsername) {
     return true;
   }
 
@@ -43,7 +46,7 @@ export async function canManagePostSourceCode(
     if (
       authUser &&
       isAdminUser(authUser) &&
-      getPersonaByUsername(post.author.username)
+      getPersonaByUsername(authorUsername)
     ) {
       return true;
     }

@@ -61,14 +61,20 @@ Then trigger **Deploys → Trigger deploy → Clear cache and deploy**.
 
 ### 3. Supabase auth URLs (required for login/signup)
 
+Set on **Netlify → Environment variables**:
+
+- `NEXT_PUBLIC_SITE_URL` = `https://YOUR-SITE.netlify.app` (no trailing slash)
+
 In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication → URL Configuration**:
 
-- **Site URL:** `https://YOUR-SITE.netlify.app`
+- **Site URL:** `https://YOUR-SITE.netlify.app` (must **not** be `http://localhost:3000` in production — otherwise confirm-email links open `localhost` on phones and fail)
 - **Redirect URLs:** add:
   - `https://YOUR-SITE.netlify.app/auth/callback`
-  - `http://localhost:3000/auth/callback` (for local dev)
+  - `http://localhost:3000/auth/callback` (for local dev only)
 
-Replace `YOUR-SITE` with your Netlify subdomain (e.g. `universesofrpg.netlify.app`).
+Replace `YOUR-SITE` with your Netlify subdomain (e.g. `universofrpg.netlify.app`).
+
+After changing Supabase URLs, ask users who already received a broken link to use **Sign up** again or resend confirmation from Supabase → Authentication → Users.
 
 ### 4. Database
 

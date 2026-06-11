@@ -4,12 +4,26 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   CONTENT_SYNCED_EVENT,
+  fetchCommentsPlatformState,
+  fetchDiscussionsPlatformState,
   fetchForumsPlatformState,
   fetchPostsPlatformState,
   markContentSyncSettled,
+  mergeCommentsState,
+  mergeDiscussionsState,
   mergeForumsState,
   mergePostsState,
 } from "@/lib/content-sync";
+import {
+  applyCommentsPersistState,
+  buildCommentsPersistState,
+  syncCommentsToServer,
+} from "@/lib/mock-comments";
+import {
+  applyDiscussionsPersistState,
+  buildDiscussionsPersistState,
+  syncDiscussionsToServer,
+} from "@/lib/discussions-store";
 import {
   applyForumsPersistState,
   buildForumsPersistState,
@@ -22,7 +36,7 @@ import {
 } from "@/lib/posts-store";
 
 /**
- * Loads live posts + RPG topics from Supabase on every visit.
+ * Loads live posts, RPG topics, comments, and discussions from Supabase on every visit.
  * When signed in, merges this browser's local drafts and pushes back to the server.
  */
 export function ContentHydrator() {
@@ -34,10 +48,13 @@ export function ContentHydrator() {
     let cancelled = false;
 
     void (async () => {
-      const [remotePosts, remoteForums] = await Promise.all([
-        fetchPostsPlatformState(),
-        fetchForumsPlatformState(),
-      ]);
+      const [remotePosts, remoteForums, remoteComments, remoteDiscussions] =
+        await Promise.all([
+          fetchPostsPlatformState(),
+          fetchForumsPlatformState(),
+          fetchCommentsPlatformState(),
+          fetchDiscussionsPlatformState(),
+        ]);
       if (cancelled) return;
 
       if (remotePosts) {
@@ -50,8 +67,23 @@ export function ContentHydrator() {
         applyForumsPersistState(mergeForumsState(local, remoteForums));
       }
 
+      if (remoteComments) {
+        const local = buildCommentsPersistState();
+        applyCommentsPersistState(mergeCommentsState(local, remoteComments));
+      }
+
+      if (remoteDiscussions) {
+        const local = buildDiscussionsPersistState();
+        applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
+      }
+
       if (isLoggedIn) {
-        await Promise.all([syncPostsToServer(), syncForumsToServer()]);
+        await Promise.all([
+          syncPostsToServer(),
+          syncForumsToServer(),
+          syncCommentsToServer(),
+          syncDiscussionsToServer(),
+        ]);
       }
 
       if (!cancelled) {

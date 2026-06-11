@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  sanitizeTemplatePreviewHtml,
   TEMPLATE_IFRAME_ALLOW,
   TEMPLATE_IFRAME_SANDBOX,
+  TEMPLATE_PREVIEW_CONTAINMENT_CSS,
+  TEMPLATE_PREVIEW_HEIGHT_SCRIPT,
+  TEMPLATE_PREVIEW_LINK_GUARD_SCRIPT,
+  TEMPLATE_PREVIEW_MODAL_SHIM_SCRIPT,
+  UORPG_PREVIEW_HEIGHT_MESSAGE,
 } from "@/lib/template-preview";
 import {
   TEMPLATE_DESKTOP_MIN_WIDTH,
@@ -52,7 +58,7 @@ const COMPACT_IFRAME_CSS = `
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px;
+    padding: 0;
   }
   #preview-root {
     transform-origin: center center;
@@ -91,7 +97,7 @@ const FULL_IFRAME_CSS = `
   }
   body {
     display: block;
-    padding: 12px;
+    padding: 0;
   }
   #preview-root {
     width: fit-content;
@@ -178,14 +184,20 @@ export function LayoutPreview({
   defaultViewport = "desktop",
 }: LayoutPreviewProps) {
   const previewId = useId();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const srcDocRef = useRef("");
   const frameWrapperRef = useRef<HTMLDivElement>(null);
+  const previewHtml = useMemo(() => sanitizeTemplatePreviewHtml(html), [html]);
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
   const [viewportMode, setViewportMode] = useState<TemplateViewportMode>(defaultViewport);
   const [mobileOrientation, setMobileOrientation] =
     useState<MobileOrientation>("portrait");
   const [desktopLayoutWidth, setDesktopLayoutWidth] = useState(TEMPLATE_DESKTOP_WIDTH);
   const [containerWidth, setContainerWidth] = useState(0);
-  const userJs = js?.trim() ? `${js};` : "";
   const isFull = mode === "full";
+  const userJs = js?.trim() ? `${js};` : "";
+  const heightScript = isFull ? TEMPLATE_PREVIEW_HEIGHT_SCRIPT : "";
+  const previewScripts = `${userJs}${TEMPLATE_PREVIEW_MODAL_SHIM_SCRIPT}${TEMPLATE_PREVIEW_LINK_GUARD_SCRIPT}${heightScript}`;
   const viewportToggle = showViewportToggle ?? isFull;
   const isMobileView = isFull && viewportToggle && viewportMode === "mobile";
   const isLandscape = mobileOrientation === "landscape";
@@ -273,12 +285,82 @@ export function LayoutPreview({
   }, [isMobileView]);
 
   const iframeCss = isFull ? FULL_IFRAME_CSS : COMPACT_IFRAME_CSS;
-  const iframeScript = isFull ? userJs : `${userJs}${FIT_PREVIEW_SCRIPT}`;
+  const iframeScript = isFull ? previewScripts : `${previewScripts}${FIT_PREVIEW_SCRIPT}`;
   const viewportMeta =
     viewportMode === "mobile"
       ? `width=${viewportWidth}, initial-scale=1, minimum-scale=0.85, maximum-scale=2.5, user-scalable=yes`
       : `width=${viewportWidth}, initial-scale=1`;
-  const srcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="${viewportMeta}"><style>${iframeCss}${css}</style></head><body><div id="preview-root">${html}</div><script>${iframeScript}<\/script></body></html>`;
+  const srcDoc = useMemo(
+    () =>
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="${viewportMeta}"><style>${TEMPLATE_PREVIEW_CONTAINMENT_CSS}${iframeCss}${css}</style></head><body><div id="preview-root">${previewHtml}</div><script>${iframeScript}<\/script></body></html>`,
+    [viewportMeta, iframeCss, css, previewHtml, iframeScript]
+  );
+  srcDocRef.current = srcDoc;
+
+  useEffect(() => {
+    setContentHeight(null);
+  }, [srcDoc]);
+
+  useEffect(() => {
+    if (!isFull) return;
+
+    function onMessage(event: MessageEvent) {
+      const data = event.data as { type?: string; height?: number };
+      if (data?.type !== UORPG_PREVIEW_HEIGHT_MESSAGE) return;
+      if (iframeRef.current?.contentWindow !== event.source) return;
+      if (typeof data.height !== "number" || data.height < 1) return;
+      setContentHeight(data.height);
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [isFull, srcDoc]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    let ready = false;
+    const restorePreview = () => {
+      if (iframe.srcdoc !== srcDocRef.current) {
+        iframe.srcdoc = srcDocRef.current;
+      }
+    };
+
+    const onLoad = () => {
+      if (!ready) {
+        ready = true;
+        return;
+      }
+      try {
+        const href = iframe.contentWindow?.location.href ?? "";
+        if (
+          href &&
+          href !== "about:srcdoc" &&
+          href !== "about:blank" &&
+          !href.startsWith("blob:")
+        ) {
+          restorePreview();
+        }
+      } catch {
+        restorePreview();
+      }
+    };
+
+    iframe.addEventListener("load", onLoad);
+    return () => iframe.removeEventListener("load", onLoad);
+  }, [srcDoc]);
+
+  const maxPreviewHeightPx =
+    typeof window !== "undefined"
+      ? Math.min(Math.round(window.innerHeight * 0.82), 52 * 16)
+      : 832;
+  const fittedDesktopHeight =
+    isFull && !isMobileView && contentHeight
+      ? Math.min(contentHeight + 2, maxPreviewHeightPx)
+      : null;
+  const iframeNeedsScroll =
+    isFull && contentHeight != null && contentHeight + 2 > maxPreviewHeightPx;
 
   const iframeStyle = {
     height: isFull
@@ -286,7 +368,9 @@ export function LayoutPreview({
         ? isLandscape
           ? TEMPLATE_MOBILE_LANDSCAPE_HEIGHT
           : TEMPLATE_PREVIEW_FRAME_HEIGHT
-        : TEMPLATE_PREVIEW_FRAME_HEIGHT
+        : fittedDesktopHeight
+          ? `${fittedDesktopHeight}px`
+          : TEMPLATE_PREVIEW_FRAME_HEIGHT
       : height,
     width:
       isFull && viewportToggle && viewportMode === "desktop"
@@ -312,15 +396,16 @@ export function LayoutPreview({
 
   const iframeEl = (
     <iframe
+      ref={iframeRef}
       key={`${previewId}-${viewportMode}-${mobileOrientation}-${viewportWidth}`}
       title="Layout preview"
       srcDoc={srcDoc}
       sandbox={TEMPLATE_IFRAME_SANDBOX}
       allow={TEMPLATE_IFRAME_ALLOW}
-      scrolling={isFull ? "yes" : "no"}
+      scrolling={isFull ? (iframeNeedsScroll ? "yes" : "no") : "no"}
       style={iframeStyle}
       className={cn(
-        "border-0 bg-white block shrink-0",
+        "border-0 bg-transparent block shrink-0 isolate",
         isMobileView && "border-4 border-ink shadow-comic",
         !isFull && "w-full overflow-hidden"
       )}
@@ -332,6 +417,7 @@ export function LayoutPreview({
 
   return (
     <div
+      data-uorpg-template-preview
       className={cn(
         "comic-panel min-w-0",
         isFull ? "overflow-visible" : "overflow-hidden",

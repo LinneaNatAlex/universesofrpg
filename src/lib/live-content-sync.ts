@@ -14,10 +14,12 @@ export async function syncCreationLive(post: Pick<FeedPost, "id" | "type" | "pri
   const needsSource =
     post.type === "code_template" && requiresCodePurchase(post as FeedPost);
 
-  const [posts, source] = await Promise.all([
-    syncPostsToServer(),
-    needsSource ? syncVaultedCodeToServer(post.id) : Promise.resolve(true),
-  ]);
+  const posts = await syncPostsToServer();
+  if (!posts) {
+    return { posts: false, source: false, needsSource };
+  }
+
+  const source = needsSource ? await syncVaultedCodeToServer(post.id) : true;
 
   return { posts, source, needsSource };
 }
