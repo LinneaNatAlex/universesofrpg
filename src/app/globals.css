@@ -41,6 +41,10 @@ body {
   min-height: 100vh;
 }
 
+.safe-area-pb {
+  padding-bottom: max(0.375rem, env(safe-area-inset-bottom, 0px));
+}
+
 .font-comic {
   font-family: var(--font-comic), Impact, sans-serif;
   letter-spacing: 0.04em;

@@ -1,4 +1,5 @@
 import { readJson, writeJson } from "@/lib/browser-storage";
+import { pushPostsPlatformState } from "@/lib/content-sync";
 import { MOCK_FEED } from "@/lib/mock-data";
 import { postHasCover } from "@/lib/post-cover";
 import {
@@ -23,7 +24,7 @@ function stripPaidCodeForStorage(post: FeedPost): FeedPost {
 const MOCK_POST_IDS = new Set(MOCK_FEED.map((p) => p.id));
 const STORAGE_KEY = "uorpg-posts-state";
 
-interface PostsState {
+export interface PostsState {
   custom: FeedPost[];
   deletedMockIds: string[];
   /** Persisted like totals for mock posts (custom posts store counts on the post). */
@@ -103,8 +104,7 @@ function ensureLoaded() {
   mergePosts();
 }
 
-function persist(): boolean {
-  if (typeof window === "undefined") return false;
+export function buildPostsPersistState(): PostsState {
   ensureLoaded();
   const currentIds = new Set(posts.map((p) => p.id));
   const likeCounts: Record<string, number> = {};
@@ -116,12 +116,40 @@ function persist(): boolean {
       }
     }
   }
-  const state: PostsState = {
+  return {
     custom: posts.filter((p) => !MOCK_POST_IDS.has(p.id)),
     deletedMockIds: MOCK_FEED.filter((p) => !currentIds.has(p.id)).map((p) => p.id),
     likeCounts,
   };
-  return writeJson(STORAGE_KEY, state);
+}
+
+export function applyPostsPersistState(state: PostsState): void {
+  if (typeof window === "undefined") return;
+  writeJson(STORAGE_KEY, {
+    custom: Array.isArray(state.custom) ? state.custom : [],
+    deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+    likeCounts:
+      state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
+  });
+  storageLoaded = false;
+  posts = [...MOCK_FEED];
+  ensureLoaded();
+  notify();
+}
+
+export async function syncPostsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  return pushPostsPlatformState(buildPostsPersistState());
+}
+
+function persist(): boolean {
+  if (typeof window === "undefined") return false;
+  const state = buildPostsPersistState();
+  const ok = writeJson(STORAGE_KEY, state);
+  if (ok) {
+    void syncPostsToServer();
+  }
+  return ok;
 }
 
 export function subscribePosts(listener: Listener): () => void {

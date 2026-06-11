@@ -18,49 +18,78 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
 
 type NavItem = {
   href: string;
   label: string;
+  /** Shorter label for the bottom bar on phones */
+  mobileLabel?: string;
   icon: LucideIcon;
   auth?: boolean;
+  /** Hide from bottom bar when signed in (still in header + account menu) */
+  hideOnMobileWhenLoggedIn?: boolean;
 };
 
 const MAIN_NAV: NavItem[] = [
-  { href: "/", label: "Feed", icon: Home },
-  { href: "/explore", label: "Explore", icon: Compass },
-  { href: "/marketplace", label: "Shop", icon: ShoppingBag },
-  { href: "/create", label: "Create", icon: PenTool, auth: true },
-  { href: "/discussions", label: "Forum discussions", icon: MessagesSquare },
-  { href: "/forum", label: "RPG (Topics)", icon: MessageSquare, auth: true },
+  { href: "/", label: "Feed", mobileLabel: "Feed", icon: Home },
+  { href: "/explore", label: "Explore", mobileLabel: "Explore", icon: Compass },
+  { href: "/marketplace", label: "Shop", mobileLabel: "Shop", icon: ShoppingBag },
+  { href: "/create", label: "Create", mobileLabel: "Create", icon: PenTool, auth: true },
+  {
+    href: "/discussions",
+    label: "Forum discussions",
+    mobileLabel: "Forum",
+    icon: MessagesSquare,
+    hideOnMobileWhenLoggedIn: true,
+  },
+  {
+    href: "/forum",
+    label: "RPG (Topics)",
+    mobileLabel: "RPG",
+    icon: MessageSquare,
+    auth: true,
+  },
 ];
 
-function filterNav(items: NavItem[], isLoggedIn: boolean) {
-  return items.filter((item) => !item.auth || isLoggedIn);
+function filterNav(items: NavItem[], isLoggedIn: boolean, forMobile = false) {
+  return items.filter((item) => {
+    if (item.auth && !isLoggedIn) return false;
+    if (forMobile && item.hideOnMobileWhenLoggedIn && isLoggedIn) return false;
+    return true;
+  });
 }
 
 function NavLink({
   href,
   label,
+  mobileLabel,
   icon: Icon,
   active,
   compact = false,
 }: NavItem & { active: boolean; compact?: boolean }) {
+  const displayLabel = compact ? (mobileLabel ?? label) : label;
+
   return (
     <Link
       href={href}
+      aria-label={label}
       className={cn(
-        "flex items-center gap-1.5 font-comic border-2 border-ink transition-all",
-        compact ? "flex-col gap-0.5 px-2 py-1 text-[10px] min-w-[3.5rem]" : "px-3 py-1.5 text-sm",
+        "flex items-center font-comic border-2 border-ink transition-all",
+        compact
+          ? "flex-1 flex-col justify-center gap-0.5 min-w-0 px-1 py-1.5 text-[10px] leading-none"
+          : "gap-1.5 px-3 py-1.5 text-sm",
         active
           ? "bg-comic-red text-white shadow-[2px_2px_0_#1a1a2e]"
           : "bg-surface text-ink hover:bg-comic-yellow shadow-[2px_2px_0_#1a1a2e] hover:shadow-[1px_1px_0_#1a1a2e] hover:translate-x-0.5 hover:translate-y-0.5"
       )}
     >
       <Icon className={cn("shrink-0", compact ? "h-5 w-5" : "h-4 w-4")} />
-      <span className={compact ? "leading-none" : "whitespace-nowrap"}>{label}</span>
+      <span className={compact ? "truncate w-full text-center max-w-full" : "whitespace-nowrap"}>
+        {displayLabel}
+      </span>
     </Link>
   );
 }
@@ -112,11 +141,11 @@ function AppShellHeader() {
 function AppShellNav() {
   const pathname = usePathname();
   const { isLoggedIn } = useAdmin();
-  const mobileNav = filterNav(MAIN_NAV, isLoggedIn);
+  const mobileNav = filterNav(MAIN_NAV, isLoggedIn, true);
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 border-t-4 border-ink bg-comic-yellow z-40 safe-area-pb">
-      <div className="flex justify-around gap-1 px-2 py-2">
+      <div className="flex items-stretch gap-0.5 px-1 pt-1.5">
         {mobileNav.map((item) => (
           <NavLink
             key={item.href}
@@ -139,6 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <PersonaProvider>
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
+        <ContentHydrator />
         <PurchasesHydrator />
         <VerificationCheckoutReturn />
         <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 pb-24 md:pb-8">

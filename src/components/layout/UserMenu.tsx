@@ -72,16 +72,16 @@ export function UserMenu() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <Link
           href="/login"
-          className="hidden sm:inline text-sm font-comic text-ink hover:text-comic-red px-2"
+          className="text-xs sm:text-sm font-comic text-ink hover:text-comic-red px-1.5 sm:px-2"
         >
           Sign in
         </Link>
         <Link
           href="/signup"
-          className="bg-comic-red text-white font-comic text-sm px-3 py-1.5 border-2 border-ink shadow-[2px_2px_0_#1a1a2e] hover:shadow-[1px_1px_0_#1a1a2e] hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          className="bg-comic-red text-white font-comic text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 border-2 border-ink shadow-[2px_2px_0_#1a1a2e] hover:shadow-[1px_1px_0_#1a1a2e] hover:translate-x-0.5 hover:translate-y-0.5 transition-all whitespace-nowrap"
         >
           Join
         </Link>

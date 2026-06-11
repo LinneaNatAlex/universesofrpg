@@ -1,5 +1,7 @@
+import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { isFriend } from "@/lib/friends-store";
 import { readJson, writeJson } from "@/lib/browser-storage";
+import { pushForumsPlatformState } from "@/lib/content-sync";
 import { findUserByUsername } from "@/lib/discover-users";
 import { MOCK_FORUMS } from "@/lib/mock-data";
 import { getPersonaByUsername } from "@/lib/personas";
@@ -15,10 +17,7 @@ import type { ForumChapter, ForumPost, RpgForum, RpgForumMeta } from "@/types/da
 const STORAGE_KEY = "uorpg-forums-state";
 const MOCK_FORUM_IDS = new Set(MOCK_FORUMS.map((f) => f.id));
 
-interface ForumsState {
-  custom: RpgForum[];
-  deletedMockIds: string[];
-}
+export type ForumsState = ForumsPlatformState;
 
 let forums: RpgForum[] = [...MOCK_FORUMS];
 let storageLoaded = false;
@@ -92,15 +91,40 @@ function ensureLoaded() {
   mergeForums();
 }
 
-function persist(): boolean {
-  if (typeof window === "undefined") return false;
+export function buildForumsPersistState(): ForumsState {
   ensureLoaded();
   const currentIds = new Set(forums.map((f) => f.id));
-  const state: ForumsState = {
+  return {
     custom: forums.filter((f) => !MOCK_FORUM_IDS.has(f.id)),
     deletedMockIds: MOCK_FORUMS.filter((f) => !currentIds.has(f.id)).map((f) => f.id),
   };
-  return writeJson(STORAGE_KEY, state);
+}
+
+export function applyForumsPersistState(state: ForumsState): void {
+  if (typeof window === "undefined") return;
+  writeJson(STORAGE_KEY, {
+    custom: Array.isArray(state.custom) ? state.custom : [],
+    deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
+  });
+  storageLoaded = false;
+  forums = [...MOCK_FORUMS];
+  ensureLoaded();
+  notify();
+}
+
+export async function syncForumsToServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  return pushForumsPlatformState(buildForumsPersistState());
+}
+
+function persist(): boolean {
+  if (typeof window === "undefined") return false;
+  const state = buildForumsPersistState();
+  const ok = writeJson(STORAGE_KEY, state);
+  if (ok) {
+    void syncForumsToServer();
+  }
+  return ok;
 }
 
 /** Persist replies/edits to demo forums too (stored as custom overrides). */
@@ -113,10 +137,12 @@ function persistForumOverride(forum: RpgForum) {
   const state = loadState();
   const overrides = state.custom.filter((f) => f.id !== forum.id);
   overrides.push(forum);
-  writeJson(STORAGE_KEY, {
+  const next = {
     ...state,
     custom: overrides,
-  });
+  };
+  writeJson(STORAGE_KEY, next);
+  void pushForumsPlatformState(next);
 }
 
 export function subscribeForums(listener: Listener): () => void {
