@@ -13,6 +13,11 @@ import { canEditPost, getPostForEditing } from "@/lib/posts";
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
 import { fetchPostSourceCode } from "@/lib/post-source-code-client";
 import { isValidCoverSource } from "@/lib/post-cover";
+import {
+  countSynopsisWords,
+  SYNOPSIS_MAX_WORDS,
+  synopsisExceedsWordLimit,
+} from "@/lib/synopsis-text";
 import { inferWritingPostType } from "@/lib/writing-tags";
 import { extractThemeMusicUrl, stripThemeMusic } from "@/lib/template-preview";
 import { CoverImageField } from "@/components/create/CoverImageField";
@@ -178,6 +183,10 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
 
   async function handleSaveWriting() {
     if (!title.trim() || !synopsis.trim()) return;
+    if (synopsisExceedsWordLimit(synopsis)) {
+      alert(`Teaser / synopsis must be ${SYNOPSIS_MAX_WORDS} words or fewer for the back cover.`);
+      return;
+    }
     if (writingTags.length === 0) {
       alert("Add at least one tag so readers can find your work.");
       return;
@@ -292,6 +301,13 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
               rows={3}
               className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm italic"
             />
+            <p
+              className={`text-xs mt-1 font-comic ${
+                synopsisExceedsWordLimit(synopsis) ? "text-comic-red" : "text-ink-muted"
+              }`}
+            >
+              {countSynopsisWords(synopsis)} / {SYNOPSIS_MAX_WORDS} words (back cover teaser)
+            </p>
           </div>
           <WritingTagPicker value={writingTags} onChange={setWritingTags} />
           <CoverImageField

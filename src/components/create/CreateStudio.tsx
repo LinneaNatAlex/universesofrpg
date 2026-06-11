@@ -11,6 +11,11 @@ import { CoverImageField } from "@/components/create/CoverImageField";
 import { PricingFields } from "@/components/create/PricingFields";
 import { WritingTagPicker } from "@/components/create/WritingTagPicker";
 import { isValidCoverSource } from "@/lib/post-cover";
+import {
+  countSynopsisWords,
+  SYNOPSIS_MAX_WORDS,
+  synopsisExceedsWordLimit,
+} from "@/lib/synopsis-text";
 import { inferWritingPostType } from "@/lib/writing-tags";
 import type { PricingType } from "@/types/database";
 import { LoginCTA } from "@/components/auth/LoginCTA";
@@ -57,6 +62,10 @@ export function CreateStudio() {
 
   function handlePublishWriting() {
     if (!title.trim() || !synopsis.trim()) return;
+    if (synopsisExceedsWordLimit(synopsis)) {
+      alert(`Teaser / synopsis must be ${SYNOPSIS_MAX_WORDS} words or fewer for the back cover.`);
+      return;
+    }
     if (writingTags.length === 0) {
       alert("Add at least one tag — poem, RPG, letters, story, etc. — so readers can find your work in Explore.");
       return;
@@ -202,8 +211,15 @@ export function CreateStudio() {
               onChange={(e) => setSynopsis(e.target.value)}
               rows={3}
               className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm italic"
-              placeholder="What readers see before they open the full piece…"
+              placeholder="What readers see on the back cover before they open the full piece…"
             />
+            <p
+              className={`text-xs mt-1 font-comic ${
+                synopsisExceedsWordLimit(synopsis) ? "text-comic-red" : "text-ink-muted"
+              }`}
+            >
+              {countSynopsisWords(synopsis)} / {SYNOPSIS_MAX_WORDS} words (back cover teaser)
+            </p>
           </div>
           <WritingTagPicker value={writingTags} onChange={setWritingTags} />
           <CoverImageField
