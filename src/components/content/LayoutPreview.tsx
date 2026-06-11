@@ -8,9 +8,11 @@ import {
 import {
   TEMPLATE_DESKTOP_MIN_WIDTH,
   TEMPLATE_DESKTOP_WIDTH,
+  TEMPLATE_MOBILE_LANDSCAPE_HEIGHT,
   TEMPLATE_MOBILE_LANDSCAPE_WIDTH,
   TEMPLATE_MOBILE_WIDTH,
   TEMPLATE_PREVIEW_FRAME_HEIGHT,
+  landscapePreviewFitScale,
   mobilePreviewDimensions,
   type MobileOrientation,
   type TemplateViewportMode,
@@ -181,21 +183,34 @@ export function LayoutPreview({
   const [mobileOrientation, setMobileOrientation] =
     useState<MobileOrientation>("portrait");
   const [desktopLayoutWidth, setDesktopLayoutWidth] = useState(TEMPLATE_DESKTOP_WIDTH);
+  const [containerWidth, setContainerWidth] = useState(0);
   const userJs = js?.trim() ? `${js};` : "";
   const isFull = mode === "full";
   const viewportToggle = showViewportToggle ?? isFull;
-  const mobileDims =
-    viewportMode === "mobile"
-      ? mobilePreviewDimensions(mobileOrientation)
-      : null;
-  const viewportWidth =
-    viewportMode === "mobile"
-      ? (mobileDims?.layoutWidth ?? TEMPLATE_MOBILE_WIDTH)
-      : desktopLayoutWidth;
-  const mobileFrameHeight =
-    mobileDims?.frameHeight ?? TEMPLATE_PREVIEW_FRAME_HEIGHT;
-  const mobileZoomEnabled = isFull && viewportToggle && viewportMode === "mobile";
+  const isMobileView = isFull && viewportToggle && viewportMode === "mobile";
+  const isLandscape = mobileOrientation === "landscape";
+  const mobileDims = isMobileView ? mobilePreviewDimensions(mobileOrientation) : null;
+  const viewportWidth = isMobileView
+    ? (mobileDims?.layoutWidth ?? TEMPLATE_MOBILE_WIDTH)
+    : desktopLayoutWidth;
+  const mobileZoomEnabled = isMobileView;
   const mobileZoom = usePinchPanZoom(mobileZoomEnabled, { panAtBaseScale: true });
+
+  /** On narrow screens, rotate the landscape phone 90° so it reads as horizontal. */
+  const rotateLandscapePhone =
+    isLandscape &&
+    containerWidth > 0 &&
+    containerWidth < TEMPLATE_MOBILE_LANDSCAPE_WIDTH - 20;
+
+  const landscapeFitScale = isLandscape
+    ? rotateLandscapePhone
+      ? Math.min(1, (containerWidth - 24) / TEMPLATE_MOBILE_LANDSCAPE_HEIGHT)
+      : landscapePreviewFitScale(containerWidth)
+    : 1;
+
+  const baseScale = isLandscape ? landscapeFitScale : 1;
+  const panScale = mobileZoom.transform.scale;
+  const totalScale = baseScale * panScale;
 
   useEffect(() => {
     mobileZoom.reset();
@@ -211,17 +226,20 @@ export function LayoutPreview({
   ]);
 
   useEffect(() => {
-    if (!isFull || !viewportToggle || viewportMode !== "desktop") return;
+    if (!isFull || !viewportToggle) return;
     const el = frameWrapperRef.current;
     if (!el) return;
 
     const measure = () => {
       const w = el.clientWidth;
       if (w < 1) return;
-      const next = Math.round(
-        Math.min(TEMPLATE_DESKTOP_WIDTH, Math.max(TEMPLATE_DESKTOP_MIN_WIDTH, w))
-      );
-      setDesktopLayoutWidth((prev) => (prev === next ? prev : next));
+      setContainerWidth(w);
+      if (viewportMode === "desktop") {
+        const next = Math.round(
+          Math.min(TEMPLATE_DESKTOP_WIDTH, Math.max(TEMPLATE_DESKTOP_MIN_WIDTH, w))
+        );
+        setDesktopLayoutWidth((prev) => (prev === next ? prev : next));
+      }
     };
 
     measure();
@@ -229,6 +247,30 @@ export function LayoutPreview({
     ro.observe(el);
     return () => ro.disconnect();
   }, [isFull, viewportToggle, viewportMode]);
+
+  useEffect(() => {
+    if (!isMobileView) return;
+
+    function syncFromDevice() {
+      const angle =
+        typeof screen !== "undefined" && screen.orientation
+          ? screen.orientation.angle
+          : typeof window !== "undefined"
+            ? window.orientation
+            : 0;
+      const landscape =
+        angle === 90 || angle === -90 || angle === 270;
+      setMobileOrientation(landscape ? "landscape" : "portrait");
+    }
+
+    syncFromDevice();
+    window.addEventListener("orientationchange", syncFromDevice);
+    screen.orientation?.addEventListener("change", syncFromDevice);
+    return () => {
+      window.removeEventListener("orientationchange", syncFromDevice);
+      screen.orientation?.removeEventListener("change", syncFromDevice);
+    };
+  }, [isMobileView]);
 
   const iframeCss = isFull ? FULL_IFRAME_CSS : COMPACT_IFRAME_CSS;
   const iframeScript = isFull ? userJs : `${userJs}${FIT_PREVIEW_SCRIPT}`;
@@ -238,32 +280,35 @@ export function LayoutPreview({
       : `width=${viewportWidth}, initial-scale=1`;
   const srcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="${viewportMeta}"><style>${iframeCss}${css}</style></head><body><div id="preview-root">${html}</div><script>${iframeScript}<\/script></body></html>`;
 
-  const mobileMaxWidth =
-    mobileOrientation === "landscape"
-      ? TEMPLATE_MOBILE_LANDSCAPE_WIDTH
-      : TEMPLATE_MOBILE_WIDTH;
-
   const iframeStyle = {
     height: isFull
-      ? viewportMode === "mobile"
-        ? mobileFrameHeight
+      ? isMobileView
+        ? isLandscape
+          ? TEMPLATE_MOBILE_LANDSCAPE_HEIGHT
+          : TEMPLATE_PREVIEW_FRAME_HEIGHT
         : TEMPLATE_PREVIEW_FRAME_HEIGHT
       : height,
     width:
       isFull && viewportToggle && viewportMode === "desktop"
         ? "100%"
-        : isFull && viewportToggle
+        : isMobileView
           ? viewportWidth
           : "100%",
     minWidth:
       isFull && viewportToggle && viewportMode === "desktop"
         ? TEMPLATE_DESKTOP_MIN_WIDTH
-        : undefined,
-    maxWidth:
-      viewportMode === "mobile" && viewportToggle
-        ? `min(100%, ${mobileMaxWidth}px)`
-        : undefined,
+        : isMobileView
+          ? viewportWidth
+          : undefined,
   } as const;
+
+  const mobilePanContainerHeight = isMobileView
+    ? isLandscape
+      ? rotateLandscapePhone
+        ? Math.ceil(TEMPLATE_MOBILE_LANDSCAPE_WIDTH * landscapeFitScale) + 48
+        : Math.ceil(TEMPLATE_MOBILE_LANDSCAPE_HEIGHT * landscapeFitScale) + 48
+      : TEMPLATE_PREVIEW_FRAME_HEIGHT
+    : TEMPLATE_PREVIEW_FRAME_HEIGHT;
 
   const iframeEl = (
     <iframe
@@ -275,8 +320,8 @@ export function LayoutPreview({
       scrolling={isFull ? "yes" : "no"}
       style={iframeStyle}
       className={cn(
-        "border-0 bg-white block",
-        viewportMode === "mobile" && viewportToggle && "border-4 border-ink shadow-comic",
+        "border-0 bg-white block shrink-0",
+        isMobileView && "border-4 border-ink shadow-comic",
         !isFull && "w-full overflow-hidden"
       )}
     />
@@ -306,94 +351,95 @@ export function LayoutPreview({
             )}
           </span>
           {viewportToggle && (
-            <span className="flex items-center gap-1 normal-case">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewportMode("desktop");
-                  setMobileOrientation("portrait");
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
-                  viewportMode === "desktop"
-                    ? "bg-comic-red text-white"
-                    : "bg-surface text-ink hover:bg-comic-yellow"
-                )}
-                aria-pressed={viewportMode === "desktop"}
-              >
-                <Monitor className="h-3 w-3" />
-                PC
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewportMode("mobile");
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
-                  viewportMode === "mobile"
-                    ? "bg-comic-red text-white"
-                    : "bg-surface text-ink hover:bg-comic-yellow"
-                )}
-                aria-pressed={viewportMode === "mobile"}
-              >
-                <Smartphone className="h-3 w-3" />
-                Mobile
-              </button>
-              {viewportMode === "mobile" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOrientation((o) =>
-                        o === "portrait" ? "landscape" : "portrait"
-                      );
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
-                      mobileOrientation === "landscape"
-                        ? "bg-comic-yellow text-ink"
-                        : "bg-surface text-ink hover:bg-comic-yellow"
-                    )}
-                    aria-pressed={mobileOrientation === "landscape"}
-                    title={
-                      mobileOrientation === "portrait"
-                        ? "Rotate to landscape"
-                        : "Rotate to portrait"
-                    }
-                  >
-                    <RotateCw className="h-3 w-3" />
-                    {mobileOrientation === "portrait" ? "Landscape" : "Portrait"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={mobileZoom.zoomOut}
-                    className="inline-flex items-center justify-center h-6 w-6 border-2 border-ink bg-surface hover:bg-comic-yellow"
-                    aria-label="Zoom out"
-                  >
-                    <ZoomOut className="h-3 w-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={mobileZoom.zoomIn}
-                    className="inline-flex items-center justify-center h-6 w-6 border-2 border-ink bg-surface hover:bg-comic-yellow"
-                    aria-label="Zoom in"
-                  >
-                    <ZoomIn className="h-3 w-3" />
-                  </button>
-                  {mobileZoom.isZoomed && (
+            <div className="flex flex-col items-end gap-1.5 normal-case w-full sm:w-auto">
+              <span className="flex flex-wrap items-center justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewportMode("desktop");
+                    setMobileOrientation("portrait");
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
+                    viewportMode === "desktop"
+                      ? "bg-comic-red text-white"
+                      : "bg-surface text-ink hover:bg-comic-yellow"
+                  )}
+                  aria-pressed={viewportMode === "desktop"}
+                >
+                  <Monitor className="h-3 w-3" />
+                  PC
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewportMode("mobile")}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
+                    viewportMode === "mobile"
+                      ? "bg-comic-red text-white"
+                      : "bg-surface text-ink hover:bg-comic-yellow"
+                  )}
+                  aria-pressed={viewportMode === "mobile"}
+                >
+                  <Smartphone className="h-3 w-3" />
+                  Mobile
+                </button>
+                {isMobileView && (
+                  <>
                     <button
                       type="button"
-                      onClick={mobileZoom.reset}
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 border-2 border-ink bg-surface hover:bg-comic-yellow text-[10px] font-comic"
+                      onClick={mobileZoom.zoomOut}
+                      className="inline-flex items-center justify-center h-6 w-6 border-2 border-ink bg-surface hover:bg-comic-yellow"
+                      aria-label="Zoom out"
                     >
-                      <RotateCcw className="h-3 w-3" />
-                      Reset
+                      <ZoomOut className="h-3 w-3" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={mobileZoom.zoomIn}
+                      className="inline-flex items-center justify-center h-6 w-6 border-2 border-ink bg-surface hover:bg-comic-yellow"
+                      aria-label="Zoom in"
+                    >
+                      <ZoomIn className="h-3 w-3" />
+                    </button>
+                    {mobileZoom.isZoomed && (
+                      <button
+                        type="button"
+                        onClick={mobileZoom.reset}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 border-2 border-ink bg-surface hover:bg-comic-yellow text-[10px] font-comic"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Reset
+                      </button>
+                    )}
+                  </>
+                )}
+              </span>
+              {isMobileView && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOrientation((o) =>
+                      o === "portrait" ? "landscape" : "portrait"
+                    );
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1 border-2 border-ink text-[11px] font-comic transition-colors w-full sm:w-auto justify-center",
+                    isLandscape
+                      ? "bg-comic-yellow text-ink"
+                      : "bg-surface text-ink hover:bg-comic-yellow"
                   )}
-                </>
+                  aria-pressed={isLandscape}
+                >
+                  <RotateCw
+                    className={cn("h-3.5 w-3.5", isLandscape && "rotate-90")}
+                  />
+                  {isLandscape
+                    ? "Landscape on — tap for portrait"
+                    : "Rotate to landscape (horizontal)"}
+                </button>
               )}
-            </span>
+            </div>
           )}
         </div>
       )}
@@ -408,21 +454,31 @@ export function LayoutPreview({
         {mobileZoomEnabled ? (
           <div
             ref={mobileZoom.containerRef}
-            className="w-full max-w-full overflow-hidden scrollbar-none touch-none cursor-grab active:cursor-grabbing"
-            style={{ height: mobileFrameHeight }}
+            className="w-full max-w-full overflow-hidden scrollbar-none touch-none cursor-grab active:cursor-grabbing flex items-center justify-center"
+            style={{ height: mobilePanContainerHeight, minHeight: 240 }}
           >
             <div
-              className="mx-auto origin-top"
+              className="relative flex items-center justify-center"
               style={{
-                width: viewportWidth,
-                maxWidth: "100%",
-                transform: `translate(${mobileZoom.transform.x}px, ${mobileZoom.transform.y}px) scale(${mobileZoom.transform.scale})`,
+                transform: `translate(${mobileZoom.transform.x}px, ${mobileZoom.transform.y}px)`,
               }}
             >
               <div
                 className={cn(
+                  "origin-center",
                   mobileZoom.isPanning && "pointer-events-none select-none"
                 )}
+                style={{
+                  width: isLandscape
+                    ? TEMPLATE_MOBILE_LANDSCAPE_WIDTH
+                    : TEMPLATE_MOBILE_WIDTH,
+                  height: isLandscape
+                    ? TEMPLATE_MOBILE_LANDSCAPE_HEIGHT
+                    : undefined,
+                  transform: rotateLandscapePhone
+                    ? `rotate(90deg) scale(${totalScale})`
+                    : `scale(${totalScale})`,
+                }}
               >
                 {iframeEl}
               </div>
@@ -434,8 +490,11 @@ export function LayoutPreview({
       </div>
       {mobileZoomEnabled && (
         <p className="px-3 py-1.5 text-[10px] font-comic text-ink-muted border-t-2 border-dashed border-ink">
-          Drag to pan and see more · pinch or +/- to zoom · Landscape flips phone
-          orientation
+          {isLandscape
+            ? "Landscape — wide phone layout (844×390). Drag to pan · pinch or +/- to zoom."
+            : "Portrait — drag to pan · pinch or +/- to zoom · use Rotate for horizontal layout."}
+          {" "}
+          Tilting your device also switches orientation when Mobile is active.
         </p>
       )}
     </div>

@@ -11,6 +11,7 @@ export const TEMPLATE_MOBILE_LANDSCAPE_HEIGHT = 390;
 
 /** Fixed preview frame height — scroll inside for taller templates. */
 export const TEMPLATE_PREVIEW_FRAME_HEIGHT = "min(82vh, 52rem)";
+export const TEMPLATE_MOBILE_PORTRAIT_FRAME_HEIGHT = 700;
 
 export function templateViewportWidth(mode: TemplateViewportMode): number {
   return mode === "desktop" ? TEMPLATE_DESKTOP_WIDTH : TEMPLATE_MOBILE_WIDTH;
@@ -18,7 +19,7 @@ export function templateViewportWidth(mode: TemplateViewportMode): number {
 
 export function mobilePreviewDimensions(orientation: MobileOrientation): {
   layoutWidth: number;
-  frameHeight: number | string;
+  frameHeight: number;
 } {
   if (orientation === "landscape") {
     return {
@@ -28,6 +29,13 @@ export function mobilePreviewDimensions(orientation: MobileOrientation): {
   }
   return {
     layoutWidth: TEMPLATE_MOBILE_WIDTH,
-    frameHeight: TEMPLATE_PREVIEW_FRAME_HEIGHT,
+    frameHeight: TEMPLATE_MOBILE_PORTRAIT_FRAME_HEIGHT,
   };
+}
+
+/** Scale landscape phone to fit a narrow outer container without squashing layout width. */
+export function landscapePreviewFitScale(containerWidth: number): number {
+  if (containerWidth < 1) return 1;
+  const padding = 32;
+  return Math.min(1, (containerWidth - padding) / TEMPLATE_MOBILE_LANDSCAPE_WIDTH);
 }
