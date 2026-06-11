@@ -175,6 +175,7 @@ export default function ProfilePage() {
             <UserAvatar
               username={profile.username}
               displayName={profile.display_name}
+              avatarUrl={profile.avatar_url}
               size="lg"
             />
             <div className="flex-1 min-w-0">

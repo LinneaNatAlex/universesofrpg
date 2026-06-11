@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
 import { cn } from "@/lib/utils";
 
@@ -38,13 +37,12 @@ export function UserAvatar({
       )}
     >
       {src ? (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element -- data URLs + any host; avatars are user uploads
+        <img
           src={src}
           alt=""
-          fill
-          sizes="64px"
-          className="object-cover"
-          unoptimized
+          className="absolute inset-0 h-full w-full object-cover"
+          decoding="async"
         />
       ) : (
         displayName.charAt(0)

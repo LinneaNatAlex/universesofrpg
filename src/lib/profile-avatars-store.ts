@@ -51,12 +51,16 @@ export function getProfileAvatarUrl(username: string | null | undefined): string
 export function setProfileAvatarUrl(username: string, url: string | null): boolean {
   ensureLoaded();
   const key = userKey(username);
-  if (!url || !isValidCoverSource(url)) {
+
+  if (!url) {
     avatars = avatars.filter((a) => userKey(a.username) !== key);
+  } else if (!isValidCoverSource(url)) {
+    return false;
   } else {
     const rest = avatars.filter((a) => userKey(a.username) !== key);
     avatars = [...rest, { username: key, avatar_url: url }];
   }
+
   const ok = persist();
   if (ok) notify();
   return ok;

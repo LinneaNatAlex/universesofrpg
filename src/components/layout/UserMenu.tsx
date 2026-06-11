@@ -23,6 +23,7 @@ import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useFriendInbox } from "@/hooks/useFriendInbox";
 import { useConversations } from "@/hooks/useConversations";
 import { createClient } from "@/lib/supabase/client";
+import { UserAvatar } from "@/components/profile/UserAvatar";
 
 export function UserMenu() {
   const router = useRouter();
@@ -41,8 +42,8 @@ export function UserMenu() {
         ? `/profile/${account.username}`
         : "/login";
 
-  const displayName = identity?.displayName ?? "Account";
-  const username = identity?.username;
+  const displayName = identity?.displayName ?? account?.displayName ?? "Account";
+  const username = identity?.username ?? account?.username;
   const { unread: unreadMessages } = useConversations(username ?? null);
 
   useEffect(() => {
@@ -101,9 +102,18 @@ export function UserMenu() {
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <span className="flex h-7 w-7 items-center justify-center bg-comic-red text-white shrink-0">
-          <User className="h-3.5 w-3.5" />
-        </span>
+        {username ? (
+          <UserAvatar
+            username={username}
+            displayName={displayName}
+            size="xs"
+            className="!h-7 !w-7 !text-[10px] shadow-none"
+          />
+        ) : (
+          <span className="flex h-7 w-7 items-center justify-center bg-comic-red text-white shrink-0">
+            <User className="h-3.5 w-3.5" />
+          </span>
+        )}
         <span className="hidden sm:block text-left min-w-0">
           <span className="block font-comic text-xs text-ink truncate leading-tight">
             {displayName}
