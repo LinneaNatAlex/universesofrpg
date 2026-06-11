@@ -34,8 +34,12 @@ function readFileState(): AvatarFileState {
 }
 
 function writeFileState(state: AvatarFileState): void {
-  mkdirSync(dirname(DATA_PATH), { recursive: true });
-  writeFileSync(DATA_PATH, JSON.stringify(state, null, 2), "utf8");
+  try {
+    mkdirSync(dirname(DATA_PATH), { recursive: true });
+    writeFileSync(DATA_PATH, JSON.stringify(state, null, 2), "utf8");
+  } catch {
+    // Serverless hosts use a read-only filesystem — Supabase is the source of truth.
+  }
 }
 
 function readFromFile(username: string): string | null {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { sanitizePostsPlatformState } from "@/lib/content-platform-sanitize";
 import {
   getPlatformContent,
   setPlatformContent,
@@ -29,29 +30,34 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireSessionUser(request);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
-  let body: PostsPlatformState;
   try {
-    body = (await request.json()) as PostsPlatformState;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    const auth = await requireSessionUser(request);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    let body: PostsPlatformState;
+    try {
+      body = (await request.json()) as PostsPlatformState;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const state = sanitizePostsPlatformState({
+      custom: Array.isArray(body.custom) ? body.custom : [],
+      deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+      likeCounts:
+        body.likeCounts && typeof body.likeCounts === "object" ? body.likeCounts : {},
+    });
+
+    const result = await setPlatformContent("posts", state);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, count: state.custom.length });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const state: PostsPlatformState = {
-    custom: Array.isArray(body.custom) ? body.custom : [],
-    deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
-    likeCounts:
-      body.likeCounts && typeof body.likeCounts === "object" ? body.likeCounts : {},
-  };
-
-  const result = await setPlatformContent("posts", state);
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true, count: state.custom.length });
 }
