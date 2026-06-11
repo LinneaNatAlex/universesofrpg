@@ -245,3 +245,38 @@ export function addPost(input: NewPostInput): FeedPost {
   notify();
   return post;
 }
+
+export type UpdatePostInput = Partial<NewPostInput>;
+
+export function updatePost(id: string, input: UpdatePostInput): FeedPost {
+  ensureLoaded();
+  const idx = posts.findIndex((p) => p.id === id);
+  if (idx === -1) throw new Error("Post not found.");
+
+  const existing = posts[idx];
+  const merged: FeedPost = {
+    ...existing,
+    ...input,
+    id: existing.id,
+    created_at: existing.created_at,
+    like_count: existing.like_count,
+    comment_count: existing.comment_count,
+    author_id: existing.author_id,
+    author: input.author ?? existing.author,
+  };
+
+  if (merged.pricing !== "free" && !postHasCover(merged)) {
+    throw new Error("Paid listings require a cover image before they can be saved.");
+  }
+
+  const updated = stripPaidCodeForStorage(merged);
+  posts[idx] = updated;
+  posts = sortPosts(posts);
+  if (!persist()) {
+    throw new Error(
+      "Could not save your changes in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file."
+    );
+  }
+  notify();
+  return updated;
+}

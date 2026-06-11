@@ -2,6 +2,22 @@
 export const TEMPLATE_IFRAME_SANDBOX = "allow-scripts allow-same-origin";
 export const TEMPLATE_IFRAME_ALLOW = "autoplay; encrypted-media";
 
+/** Strip injected theme audio so editors can edit raw HTML. */
+export function stripThemeMusic(html: string): string {
+  return html
+    .replace(/\s*<audio id="uorpg-theme-audio"[\s\S]*?<\/audio>\s*/i, "")
+    .trim();
+}
+
+/** Read theme music URL from injected audio markup, if present. */
+export function extractThemeMusicUrl(html: string | null | undefined): string {
+  if (!html) return "";
+  const match = html.match(
+    /id="uorpg-theme-audio"[\s\S]*?<source src="([^"]+)"/i
+  );
+  return match?.[1]?.replace(/&quot;/g, '"') ?? "";
+}
+
 /** Optional theme music URL — injected into template HTML for preview & publish. */
 export function injectThemeMusic(html: string, musicUrl: string | null | undefined): string {
   const url = musicUrl?.trim();

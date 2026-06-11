@@ -24,6 +24,25 @@ export function getPostById(id: string): FeedPost | undefined {
   return post ? withCommentCount(post) : undefined;
 }
 
+/** Full source for the edit studio — vault, then preview fields, then inline code. */
+export function getPostForEditing(id: string): FeedPost | undefined {
+  const post = getPostById(id);
+  if (!post) return undefined;
+
+  const merged = mergeVaultedCode(post);
+  return {
+    ...merged,
+    html_code: merged.html_code ?? merged.preview_html_code ?? null,
+    css_code: merged.css_code ?? merged.preview_css_code ?? null,
+    js_code: merged.js_code ?? merged.preview_js_code ?? null,
+  };
+}
+
+export function canEditPost(post: FeedPost, username: string | null): boolean {
+  if (!username) return false;
+  return post.author.username.toLowerCase() === username.toLowerCase();
+}
+
 export function getFeedPosts(): FeedPost[] {
   return getAllPosts()
     .filter((p) => p.moderation_status === "approved")

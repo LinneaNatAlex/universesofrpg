@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
-import { addPost } from "@/lib/posts-store";
+import { addPost, updatePost } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
 import { injectThemeMusic } from "@/lib/template-preview";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
@@ -42,10 +42,23 @@ const DEFAULT_CSS = `.hero {
 
 const DEFAULT_JS = `// Interactive RPG elements`;
 
+export interface CodePlaygroundInitialValues {
+  title: string;
+  description: string;
+  html: string;
+  css: string;
+  js: string;
+  coverUrl: string;
+  musicUrl?: string;
+  codeLocked?: boolean;
+}
+
 interface CodePlaygroundProps {
   loggedIn?: boolean;
   pricing?: PricingType;
   priceCents?: number;
+  editPostId?: string;
+  initialValues?: CodePlaygroundInitialValues;
   onPublished?: (result: { pending: boolean; postId: string }) => void;
 }
 
@@ -53,9 +66,12 @@ export function CodePlayground({
   loggedIn = false,
   pricing = "free",
   priceCents = 499,
+  editPostId,
+  initialValues,
   onPublished,
 }: CodePlaygroundProps) {
   const identity = useActingIdentity();
+  const isEditing = Boolean(editPostId);
   const [tab, setTab] = useState<Tab>("html");
   const [html, setHtml] = useState(DEFAULT_HTML);
   const [css, setCss] = useState(DEFAULT_CSS);
@@ -66,6 +82,18 @@ export function CodePlayground({
   const [description, setDescription] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+
+  useEffect(() => {
+    if (!initialValues) return;
+    setTitle(initialValues.title);
+    setDescription(initialValues.description);
+    setHtml(initialValues.html || DEFAULT_HTML);
+    setCss(initialValues.css || DEFAULT_CSS);
+    setJs(initialValues.js || DEFAULT_JS);
+    setCoverUrl(initialValues.coverUrl);
+    setMusicUrl(initialValues.musicUrl ?? "");
+    setCodeLocked(initialValues.codeLocked ?? false);
+  }, [initialValues]);
 
   const previewHtml = injectThemeMusic(html, musicUrl);
 
@@ -86,38 +114,54 @@ export function CodePlayground({
     }
 
     const moderation = initialModerationStatus(pricing);
+    const payload = {
+      type: "code_template" as const,
+      title: title.trim(),
+      description: description.trim() || "Code template",
+      plot_synopsis: null,
+      content: null,
+      html_code: previewHtml,
+      css_code: css,
+      js_code: js,
+      bbcode: null,
+      preview_image_url: coverUrl.trim(),
+      book_cover_url: null,
+      invite_token: null,
+      pricing,
+      price_cents: pricing === "free" ? 0 : priceCents,
+      is_code_locked: pricing !== "free" ? true : codeLocked,
+      moderation_status: moderation,
+      is_ai_generated: false,
+      tags: ["profile", "code"],
+      style_tags: [] as string[],
+    };
 
-    let post;
+    let postId: string;
     try {
-      post = addPost({
-        author_id: identity.authorId,
-        author: identity.profile,
-        type: "code_template",
-        title: title.trim(),
-        description: description.trim() || "Code template",
-        plot_synopsis: null,
-        content: null,
-        html_code: previewHtml,
-        css_code: css,
-        js_code: js,
-        bbcode: null,
-        preview_image_url: coverUrl.trim(),
-        book_cover_url: null,
-        invite_token: null,
-        pricing,
-        price_cents: pricing === "free" ? 0 : priceCents,
-        is_code_locked: pricing !== "free" ? true : codeLocked,
-        moderation_status: moderation,
-        is_ai_generated: false,
-        tags: ["profile", "code"],
-        style_tags: [],
-      });
+      if (editPostId) {
+        const { moderation_status: _ignored, ...editPayload } = payload;
+        updatePost(editPostId, editPayload);
+        postId = editPostId;
+      } else {
+        const post = addPost({
+          ...payload,
+          author_id: identity.authorId,
+          author: identity.profile,
+        });
+        postId = post.id;
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not publish your template.");
+      alert(
+        err instanceof Error
+          ? err.message
+          : isEditing
+            ? "Could not save your template."
+            : "Could not publish your template."
+      );
       return;
     }
 
-    onPublished?.({ pending: moderation === "pending", postId: post.id });
+    onPublished?.({ pending: moderation === "pending", postId });
   }
 
   const editorValue = tab === "html" ? html : tab === "css" ? css : js;
@@ -151,7 +195,7 @@ export function CodePlayground({
               {showPreview ? "Hide preview" : "Show preview"}
             </Button>
             <Button variant="comic" size="sm" onClick={handlePublish}>
-              Publish template
+              {isEditing ? "Save changes" : "Publish template"}
             </Button>
           </div>
         )}

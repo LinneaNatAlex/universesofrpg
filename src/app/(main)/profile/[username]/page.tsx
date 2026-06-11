@@ -270,6 +270,7 @@ export default function ProfilePage() {
         <ProfileCreationsTab
           creations={creations}
           showPendingNote={isOwnProfile}
+          editable={isOwnProfile}
         />
       ) : tab === "friends" ? (
         <ProfileFriendsTab
