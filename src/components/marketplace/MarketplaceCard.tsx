@@ -48,6 +48,8 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const identity = useActingIdentity();
   const { buy, busy, error } = useMarketplaceBuy();
   const Icon = TYPE_ICONS[post.type];
+  const coverOnly =
+    post.type !== "code_template" || getPublicTemplatePreviewBundle(post) === null;
 
   async function handlePurchase() {
     if (!isLoggedIn) {
@@ -95,7 +97,7 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         </div>
 
         <div className="mx-auto mb-3 flex justify-center">
-          <PostCoverThumbnail post={post} size="md" coverOnly />
+          <PostCoverThumbnail post={post} size="md" coverOnly={coverOnly} />
         </div>
 
         <Link href={`/post/${post.id}`} className="block group">

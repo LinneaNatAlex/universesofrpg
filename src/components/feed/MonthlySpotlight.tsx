@@ -18,7 +18,11 @@ import type { FeedPost } from "@/types/database";
 const ROTATE_MS = 6000;
 
 function SpotlightVisual({ post }: { post: FeedPost }) {
-  const coverOnly = post.pricing !== "free" || requiresCodePurchase(post);
+  const hasLiveTemplatePreview =
+    post.type === "code_template" && getPublicTemplatePreviewBundle(post) !== null;
+  const coverOnly =
+    !hasLiveTemplatePreview &&
+    (post.pricing !== "free" || requiresCodePurchase(post));
 
   return (
     <PostCoverThumbnail
