@@ -5,6 +5,15 @@ import { Banknote, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
+import {
+  CONNECT_EXPRESS_COUNTRIES,
+  defaultConnectCountryCode,
+  isConnectCountryCode,
+} from "@/lib/connect-countries";
+
+function connectCountryStorageKey(username: string) {
+  return `uorpg_connect_country:${username.toLowerCase()}`;
+}
 
 interface ConnectStatus {
   configured: boolean;
@@ -23,6 +32,7 @@ export function CreatorPayoutSettings() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payoutCountry, setPayoutCountry] = useState("NO");
 
   const sellerUsername = identity?.username ?? null;
   const actingAsDemo = Boolean(identity?.isActingAsPersona);
@@ -58,6 +68,16 @@ export function CreatorPayoutSettings() {
   }, [isLoggedIn, refresh]);
 
   useEffect(() => {
+    if (!sellerUsername || typeof window === "undefined") return;
+    const stored = localStorage.getItem(connectCountryStorageKey(sellerUsername));
+    if (stored && isConnectCountryCode(stored)) {
+      setPayoutCountry(stored.toUpperCase());
+      return;
+    }
+    setPayoutCountry(defaultConnectCountryCode());
+  }, [sellerUsername]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const connect = params.get("connect");
     if (connect === "success" || connect === "refresh") {
@@ -82,6 +102,7 @@ export function CreatorPayoutSettings() {
         credentials: "include",
         body: JSON.stringify({
           acting_username: actingAsDemo ? sellerUsername : undefined,
+          country: payoutCountry,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -196,6 +217,36 @@ export function CreatorPayoutSettings() {
               Settings on your <strong>Netlify URL</strong> (https://…) with live keys.
             </p>
           )}
+        </div>
+      )}
+
+      {status?.configured && !status.connected && (
+        <div className="space-y-2">
+          <label className="block text-sm font-comic text-ink" htmlFor="payout-country">
+            Payout country
+          </label>
+          <select
+            id="payout-country"
+            value={payoutCountry}
+            onChange={(e) => {
+              const code = e.target.value.toUpperCase();
+              setPayoutCountry(code);
+              if (sellerUsername) {
+                localStorage.setItem(connectCountryStorageKey(sellerUsername), code);
+              }
+            }}
+            className="w-full border-2 border-ink px-3 py-2 text-sm bg-white font-sans"
+          >
+            {CONNECT_EXPRESS_COUNTRIES.map(({ code, label }) => (
+              <option key={code} value={code}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">
+            Choose where your bank account is. Stripe locks the country when you start — it
+            cannot be changed later without setting up payouts again.
+          </p>
         </div>
       )}
 

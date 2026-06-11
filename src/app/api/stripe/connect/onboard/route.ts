@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveSellerUsername } from "@/lib/api-session-auth";
+import { isConnectCountryCode } from "@/lib/connect-countries";
 import { getConnectDefaultCountry } from "@/lib/stripe-connect-config";
 import { getStripe, isStripeConnectConfigured } from "@/lib/stripe-server";
 import {
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
 
   const username = auth.sellerUsername;
 
-  const country = (body.country ?? getConnectDefaultCountry()).toUpperCase();
+  const countryRaw = (body.country ?? getConnectDefaultCountry()).toUpperCase();
+  const country = isConnectCountryCode(countryRaw) ? countryRaw : getConnectDefaultCountry();
 
   try {
     let record = await getConnectAccount(username);
