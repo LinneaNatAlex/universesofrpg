@@ -21,10 +21,37 @@ import { recordPlatformPurchase } from "@/lib/marketplace-platform-store";
  * Persist subscription state to Supabase in production (not localStorage).
  * This handler returns 200 with a JSON summary for wiring tests.
  */
+function getWebhookSecrets(): string[] {
+  return [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+  ].filter((s): s is string => Boolean(s?.trim()));
+}
+
+function constructWebhookEvent(
+  stripe: NonNullable<ReturnType<typeof getStripe>>,
+  rawBody: string,
+  signature: string
+): Stripe.Event {
+  const secrets = getWebhookSecrets();
+  let lastError: unknown;
+
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(rawBody, signature, secret);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  const message =
+    lastError instanceof Error ? lastError.message : "Invalid signature";
+  throw new Error(message);
+}
+
 export async function POST(request: Request) {
   const stripe = getStripe();
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!stripe || !webhookSecret) {
+  if (!stripe || getWebhookSecrets().length === 0) {
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   }
 
@@ -37,7 +64,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = constructWebhookEvent(stripe, rawBody, signature);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid signature";
     return NextResponse.json({ error: message }, { status: 400 });
