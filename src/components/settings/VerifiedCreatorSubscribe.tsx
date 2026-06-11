@@ -20,10 +20,15 @@ import {
   activateVerifiedCreatorSubscription,
   getVerificationSubscription,
   hasActiveVerificationSubscription,
-  recordVerificationSubscriptionDemo,
   subscribeVerificationPayments,
   syncVerifiedCreatorAccess,
 } from "@/lib/verification-payments-store";
+import {
+  clearPendingVerificationCheckout,
+  readPendingVerificationCheckout,
+  savePendingVerificationCheckout,
+} from "@/lib/verification-checkout-pending";
+import { getVerificationPaymentLink } from "@/lib/stripe-verification-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, CreditCard, Shield, XCircle } from "lucide-react";
@@ -94,7 +99,8 @@ export function VerifiedCreatorSubscribe() {
         );
         const data = (await res.json()) as {
           error?: string;
-          username?: string;
+          username?: string | null;
+          customer_email?: string | null;
           status?: "active" | "canceled" | "past_due";
           current_period_end?: string;
           stripe_subscription_id?: string;
@@ -106,13 +112,29 @@ export function VerifiedCreatorSubscribe() {
           throw new Error(data.error ?? "Could not confirm payment");
         }
 
-        if (data.username?.toLowerCase() !== identity!.username.toLowerCase()) {
+        const pending = readPendingVerificationCheckout();
+        const resolvedUsername = (
+          data.username ??
+          pending?.username ??
+          identity!.username
+        ).toLowerCase();
+
+        if (resolvedUsername !== identity!.username.toLowerCase()) {
           throw new Error("This checkout belongs to a different account.");
+        }
+
+        if (data.customer_email && user?.email) {
+          const paidEmail = data.customer_email.toLowerCase();
+          const accountEmail = user.email.toLowerCase();
+          const pendingEmail = pending?.email?.toLowerCase();
+          if (paidEmail !== accountEmail && paidEmail !== pendingEmail) {
+            throw new Error("Payment email does not match your signed-in account.");
+          }
         }
 
         if (!cancelled && data.status && data.current_period_end) {
           activateVerifiedCreatorSubscription({
-            username: identity!.username,
+            username: resolvedUsername,
             amount_cents: data.amount_cents,
             status: data.status,
             current_period_end: data.current_period_end,
@@ -122,6 +144,7 @@ export function VerifiedCreatorSubscribe() {
           setSubscribed(data.status === "active");
           setPeriodEnd(data.current_period_end);
           setSuccessMessage("Subscription active — verified creator badge unlocked!");
+          clearPendingVerificationCheckout();
         }
       } catch (err) {
         if (!cancelled) {
@@ -183,36 +206,15 @@ export function VerifiedCreatorSubscribe() {
 
     setCheckingOut(true);
     try {
-      const res = await fetch("/api/stripe/verification-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: identity!.username,
-          email: user?.email ?? undefined,
-        }),
-      });
-
-      if (res.ok) {
-        const data = (await res.json()) as { url?: string };
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
+      const paymentLink = getVerificationPaymentLink();
+      savePendingVerificationCheckout(identity!.username, user?.email ?? undefined);
+      const url = new URL(paymentLink);
+      if (user?.email) {
+        url.searchParams.set("prefilled_email", user.email);
       }
-
-      if (res.status === 503) {
-        recordVerificationSubscriptionDemo(identity!.username);
-        setSubscribed(true);
-        setPeriodEnd(getVerificationSubscription(identity!.username)?.current_period_end ?? null);
-        setSuccessMessage("Demo subscription active — verified badge unlocked locally.");
-        return;
-      }
-
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Could not start checkout.");
+      window.location.href = url.toString();
     } catch {
-      setError("Could not start checkout. Try again.");
-    } finally {
+      setError("Could not open Stripe checkout. Try again.");
       setCheckingOut(false);
     }
   }
@@ -250,8 +252,9 @@ export function VerifiedCreatorSubscribe() {
           </Button>
         )}
         <p className="text-[10px] text-ink-muted">
-          You&apos;ll return here after Stripe checkout. Without Stripe keys, demo mode
-          activates a 30-day subscription locally.
+          You&apos;ll return here after Stripe checkout. Set the Payment Link redirect in
+          Stripe to this site&apos;s settings URL with{" "}
+          <code className="text-[9px]">session_id=&#123;CHECKOUT_SESSION_ID&#125;</code>.
         </p>
       </div>
 

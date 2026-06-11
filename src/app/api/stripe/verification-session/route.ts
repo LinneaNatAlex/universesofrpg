@@ -4,7 +4,7 @@ import {
   mapStripeSubscriptionStatus,
   stripePeriodEndIso,
 } from "@/lib/stripe-subscription-status";
-import { getStripe, isStripeConfigured } from "@/lib/stripe-server";
+import { getStripe } from "@/lib/stripe-server";
 import { VERIFICATION_SUBSCRIPTION_CENTS } from "@/lib/currency";
 
 /**
@@ -12,13 +12,9 @@ import { VERIFICATION_SUBSCRIPTION_CENTS } from "@/lib/currency";
  * and receive subscription details to store locally (until Supabase sync exists).
  */
 export async function GET(request: Request) {
-  if (!isStripeConfigured()) {
-    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
-  }
-
   const stripe = getStripe();
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe misconfigured" }, { status: 503 });
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
   }
 
   const sessionId = new URL(request.url).searchParams.get("session_id")?.trim();
@@ -56,18 +52,21 @@ export async function GET(request: Request) {
   const username = (
     session.metadata?.uorpg_username ??
     subscription.metadata?.uorpg_username ??
+    session.client_reference_id ??
     ""
   )
     .trim()
     .toLowerCase();
 
-  if (!username) {
-    return NextResponse.json({ error: "Username missing from session metadata" }, { status: 400 });
-  }
-
-  if (session.metadata?.uorpg_product !== "verified_creator_subscription") {
+  const product = session.metadata?.uorpg_product ?? subscription.metadata?.uorpg_product;
+  if (product && product !== "verified_creator_subscription") {
     return NextResponse.json({ error: "Unknown product" }, { status: 400 });
   }
+
+  const customerEmail =
+    session.customer_details?.email?.trim() ||
+    session.customer_email?.trim() ||
+    null;
 
   const status = mapStripeSubscriptionStatus(subscription.status);
   const customerId =
@@ -76,7 +75,8 @@ export async function GET(request: Request) {
       : session.customer?.id ?? null;
 
   return NextResponse.json({
-    username,
+    username: username || null,
+    customer_email: customerEmail,
     amount_cents: VERIFICATION_SUBSCRIPTION_CENTS,
     status,
     current_period_end: stripePeriodEndIso(subscription),
