@@ -62,8 +62,11 @@ export async function hydratePurchasesFromServer(username: string): Promise<void
   if (typeof window === "undefined") return;
 
   try {
+    const { authFetchHeaders } = await import("@/lib/api-client-auth");
+    const headers = await authFetchHeaders();
     const res = await fetch("/api/marketplace/purchases", {
       credentials: "include",
+      headers,
       cache: "no-store",
     });
     if (!res.ok) return;

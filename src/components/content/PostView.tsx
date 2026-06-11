@@ -11,13 +11,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { useEditor } from "@/hooks/useEditor";
+import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import {
   canViewCodePreview,
   canViewCodeSource,
   canViewFullContent,
   getCodeTemplatePreviewBundle,
   requiresCodePurchase,
-  resolvePostForViewer,
 } from "@/lib/posts";
 import { moderationStatusLabel } from "@/lib/moderation";
 import { CodeSourcePanel } from "@/components/content/CodeSourcePanel";
@@ -57,45 +57,50 @@ export function PostView({ post: rawPost }: PostViewProps) {
     inviteToken: invite,
     isEditor,
   };
-  const post = resolvePostForViewer(rawPost, viewer);
-  const fullAccess = canViewFullContent(isLoggedIn, invite, post.invite_token);
-  const codeIsFree = post.type === "code_template" && !requiresCodePurchase(post);
+  const fullAccess = canViewFullContent(isLoggedIn, invite, rawPost.invite_token);
+  const codeIsFree = rawPost.type === "code_template" && !requiresCodePurchase(rawPost);
   const showCodeSection = canViewCodePreview(rawPost);
-  const previewBundle = getCodeTemplatePreviewBundle(rawPost, viewer);
+  const canViewSource = canViewCodeSource(rawPost, viewer);
+  const { bundle: purchasedSource } = usePostSourceCode(
+    rawPost.id,
+    canViewSource && requiresCodePurchase(rawPost)
+  );
+  const previewBundle =
+    purchasedSource ?? getCodeTemplatePreviewBundle(rawPost, viewer);
   const showLiveCodePreview = previewBundle !== null;
-  const synopsis = post.plot_synopsis ?? post.description ?? "";
+  const synopsis = rawPost.plot_synopsis ?? rawPost.description ?? "";
 
   const accessMessage =
-    post.pricing === "free"
+    rawPost.pricing === "free"
       ? "This work is free — join to unlock the full content."
       : "Sign in to preview. Purchase is required for premium downloads.";
 
   const isAuthor =
-    identity?.username.toLowerCase() === post.author.username.toLowerCase();
+    identity?.username.toLowerCase() === rawPost.author.username.toLowerCase();
 
   useEffect(() => {
-    if (post.moderation_status !== "pending") {
+    if (rawPost.moderation_status !== "pending") {
       setEditorChatId(null);
       return;
     }
     const refresh = () => {
-      const conv = getEditorReviewConversationForPost(post.id);
+      const conv = getEditorReviewConversationForPost(rawPost.id);
       setEditorChatId(conv?.id ?? null);
     };
     refresh();
     return subscribeMessages(refresh);
-  }, [post.id, post.moderation_status]);
+  }, [rawPost.id, rawPost.moderation_status]);
 
   return (
     <article
       className={`space-y-6 mx-auto ${
-        post.type === "code_template" ? "max-w-7xl" : "max-w-3xl"
+        rawPost.type === "code_template" ? "max-w-7xl" : "max-w-3xl"
       }`}
     >
-      {post.moderation_status === "pending" && (
+      {rawPost.moderation_status === "pending" && (
         <div className="comic-panel px-4 py-2 text-xs font-comic text-comic-red text-center bg-comic-yellow/40 space-y-1">
           <p>
-            {moderationStatusLabel(post.moderation_status)} — visible to you and editors until
+            {moderationStatusLabel(rawPost.moderation_status)} — visible to you and editors until
             approved.
           </p>
           {isAuthor && editorChatId && (
@@ -108,20 +113,20 @@ export function PostView({ post: rawPost }: PostViewProps) {
       {!fullAccess && !codeIsFree && (
         <p className="comic-panel px-4 py-2 text-xs font-comic text-ink-muted text-center">
           You&apos;re viewing a teaser. Sign up to unlock full content
-          {post.pricing !== "free" ? " (premium may require purchase)." : "."}
+          {rawPost.pricing !== "free" ? " (premium may require purchase)." : "."}
         </p>
       )}
       <header className="space-y-2">
         <Link
-          href={`/profile/${post.author.username}`}
+          href={`/profile/${rawPost.author.username}`}
           className="text-sm font-comic text-comic-red hover:underline"
         >
-          @{post.author.username}
+          @{rawPost.author.username}
         </Link>
-        <h1 className="font-comic text-3xl md:text-4xl text-ink">{post.title}</h1>
+        <h1 className="font-comic text-3xl md:text-4xl text-ink">{rawPost.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="comic">{post.type.replace("_", " ")}</Badge>
-          {post.pricing === "free" ? (
+          <Badge variant="comic">{rawPost.type.replace("_", " ")}</Badge>
+          {rawPost.pricing === "free" ? (
             <Badge variant="free">Free</Badge>
           ) : (
             <Badge variant="paid">Paid</Badge>
@@ -131,8 +136,8 @@ export function PostView({ post: rawPost }: PostViewProps) {
               targetType="post"
               reporterUsername={identity.username}
               reporterDisplayName={identity.displayName}
-              postId={post.id}
-              postTitle={post.title}
+              postId={rawPost.id}
+              postTitle={rawPost.title}
               label="Report post"
               className="ml-auto"
             />
@@ -154,15 +159,13 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 js={previewBundle.js_code}
                 mode="full"
                 height={240}
-                sourceLocked={
-                  requiresCodePurchase(post) && !canViewCodeSource(rawPost, viewer)
-                }
+                sourceLocked={requiresCodePurchase(rawPost) && !canViewSource}
                 defaultViewport="desktop"
               />
             ) : rawPost.preview_image_url ? (
               <AssetTeaserPreview
                 src={rawPost.preview_image_url}
-                alt={post.title}
+                alt={rawPost.title}
                 fullAccess
                 hint="Live template preview is not available for this listing yet."
               />
@@ -178,17 +181,17 @@ export function PostView({ post: rawPost }: PostViewProps) {
       )}
 
       {/* Asset / image previews */}
-      {(post.type === "digital_asset" || post.preview_image_url) &&
-        post.type !== "code_template" &&
-        post.preview_image_url && (
+      {(rawPost.type === "digital_asset" || rawPost.preview_image_url) &&
+        rawPost.type !== "code_template" &&
+        rawPost.preview_image_url && (
           <section className="space-y-3">
             <AssetTeaserPreview
-              src={post.preview_image_url}
-              alt={post.title}
+              src={rawPost.preview_image_url}
+              alt={rawPost.title}
               fullAccess={fullAccess}
               hint={
-                post.type === "digital_asset"
-                  ? (post.plot_synopsis ?? post.description ?? "Full-resolution pack for members.")
+                rawPost.type === "digital_asset"
+                  ? (rawPost.plot_synopsis ?? rawPost.description ?? "Full-resolution pack for members.")
                   : undefined
               }
             />
@@ -199,18 +202,18 @@ export function PostView({ post: rawPost }: PostViewProps) {
         )}
 
       {/* Story / text — back-of-book for guests */}
-      {isStoryLike(post.type) && (
+      {isStoryLike(rawPost.type) && (
         <section className="space-y-4">
           <BookBackCover
-            title={post.title}
+            title={rawPost.title}
             synopsis={synopsis}
-            coverUrl={post.book_cover_url}
+            coverUrl={rawPost.book_cover_url}
           />
           {fullAccess ? (
             <div className="comic-panel p-6 prose-comic">
-              <p className="whitespace-pre-wrap leading-relaxed">{post.content}</p>
-              {post.bbcode && (
-                <p className="mt-4 text-sm text-ink-muted font-mono">{post.bbcode}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">{rawPost.content}</p>
+              {rawPost.bbcode && (
+                <p className="mt-4 text-sm text-ink-muted font-mono">{rawPost.bbcode}</p>
               )}
             </div>
           ) : (
@@ -222,14 +225,14 @@ export function PostView({ post: rawPost }: PostViewProps) {
       <div className="comic-panel px-4 py-3 flex items-center justify-between border-2 border-ink">
         <p className="text-xs font-comic text-ink-muted uppercase">Community</p>
         <PostEngagementBar
-          postId={post.id}
-          likeCount={post.like_count}
-          isPaid={post.pricing !== "free"}
+          postId={rawPost.id}
+          likeCount={rawPost.like_count}
+          isPaid={rawPost.pricing !== "free"}
         />
       </div>
 
       <div id="comments">
-        <CommentSection postId={post.id} />
+        <CommentSection postId={rawPost.id} />
       </div>
     </article>
   );

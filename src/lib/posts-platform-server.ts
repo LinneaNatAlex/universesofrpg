@@ -1,0 +1,15 @@
+import type { PostsPlatformState } from "@/app/api/content/posts/route";
+import { getPlatformContent } from "@/lib/content-platform-store";
+import type { FeedPost } from "@/types/database";
+
+const EMPTY: PostsPlatformState = {
+  custom: [],
+  deletedMockIds: [],
+  likeCounts: {},
+};
+
+export async function getPostFromPlatform(postId: string): Promise<FeedPost | null> {
+  const state = await getPlatformContent<PostsPlatformState>("posts", EMPTY);
+  const custom = Array.isArray(state.custom) ? state.custom : [];
+  return custom.find((p) => p.id === postId) ?? null;
+}

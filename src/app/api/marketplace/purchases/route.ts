@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const postId = params.get("post_id")?.trim();
 
-  const auth = await requireSessionUser();
+  const auth = await requireSessionUser(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

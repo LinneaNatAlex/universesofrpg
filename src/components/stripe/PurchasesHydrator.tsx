@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { ensurePurchasesHydrated } from "@/lib/purchases-store";
 
 export function PurchasesHydrator() {
-  const identity = useActingIdentity();
+  const account = useAccountIdentity();
 
   useEffect(() => {
-    ensurePurchasesHydrated(identity?.username ?? null);
-  }, [identity?.username]);
+    ensurePurchasesHydrated(account?.username ?? null);
+  }, [account?.username]);
 
   return null;
 }

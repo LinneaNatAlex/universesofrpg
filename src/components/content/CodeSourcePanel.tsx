@@ -6,15 +6,16 @@ import { Lock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { usePostSourceCode } from "@/hooks/usePostSourceCode";
+import { authFetchHeaders } from "@/lib/api-client-auth";
 import {
   canViewCodeSource,
   requiresCodePurchase,
-  resolvePostForViewer,
 } from "@/lib/posts";
-import { subscribePurchases } from "@/lib/purchases-store";
+import { recordPurchase, subscribePurchases } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
 type Tab = "html" | "css" | "js";
@@ -26,34 +27,57 @@ interface CodeSourcePanelProps {
 
 export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { isLoggedIn } = useAuth();
-  const identity = useActingIdentity();
+  const account = useAccountIdentity();
+  const buyerUsername = account?.username ?? null;
   const { isEditor } = useEditor();
-  const username = identity?.username ?? null;
   const [tab, setTab] = useState<Tab>("html");
   const [unlocked, setUnlocked] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
   const { buy, busy, error: buyError } = useMarketplaceBuy();
 
   const needsPurchase = requiresCodePurchase(post);
-  const viewer = { isLoggedIn, username, inviteToken, isEditor };
+  const viewer = { isLoggedIn, username: buyerUsername, inviteToken, isEditor };
+  const { bundle, loading, error: sourceError } = usePostSourceCode(post.id, unlocked);
 
   useEffect(() => {
-    const refresh = () => {
-      setUnlocked(canViewCodeSource(post, viewer));
-    };
-    refresh();
-    const unsub = subscribePurchases(refresh);
-    return unsub;
-  }, [post, isLoggedIn, username, inviteToken, isEditor]);
+    const refresh = async () => {
+      let next = canViewCodeSource(post, viewer);
 
-  const sourcePost = unlocked ? resolvePostForViewer(post, viewer) : post;
+      if (!next && buyerUsername && needsPurchase) {
+        try {
+          const headers = await authFetchHeaders();
+          const res = await fetch(
+            `/api/marketplace/purchases?post_id=${encodeURIComponent(post.id)}`,
+            { credentials: "include", headers, cache: "no-store" }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as { purchased?: boolean };
+            if (data.purchased) {
+              recordPurchase(buyerUsername, post.id);
+              next = true;
+            }
+          }
+        } catch {
+          // keep local cache
+        }
+      }
+
+      setUnlocked(next);
+    };
+
+    void refresh();
+    const unsub = subscribePurchases(() => {
+      void refresh();
+    });
+    return unsub;
+  }, [post, isLoggedIn, buyerUsername, inviteToken, isEditor, needsPurchase]);
 
   async function handlePurchase() {
     if (!isLoggedIn) {
       window.location.href = "/login";
       return;
     }
-    if (!username) return;
+    if (!buyerUsername) return;
 
     const ok = await buy(
       {
@@ -62,7 +86,7 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
         price_cents: post.price_cents,
         seller_username: post.author.username,
       },
-      username,
+      buyerUsername,
       () => {
         setJustPurchased(true);
         setUnlocked(true);
@@ -128,9 +152,9 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   }
 
   const sources: { id: Tab; label: string; code: string | null }[] = [
-    { id: "html", label: "HTML", code: sourcePost.html_code },
-    { id: "css", label: "CSS", code: sourcePost.css_code },
-    { id: "js", label: "JS", code: sourcePost.js_code },
+    { id: "html", label: "HTML", code: bundle?.html_code ?? post.html_code },
+    { id: "css", label: "CSS", code: bundle?.css_code ?? post.css_code },
+    { id: "js", label: "JS", code: bundle?.js_code ?? post.js_code },
   ];
 
   const active = sources.find((s) => s.id === tab) ?? sources[0];
@@ -144,7 +168,17 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
       )}
       {justPurchased && (
         <p className="px-4 py-2 text-xs font-comic bg-emerald-100 border-b-2 border-ink text-ink">
-          Purchase recorded — source code unlocked.
+          Purchase confirmed — source code unlocked.
+        </p>
+      )}
+      {loading && (
+        <p className="px-4 py-2 text-xs font-comic text-ink-muted border-b-2 border-ink">
+          Loading source from server…
+        </p>
+      )}
+      {sourceError && !loading && (
+        <p className="px-4 py-2 text-xs font-comic text-comic-red border-b-2 border-ink">
+          {sourceError} Ask the creator to re-save the listing so code syncs to the server.
         </p>
       )}
       <div className="flex border-b-2 border-ink bg-comic-yellow/40">

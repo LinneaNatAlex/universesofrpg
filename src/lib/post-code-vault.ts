@@ -39,7 +39,13 @@ export function saveVaultedCode(postId: string, bundle: PostCodeBundle): boolean
     css_code: bundle.css_code,
     js_code: bundle.js_code ?? null,
   };
-  return saveVault(vault);
+  const ok = saveVault(vault);
+  if (ok) {
+    void import("@/lib/post-source-code-client").then(({ pushPostSourceCodeToServer }) =>
+      pushPostSourceCodeToServer(postId, bundle)
+    );
+  }
+  return ok;
 }
 
 export function removeVaultedCode(postId: string): void {
