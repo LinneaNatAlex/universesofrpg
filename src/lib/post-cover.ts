@@ -1,3 +1,4 @@
+import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import type { FeedPost } from "@/types/database";
 
 /** Cover image URL for list cards — preview_image for code/assets, book_cover for stories. */
@@ -22,12 +23,8 @@ export function getPostCoverImage(post: FeedPost): string | null {
 }
 
 export function postHasLiveCodeThumb(post: FeedPost): boolean {
-  return (
-    post.type === "code_template" &&
-    !getPostCoverImage(post) &&
-    !!post.html_code &&
-    !!post.css_code
-  );
+  if (post.type !== "code_template") return false;
+  return getPublicTemplatePreviewBundle(post) !== null;
 }
 
 export function postHasCover(

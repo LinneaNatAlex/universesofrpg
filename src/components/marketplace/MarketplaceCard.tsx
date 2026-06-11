@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
+import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {

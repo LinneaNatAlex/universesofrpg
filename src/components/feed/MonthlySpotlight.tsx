@@ -10,6 +10,7 @@ import { LikeButton } from "@/components/feed/LikeButton";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
 import { useCommentCount } from "@/hooks/useCommentCount";
 import { useMonthlySpotlight } from "@/hooks/useMonthlySpotlight";
+import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import { requiresCodePurchase } from "@/lib/posts";
 import { formatSpotlightMonth, type SpotlightPick } from "@/lib/featured";
 import type { FeedPost } from "@/types/database";

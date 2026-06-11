@@ -6,19 +6,33 @@ import {
   removeVaultedCode,
   vaultPostCodeFromPost,
 } from "@/lib/post-code-vault";
+import { ensureTemplatePreviewFields } from "@/lib/post-template-preview";
 import type { FeedPost, ModerationStatus } from "@/types/database";
 
 function isPaidCodeTemplate(post: Pick<FeedPost, "type" | "pricing">): boolean {
   return post.type === "code_template" && post.pricing !== "free";
 }
 
-/** Keep paid template source in the vault — not on the public post record. */
+/** Keep paid template source in the vault — public preview_* fields stay for live demo. */
 function stripPaidCodeForStorage(post: FeedPost): FeedPost {
-  if (!isPaidCodeTemplate(post)) return post;
-  if (!post.html_code?.trim() || !post.css_code?.trim()) return post;
+  const withPreview = ensureTemplatePreviewFields(post);
+  if (!isPaidCodeTemplate(withPreview)) return withPreview;
+  if (!withPreview.html_code?.trim() || !withPreview.css_code?.trim()) {
+    return withPreview;
+  }
 
-  vaultPostCodeFromPost(post.id, post.html_code, post.css_code, post.js_code);
-  return { ...post, html_code: null, css_code: null, js_code: null };
+  vaultPostCodeFromPost(
+    withPreview.id,
+    withPreview.html_code,
+    withPreview.css_code,
+    withPreview.js_code
+  );
+  return {
+    ...withPreview,
+    html_code: null,
+    css_code: null,
+    js_code: null,
+  };
 }
 
 const MOCK_POST_IDS = new Set(MOCK_FEED.map((p) => p.id));
@@ -80,7 +94,7 @@ function mergePosts() {
 
   let customNeedsPersist = false;
   for (const custom of state.custom) {
-    const stripped = stripPaidCodeForStorage(custom);
+    const stripped = stripPaidCodeForStorage(ensureTemplatePreviewFields(custom));
     if (
       stripped.html_code !== custom.html_code ||
       stripped.css_code !== custom.css_code ||

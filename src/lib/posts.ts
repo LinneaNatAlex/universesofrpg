@@ -1,5 +1,9 @@
 import { getCommentCount } from "@/lib/mock-comments";
 import { getVaultedCode } from "@/lib/post-code-vault";
+import {
+  getPublicTemplatePreviewBundle,
+  getTemplatePreviewBundleForViewer,
+} from "@/lib/post-template-preview";
 import { hasPurchased } from "@/lib/purchases-store";
 import { getPostFromStore, getAllPosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
@@ -84,17 +88,25 @@ export function canViewCodeSource(
   return hasPurchased(opts.username, post.id);
 }
 
-/** Live iframe preview — only when source is unlocked (free, purchased, author, or editor review). */
+/** Live iframe preview — public demo bundle or unlocked full source. */
 export function canViewCodeLivePreview(
   post: FeedPost,
   opts: PostViewerContext
 ): boolean {
   if (post.type !== "code_template") return false;
-  if (!requiresCodePurchase(post)) {
-    const withCode = mergeVaultedCode(post);
-    return !!(withCode.html_code && withCode.css_code);
-  }
-  return canViewCodeSource(post, opts);
+  return (
+    getTemplatePreviewBundleForViewer(post, canViewCodeSource(post, opts)) !== null
+  );
+}
+
+export function getCodeTemplatePreviewBundle(
+  post: FeedPost,
+  opts: PostViewerContext
+) {
+  return getTemplatePreviewBundleForViewer(
+    post,
+    canViewCodeSource(post, opts)
+  );
 }
 
 /** Attach vaulted source when the viewer is allowed to see it. */
@@ -108,6 +120,7 @@ export function resolvePostForViewer(
 
 export function canViewCodePreview(post: FeedPost): boolean {
   if (post.type !== "code_template") return false;
+  if (getPublicTemplatePreviewBundle(post)) return true;
   if (requiresCodePurchase(post)) {
     return !!post.preview_image_url?.trim();
   }

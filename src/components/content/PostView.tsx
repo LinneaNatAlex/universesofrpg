@@ -12,9 +12,10 @@ import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { useEditor } from "@/hooks/useEditor";
 import {
-  canViewCodeLivePreview,
   canViewCodePreview,
+  canViewCodeSource,
   canViewFullContent,
+  getCodeTemplatePreviewBundle,
   requiresCodePurchase,
   resolvePostForViewer,
 } from "@/lib/posts";
@@ -59,8 +60,9 @@ export function PostView({ post: rawPost }: PostViewProps) {
   const post = resolvePostForViewer(rawPost, viewer);
   const fullAccess = canViewFullContent(isLoggedIn, invite, post.invite_token);
   const codeIsFree = post.type === "code_template" && !requiresCodePurchase(post);
-  const showLiveCodePreview = canViewCodeLivePreview(rawPost, viewer);
   const showCodeSection = canViewCodePreview(rawPost);
+  const previewBundle = getCodeTemplatePreviewBundle(rawPost, viewer);
+  const showLiveCodePreview = previewBundle !== null;
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   const accessMessage =
@@ -145,14 +147,16 @@ export function PostView({ post: rawPost }: PostViewProps) {
             <p className="font-comic text-sm text-ink mb-2">
               {showLiveCodePreview ? "Live template preview" : "Template preview"}
             </p>
-            {showLiveCodePreview && post.html_code && post.css_code ? (
+            {showLiveCodePreview && previewBundle ? (
               <LayoutPreview
-                html={post.html_code}
-                css={post.css_code}
-                js={post.js_code}
+                html={previewBundle.html_code}
+                css={previewBundle.css_code}
+                js={previewBundle.js_code}
                 mode="full"
                 height={240}
-                sourceLocked={requiresCodePurchase(post)}
+                sourceLocked={
+                  requiresCodePurchase(post) && !canViewCodeSource(rawPost, viewer)
+                }
                 defaultViewport="desktop"
               />
             ) : rawPost.preview_image_url ? (
@@ -160,7 +164,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 src={rawPost.preview_image_url}
                 alt={post.title}
                 fullAccess
-                hint="Purchase to unlock the live template and full HTML, CSS, and JavaScript source."
+                hint="Live template preview is not available for this listing yet."
               />
             ) : null}
           </div>

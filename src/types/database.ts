@@ -190,6 +190,10 @@ export interface Post {
   html_code: string | null;
   css_code: string | null;
   js_code: string | null;
+  /** Public live-demo HTML/CSS/JS — kept on the post for storefront preview. */
+  preview_html_code?: string | null;
+  preview_css_code?: string | null;
+  preview_js_code?: string | null;
   bbcode: string | null;
   preview_image_url: string | null;
   book_cover_url: string | null;

@@ -15,6 +15,7 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { formatPrice } from "@/lib/utils";
+import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import { requiresCodePurchase } from "@/lib/posts";
 import type { FeedPost } from "@/types/database";
 
@@ -43,7 +44,11 @@ interface FeedCardProps {
 export function FeedCard({ post }: FeedCardProps) {
   const Icon = TYPE_ICONS[post.type] ?? Code2;
   const synopsis = post.plot_synopsis ?? post.description ?? "";
-  const coverOnly = post.pricing !== "free" || requiresCodePurchase(post);
+  const hasLiveTemplatePreview =
+    post.type === "code_template" && getPublicTemplatePreviewBundle(post) !== null;
+  const coverOnly =
+    !hasLiveTemplatePreview &&
+    (post.pricing !== "free" || requiresCodePurchase(post));
 
   return (
     <article className="comic-card group">
