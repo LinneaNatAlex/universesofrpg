@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PostView } from "@/components/content/PostView";
+import { MarketplaceCheckoutReturn } from "@/components/stripe/MarketplaceCheckoutReturn";
 import { usePost } from "@/hooks/usePost";
 
 export function PostPageClient() {
@@ -36,6 +37,7 @@ export function PostPageClient() {
 
   return (
     <div className="space-y-6">
+      <MarketplaceCheckoutReturn sellerUsername={post.author.username} />
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm font-comic text-ink-muted hover:text-comic-red"

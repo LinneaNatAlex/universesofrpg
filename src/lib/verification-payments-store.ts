@@ -2,6 +2,7 @@ import { readJson, writeJson } from "@/lib/browser-storage";
 import { VERIFICATION_SUBSCRIPTION_CENTS } from "@/lib/currency";
 import {
   grantVerifiedCreator,
+  isAdminRevokedVerifiedCreator,
   revokeVerifiedCreator,
 } from "@/lib/verified-creators-store";
 
@@ -198,9 +199,37 @@ export function activateVerifiedCreatorSubscription(input: {
 
 /** Drop verified access when a subscription lapses (demo personas unaffected). */
 export function syncVerifiedCreatorAccess(username: string): void {
+  if (isAdminRevokedVerifiedCreator(username)) return;
   if (hasActiveVerificationSubscription(username)) {
     grantVerifiedCreator(username);
   } else {
     revokeVerifiedCreator(username);
   }
+}
+
+/** Admin / local cancel — does not cancel Stripe billing (do that in Stripe Dashboard). */
+export function cancelVerificationSubscription(username: string): void {
+  ensureLoaded();
+  const key = userKey(username);
+  const sub = subscriptions.find((s) => userKey(s.username) === key);
+  if (sub) {
+    sub.status = "canceled";
+    sub.current_period_end = new Date().toISOString();
+    persist();
+    notify();
+  }
+}
+
+/** Admin — delete local subscription record entirely. */
+export function deleteVerificationSubscription(username: string): boolean {
+  ensureLoaded();
+  const key = userKey(username);
+  const before = subscriptions.length;
+  subscriptions = subscriptions.filter((s) => userKey(s.username) !== key);
+  if (subscriptions.length < before) {
+    persist();
+    notify();
+    return true;
+  }
+  return false;
 }

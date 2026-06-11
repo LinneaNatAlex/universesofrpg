@@ -1,0 +1,13 @@
+{
+  "connectAccounts": [
+    {
+      "username": "lyra_weaver",
+      "stripe_account_id": "acct_1Th9iQ347w8Y7dCc",
+      "charges_enabled": false,
+      "payouts_enabled": false,
+      "details_submitted": false,
+      "updated_at": "2026-06-11T14:37:05.121Z"
+    }
+  ],
+  "purchases": []
+}

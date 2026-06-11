@@ -6,6 +6,7 @@ import {
 } from "@/lib/stripe-subscription-status";
 import { getStripe } from "@/lib/stripe-server";
 import { VERIFICATION_SUBSCRIPTION_CENTS } from "@/lib/currency";
+import { upsertPlatformSubscription } from "@/lib/verification-platform-store";
 
 /**
  * After Stripe Checkout redirects back, the client calls this to confirm payment
@@ -49,10 +50,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Subscription missing" }, { status: 404 });
   }
 
+  const usernameFromQuery = new URL(request.url).searchParams
+    .get("username")
+    ?.trim()
+    .toLowerCase();
+
   const username = (
     session.metadata?.uorpg_username ??
     subscription.metadata?.uorpg_username ??
     session.client_reference_id ??
+    usernameFromQuery ??
     ""
   )
     .trim()
@@ -74,12 +81,34 @@ export async function GET(request: Request) {
       ? session.customer
       : session.customer?.id ?? null;
 
+  const current_period_end = stripePeriodEndIso(subscription);
+
+  if (
+    username &&
+    status === "active" &&
+    new Date(current_period_end).getTime() > Date.now()
+  ) {
+    try {
+      await upsertPlatformSubscription({
+        username,
+        status,
+        current_period_end,
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: customerId,
+        amount_cents: VERIFICATION_SUBSCRIPTION_CENTS,
+        started_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[verification-session] platform upsert failed", err);
+    }
+  }
+
   return NextResponse.json({
     username: username || null,
     customer_email: customerEmail,
     amount_cents: VERIFICATION_SUBSCRIPTION_CENTS,
     status,
-    current_period_end: stripePeriodEndIso(subscription),
+    current_period_end,
     stripe_subscription_id: subscription.id,
     stripe_customer_id: customerId,
   });

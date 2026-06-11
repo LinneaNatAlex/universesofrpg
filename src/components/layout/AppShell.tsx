@@ -18,6 +18,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
 
 type NavItem = {
@@ -138,6 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <PersonaProvider>
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
+        <PurchasesHydrator />
         <VerificationCheckoutReturn />
         <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 pb-24 md:pb-8">
           {children}

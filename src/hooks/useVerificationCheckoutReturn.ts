@@ -7,6 +7,7 @@ import {
   clearPendingVerificationCheckout,
   readPendingVerificationCheckout,
 } from "@/lib/verification-checkout-pending";
+import { VERIFICATION_UPDATED_EVENT } from "@/lib/admin-verification-actions";
 import { activateVerifiedCreatorSubscription } from "@/lib/verification-payments-store";
 
 const PROCESSED_SESSION_KEY = "uorpg_verification_processed_session";
@@ -63,8 +64,10 @@ export function useVerificationCheckoutReturn(): VerificationCheckoutReturnState
       setConfirming(true);
       setError(null);
       try {
+        const pending = readPendingVerificationCheckout();
+        const usernameHint = pending?.username ?? identity!.username;
         const res = await fetch(
-          `/api/stripe/verification-session?session_id=${encodeURIComponent(sessionId!)}`
+          `/api/stripe/verification-session?session_id=${encodeURIComponent(sessionId!)}&username=${encodeURIComponent(usernameHint)}`
         );
         const data = (await res.json()) as {
           error?: string;
@@ -81,7 +84,6 @@ export function useVerificationCheckoutReturn(): VerificationCheckoutReturnState
           throw new Error(data.error ?? "Could not confirm payment");
         }
 
-        const pending = readPendingVerificationCheckout();
         const resolvedUsername = (
           data.username ??
           pending?.username ??
@@ -112,6 +114,7 @@ export function useVerificationCheckoutReturn(): VerificationCheckoutReturnState
           });
           sessionStorage.setItem(PROCESSED_SESSION_KEY, sessionId!);
           clearPendingVerificationCheckout();
+          window.dispatchEvent(new Event(VERIFICATION_UPDATED_EVENT));
           setSuccessMessage("Subscription active — verified creator badge unlocked!");
         }
       } catch (err) {

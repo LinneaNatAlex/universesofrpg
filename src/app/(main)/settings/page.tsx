@@ -7,6 +7,7 @@ import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { EditorApplicationForm } from "@/components/editor/EditorApplicationForm";
+import { CreatorPayoutSettings } from "@/components/settings/CreatorPayoutSettings";
 import { VerifiedCreatorSubscribe } from "@/components/settings/VerifiedCreatorSubscribe";
 import { SettingsFriendsManager } from "@/components/settings/SettingsFriendsManager";
 import { ProfileAvatarSettings } from "@/components/settings/ProfileAvatarSettings";
@@ -106,6 +107,10 @@ export default function SettingsPage() {
               through Stripe. Your verified badge unlocks automatically after payment.
             </p>
             <VerifiedCreatorSubscribe />
+          </section>
+
+          <section id="shop-payouts" className="space-y-3 border-t-4 border-dashed border-ink pt-6">
+            <CreatorPayoutSettings />
           </section>
         </div>
       )}

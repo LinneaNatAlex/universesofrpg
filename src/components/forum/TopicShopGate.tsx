@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { recordPurchase } from "@/lib/purchases-store";
+import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { formatPrice } from "@/lib/utils";
 import type { RpgForum } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,22 @@ interface TopicShopGateProps {
 
 export function TopicShopGate({ forum, username, onPurchased }: TopicShopGateProps) {
   const price = forum.shop_price_cents ?? 0;
+  const { buy, busy, error } = useMarketplaceBuy();
 
-  function handleDemoPurchase() {
-    if (!forum.shop_post_id) return;
-    recordPurchase(username, forum.shop_post_id);
-    onPurchased();
+  async function handlePurchase() {
+    if (!forum.shop_post_id || price < 100) return;
+
+    const ok = await buy(
+      {
+        post_id: forum.shop_post_id,
+        title: forum.title,
+        price_cents: price,
+        seller_username: forum.creator_username,
+      },
+      username,
+      onPurchased
+    );
+    if (ok) onPurchased();
   }
 
   return (
@@ -34,9 +45,16 @@ export function TopicShopGate({ forum, username, onPurchased }: TopicShopGatePro
         <p className="font-comic text-2xl text-comic-red">{formatPrice(price)}</p>
       )}
       <div className="flex flex-wrap justify-center gap-2">
-        <Button type="button" variant="comic" size="sm" onClick={handleDemoPurchase}>
-          Buy (demo unlock)
+        <Button
+          type="button"
+          variant="comic"
+          size="sm"
+          disabled={busy || !forum.shop_post_id}
+          onClick={() => void handlePurchase()}
+        >
+          {busy ? "Opening checkout…" : "Buy now"}
         </Button>
+        {error && <p className="text-xs text-comic-red font-comic w-full">{error}</p>}
         {forum.shop_post_id && (
           <Link href={`/post/${forum.shop_post_id}`}>
             <Button type="button" variant="secondary" size="sm">

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { canViewCodeSource, requiresCodePurchase } from "@/lib/posts";
-import { recordPurchase, subscribePurchases } from "@/lib/purchases-store";
+import { subscribePurchases } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
 type Tab = "html" | "css" | "js";
@@ -25,6 +26,7 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const [tab, setTab] = useState<Tab>("html");
   const [unlocked, setUnlocked] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
+  const { buy, busy, error: buyError } = useMarketplaceBuy();
 
   const needsPurchase = requiresCodePurchase(post);
 
@@ -39,16 +41,30 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
     return unsub;
   }, [post, isLoggedIn, username, inviteToken]);
 
-  function handlePurchase() {
+  async function handlePurchase() {
     if (!isLoggedIn) {
       window.location.href = "/login";
       return;
     }
     if (!username) return;
 
-    recordPurchase(username, post.id);
-    setJustPurchased(true);
-    setUnlocked(true);
+    const ok = await buy(
+      {
+        post_id: post.id,
+        title: post.title,
+        price_cents: post.price_cents,
+        seller_username: post.author.username,
+      },
+      username,
+      () => {
+        setJustPurchased(true);
+        setUnlocked(true);
+      }
+    );
+    if (ok) {
+      setJustPurchased(true);
+      setUnlocked(true);
+    }
   }
 
   if (!unlocked) {
@@ -80,13 +96,16 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
                 Sign in to buy
               </Link>
             ) : (
-              <Button variant="comic" onClick={handlePurchase}>
+              <Button variant="comic" disabled={busy} onClick={() => void handlePurchase()}>
                 <ShoppingBag className="h-4 w-4 mr-1.5" />
-                Buy for {formatPrice(post.price_cents)}
+                {busy ? "Opening checkout…" : `Buy for ${formatPrice(post.price_cents)}`}
               </Button>
             )}
+            {buyError && (
+              <p className="text-xs text-comic-red w-full font-comic">{buyError}</p>
+            )}
             <p className="text-xs text-ink-muted w-full">
-              Stripe checkout ships soon — demo purchases unlock code locally for testing.
+              Payment goes to the creator via Stripe. Your platform fee supports Universes of RPG.
             </p>
           </div>
         ) : (

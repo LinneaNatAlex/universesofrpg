@@ -37,3 +37,10 @@ export function clearPendingVerificationCheckout(): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(STORAGE_KEY);
 }
+
+export function clearPendingVerificationCheckoutForUser(username: string): void {
+  const pending = readPendingVerificationCheckout();
+  if (pending?.username === username.toLowerCase()) {
+    clearPendingVerificationCheckout();
+  }
+}

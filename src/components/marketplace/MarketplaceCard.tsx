@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
-import { recordPurchase } from "@/lib/purchases-store";
+import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {
@@ -44,25 +44,34 @@ interface MarketplaceCardProps {
 export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
+  const { buy, busy, error } = useMarketplaceBuy();
   const Icon = TYPE_ICONS[post.type];
 
-  function handlePurchase() {
+  async function handlePurchase() {
     if (!isLoggedIn) {
       window.location.href = "/login";
       return;
     }
     if (!identity?.username) return;
 
-    recordPurchase(identity.username, post.id);
-
-    if (post.type === "code_template") {
-      window.location.href = `/post/${post.id}`;
-      return;
-    }
-
-    alert(
-      `Purchased "${post.title}" (${formatPrice(post.price_cents)}). Stripe checkout ships soon — access saved locally for demo.`
+    const ok = await buy(
+      {
+        post_id: post.id,
+        title: post.title,
+        price_cents: post.price_cents,
+        seller_username: post.author.username,
+      },
+      identity.username,
+      () => {
+        if (post.type === "code_template") {
+          window.location.href = `/post/${post.id}`;
+        }
+      }
     );
+
+    if (ok && post.type === "code_template") {
+      window.location.href = `/post/${post.id}`;
+    }
   }
 
   return (
@@ -106,10 +115,20 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         </Link>
 
         {/* Actions */}
+        {error && (
+          <p className="mt-2 text-xs text-comic-red font-comic leading-snug">{error}</p>
+        )}
+
         <div className="mt-3 flex gap-2">
-          <Button variant="comic" size="sm" className="flex-1" onClick={handlePurchase}>
+          <Button
+            variant="comic"
+            size="sm"
+            className="flex-1"
+            disabled={busy}
+            onClick={() => void handlePurchase()}
+          >
             <ShoppingBag className="h-3.5 w-3.5 mr-1" />
-            Buy now
+            {busy ? "Opening checkout…" : "Buy now"}
           </Button>
           <Link href={`/post/${post.id}`} className="flex-1">
             <Button variant="comic-outline" size="sm" className="w-full">
