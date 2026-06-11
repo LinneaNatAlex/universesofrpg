@@ -20,6 +20,9 @@
 # production
 /build
 
+# local server file cache (Supabase is source of truth on Netlify)
+/data/
+
 # misc
 .DS_Store
 *.pem
