@@ -10,7 +10,6 @@ import { LikeButton } from "@/components/feed/LikeButton";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
 import { useCommentCount } from "@/hooks/useCommentCount";
 import { useMonthlySpotlight } from "@/hooks/useMonthlySpotlight";
-import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import { requiresCodePurchase } from "@/lib/posts";
 import { formatSpotlightMonth, type SpotlightPick } from "@/lib/featured";
 import type { FeedPost } from "@/types/database";
@@ -18,11 +17,10 @@ import type { FeedPost } from "@/types/database";
 const ROTATE_MS = 6000;
 
 function SpotlightVisual({ post }: { post: FeedPost }) {
-  const hasLiveTemplatePreview =
-    post.type === "code_template" && getPublicTemplatePreviewBundle(post) !== null;
   const coverOnly =
-    !hasLiveTemplatePreview &&
-    (post.pricing !== "free" || requiresCodePurchase(post));
+    post.type === "code_template" ||
+    post.pricing !== "free" ||
+    requiresCodePurchase(post);
 
   return (
     <PostCoverThumbnail

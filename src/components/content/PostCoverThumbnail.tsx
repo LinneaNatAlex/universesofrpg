@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { getPostCoverImage, postHasLiveCodeThumb } from "@/lib/post-cover";
-import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import type { FeedPost } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { BookOpen, ImageIcon } from "lucide-react";
@@ -33,7 +32,7 @@ interface PostCoverThumbnailProps {
   post: FeedPost;
   size?: keyof typeof SIZE_CLASS;
   className?: string;
-  /** Shop listings — static cover only when no live preview bundle exists. */
+  /** Listings / shop — cover image only, never live template iframe. */
   coverOnly?: boolean;
 }
 
@@ -44,9 +43,7 @@ export function PostCoverThumbnail({
   coverOnly = false,
 }: PostCoverThumbnailProps) {
   const cover = getPostCoverImage(post);
-  const previewBundle =
-    post.type === "code_template" ? getPublicTemplatePreviewBundle(post) : null;
-  const liveCode = !coverOnly && postHasLiveCodeThumb(post);
+  const liveCode = !coverOnly && !cover && postHasLiveCodeThumb(post);
   const dims = SIZE_CLASS[size];
 
   return (
@@ -57,19 +54,7 @@ export function PostCoverThumbnail({
         className
       )}
     >
-      {liveCode && previewBundle ? (
-        <div className="absolute inset-0 overflow-hidden">
-          <LayoutPreview
-            html={previewBundle.html_code}
-            css={previewBundle.css_code}
-            js={previewBundle.js_code}
-            mode="compact"
-            height={IFRAME_HEIGHT[size]}
-            showHeader={false}
-            className="!border-0 !shadow-none h-full [&>iframe]:!h-full"
-          />
-        </div>
-      ) : cover ? (
+      {cover ? (
         <Image
           src={cover}
           alt=""
@@ -78,6 +63,18 @@ export function PostCoverThumbnail({
           className="object-cover"
           unoptimized
         />
+      ) : liveCode ? (
+        <div className="absolute inset-0 overflow-hidden">
+          <LayoutPreview
+            html={post.html_code!}
+            css={post.css_code!}
+            js={post.js_code}
+            mode="compact"
+            height={IFRAME_HEIGHT[size]}
+            showHeader={false}
+            className="!border-0 !shadow-none h-full [&>iframe]:!h-full"
+          />
+        </div>
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-ink-muted/50 p-1">
           {post.type === "digital_asset" ? (

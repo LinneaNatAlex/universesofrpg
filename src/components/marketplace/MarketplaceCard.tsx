@@ -18,7 +18,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
-import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {
@@ -48,8 +47,6 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const identity = useActingIdentity();
   const { buy, busy, error } = useMarketplaceBuy();
   const Icon = TYPE_ICONS[post.type];
-  const coverOnly =
-    post.type !== "code_template" || getPublicTemplatePreviewBundle(post) === null;
 
   async function handlePurchase() {
     if (!isLoggedIn) {
@@ -97,7 +94,7 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         </div>
 
         <div className="mx-auto mb-3 flex justify-center">
-          <PostCoverThumbnail post={post} size="md" coverOnly={coverOnly} />
+          <PostCoverThumbnail post={post} size="md" coverOnly />
         </div>
 
         <Link href={`/post/${post.id}`} className="block group">
