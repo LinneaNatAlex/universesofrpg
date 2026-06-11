@@ -46,6 +46,10 @@ export function hasPurchased(username: string, postId: string): boolean {
   return getPurchasedSet(username).has(postId);
 }
 
+export function getPurchasedPostIds(username: string): string[] {
+  return [...getPurchasedSet(username)];
+}
+
 export function recordPurchase(username: string, postId: string): void {
   const set = getPurchasedSet(username);
   set.add(postId);

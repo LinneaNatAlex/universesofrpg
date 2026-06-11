@@ -12,8 +12,10 @@ import { ProfileActions } from "@/components/profile/ProfileActions";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { ProfilePersonaTab } from "@/components/profile/ProfilePersonaTab";
 import { ProfileCreationsTab } from "@/components/profile/ProfileCreationsTab";
+import { ProfilePurchasesTab } from "@/components/profile/ProfilePurchasesTab";
 import { ProfileFriendsTab } from "@/components/profile/ProfileFriendsTab";
 import { ProfileFollowingTab } from "@/components/profile/ProfileFollowingTab";
+import { usePurchasedPosts } from "@/hooks/usePurchasedPosts";
 import { ProfileFollowerCount } from "@/components/profile/ProfileFollowerCount";
 import { ProfileFollowButton } from "@/components/profile/ProfileFollowButton";
 import { ProfileFriendButton } from "@/components/profile/ProfileFriendButton";
@@ -30,9 +32,9 @@ import { useProfilePrivacy } from "@/hooks/useProfilePrivacy";
 import { usePersona } from "@/contexts/PersonaContext";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
-import { Shield, User, FolderOpen, Users, BookOpen } from "lucide-react";
+import { Shield, User, FolderOpen, Users, BookOpen, ShoppingBag } from "lucide-react";
 
-type ProfileTab = "persona" | "creations" | "friends" | "following";
+type ProfileTab = "persona" | "creations" | "purchases" | "friends" | "following";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -48,6 +50,10 @@ export default function ProfilePage() {
   const staticProfile = useMemo(() => resolveStaticProfile(username), [username]);
   const personaPage = usePersonaProfile(username);
   const creations = useAuthorPosts(username, isOwnProfile);
+  const showPurchasesTab = isOwnProfile;
+  const { posts: purchasedPosts, loading: purchasesLoading } = usePurchasedPosts(
+    showPurchasesTab ? username : null
+  );
   const [dynamicProfile, setDynamicProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -130,7 +136,10 @@ export default function ProfilePage() {
     if (tab === "friends" && !showFriendsTab) {
       setTab("persona");
     }
-  }, [tab, showFriendsTab]);
+    if (tab === "purchases" && !showPurchasesTab) {
+      setTab("persona");
+    }
+  }, [tab, showFriendsTab, showPurchasesTab]);
 
   if (!profile) {
     if (!clientReady) {
@@ -155,6 +164,16 @@ export default function ProfilePage() {
   const tabs: { id: ProfileTab; label: string; icon: typeof User; count?: number }[] = [
     { id: "persona", label: "Persona", icon: User },
     { id: "creations", label: "Creations", icon: FolderOpen, count: creations.length },
+    ...(showPurchasesTab
+      ? [
+          {
+            id: "purchases" as const,
+            label: "Purchased",
+            icon: ShoppingBag,
+            count: purchasedPosts.length,
+          },
+        ]
+      : []),
     ...(showFriendsTab
       ? [{ id: "friends" as const, label: "Friends", icon: Users, count: friends.length }]
       : []),
@@ -272,6 +291,8 @@ export default function ProfilePage() {
           showPendingNote={isOwnProfile}
           editable={isOwnProfile}
         />
+      ) : tab === "purchases" ? (
+        <ProfilePurchasesTab purchases={purchasedPosts} loading={purchasesLoading} />
       ) : tab === "friends" ? (
         <ProfileFriendsTab
           username={username}
