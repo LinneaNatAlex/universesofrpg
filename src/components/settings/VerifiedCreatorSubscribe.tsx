@@ -17,17 +17,12 @@ import {
 import { subscribeCreatorFollows } from "@/lib/creator-follows-store";
 import { subscribePosts } from "@/lib/posts-store";
 import {
-  activateVerifiedCreatorSubscription,
   getVerificationSubscription,
   hasActiveVerificationSubscription,
   subscribeVerificationPayments,
   syncVerifiedCreatorAccess,
 } from "@/lib/verification-payments-store";
-import {
-  clearPendingVerificationCheckout,
-  readPendingVerificationCheckout,
-  savePendingVerificationCheckout,
-} from "@/lib/verification-checkout-pending";
+import { savePendingVerificationCheckout } from "@/lib/verification-checkout-pending";
 import { getVerificationPaymentLink } from "@/lib/stripe-verification-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,11 +33,9 @@ export function VerifiedCreatorSubscribe() {
   const identity = useActingIdentity();
   const isVerified = useVerifiedCreator(identity?.username ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [subscribed, setSubscribed] = useState(false);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [metrics, setMetrics] = useState(() =>
     identity ? getCreatorMetrics(identity.username) : null
   );
@@ -67,105 +60,6 @@ export function VerifiedCreatorSubscribe() {
       unsubPosts();
       unsubFollows();
       unsubPay();
-    };
-  }, [identity?.username]);
-
-  useEffect(() => {
-    if (!identity?.username) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const verification = params.get("verification");
-    const sessionId = params.get("session_id");
-
-    if (verification === "canceled") {
-      setError("Checkout was canceled. You were not charged.");
-      params.delete("verification");
-      params.delete("session_id");
-      const next = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, "", next.endsWith("?") ? next.slice(0, -1) : next);
-      return;
-    }
-
-    if (verification !== "success" || !sessionId) return;
-
-    let cancelled = false;
-
-    async function confirmCheckout() {
-      setConfirming(true);
-      setError(null);
-      try {
-        const res = await fetch(
-          `/api/stripe/verification-session?session_id=${encodeURIComponent(sessionId!)}`
-        );
-        const data = (await res.json()) as {
-          error?: string;
-          username?: string | null;
-          customer_email?: string | null;
-          status?: "active" | "canceled" | "past_due";
-          current_period_end?: string;
-          stripe_subscription_id?: string;
-          stripe_customer_id?: string | null;
-          amount_cents?: number;
-        };
-
-        if (!res.ok) {
-          throw new Error(data.error ?? "Could not confirm payment");
-        }
-
-        const pending = readPendingVerificationCheckout();
-        const resolvedUsername = (
-          data.username ??
-          pending?.username ??
-          identity!.username
-        ).toLowerCase();
-
-        if (resolvedUsername !== identity!.username.toLowerCase()) {
-          throw new Error("This checkout belongs to a different account.");
-        }
-
-        if (data.customer_email && user?.email) {
-          const paidEmail = data.customer_email.toLowerCase();
-          const accountEmail = user.email.toLowerCase();
-          const pendingEmail = pending?.email?.toLowerCase();
-          if (paidEmail !== accountEmail && paidEmail !== pendingEmail) {
-            throw new Error("Payment email does not match your signed-in account.");
-          }
-        }
-
-        if (!cancelled && data.status && data.current_period_end) {
-          activateVerifiedCreatorSubscription({
-            username: resolvedUsername,
-            amount_cents: data.amount_cents,
-            status: data.status,
-            current_period_end: data.current_period_end,
-            stripe_subscription_id: data.stripe_subscription_id ?? null,
-            stripe_customer_id: data.stripe_customer_id ?? null,
-          });
-          setSubscribed(data.status === "active");
-          setPeriodEnd(data.current_period_end);
-          setSuccessMessage("Subscription active — verified creator badge unlocked!");
-          clearPendingVerificationCheckout();
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Could not confirm payment.");
-        }
-      } finally {
-        if (!cancelled) setConfirming(false);
-        params.delete("verification");
-        params.delete("session_id");
-        const qs = params.toString();
-        window.history.replaceState(
-          {},
-          "",
-          qs ? `${window.location.pathname}?${qs}` : window.location.pathname
-        );
-      }
-    }
-
-    confirmCheckout();
-    return () => {
-      cancelled = true;
     };
   }, [identity?.username]);
 
@@ -197,7 +91,6 @@ export function VerifiedCreatorSubscribe() {
 
   async function handleSubscribe() {
     setError(null);
-    setSuccessMessage(null);
 
     if (!eligible) {
       setError("You need to meet the follower and likes requirements before subscribing.");
@@ -221,13 +114,6 @@ export function VerifiedCreatorSubscribe() {
 
   return (
     <div className="space-y-4">
-      {successMessage && (
-        <div className="comic-panel p-4 flex items-start gap-2 border-2 border-comic-red/30 bg-comic-yellow/20">
-          <CheckCircle2 className="h-5 w-5 text-comic-red shrink-0 mt-0.5" />
-          <p className="text-sm text-ink">{successMessage}</p>
-        </div>
-      )}
-
       <div className="comic-panel p-4 space-y-2 border-2 border-comic-red/30 bg-comic-yellow/20">
         <p className="font-comic text-ink">Verified creator — {priceLabel}</p>
         <p className="text-xs text-ink-muted">
@@ -237,24 +123,21 @@ export function VerifiedCreatorSubscribe() {
         {subscribed && !isVerified ? (
           <Badge variant="paid">Subscription inactive — renew to keep your badge</Badge>
         ) : null}
-        {confirming ? (
-          <p className="text-sm font-comic text-ink-muted">Confirming your payment…</p>
-        ) : (
-          <Button
-            type="button"
-            variant="comic"
-            size="sm"
-            onClick={handleSubscribe}
-            disabled={checkingOut || !eligible || confirming}
-          >
-            <CreditCard className="h-4 w-4 mr-1.5" />
-            {checkingOut ? "Redirecting…" : `Subscribe ${priceLabel}`}
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="comic"
+          size="sm"
+          onClick={handleSubscribe}
+          disabled={checkingOut || !eligible}
+        >
+          <CreditCard className="h-4 w-4 mr-1.5" />
+          {checkingOut ? "Redirecting…" : `Subscribe ${priceLabel}`}
+        </Button>
         <p className="text-[10px] text-ink-muted">
-          You&apos;ll return here after Stripe checkout. Set the Payment Link redirect in
-          Stripe to this site&apos;s settings URL with{" "}
-          <code className="text-[9px]">session_id=&#123;CHECKOUT_SESSION_ID&#125;</code>.
+          After payment, Stripe should redirect to your site with{" "}
+          <code className="text-[9px]">verification=success</code> and{" "}
+          <code className="text-[9px]">session_id=&#123;CHECKOUT_SESSION_ID&#125;</code>{" "}
+          (home or settings both work).
         </p>
       </div>
 
