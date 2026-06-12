@@ -103,14 +103,14 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
 
         {/* Uniform cover + teaser for every post type */}
         <PostDetailLink post={post} className="block mt-3 group/teaser">
-          <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+          <div className="flex gap-3 items-start max-md:flex-col max-md:items-center max-md:gap-4">
             <PostCoverThumbnail
               post={post}
               size="feed"
               coverOnly={coverOnly}
-              className="shrink-0 mx-auto sm:mx-0 w-full max-w-[8.5rem] sm:max-w-none"
+              className="shrink-0 max-md:mx-auto"
             />
-            <p className="text-sm text-ink-muted italic leading-relaxed line-clamp-5 flex-1 min-w-0 w-full text-center sm:text-left group-hover/teaser:text-ink transition-colors">
+            <p className="text-sm text-ink-muted italic leading-relaxed line-clamp-5 flex-1 min-w-0 max-md:w-full max-md:text-center group-hover/teaser:text-ink transition-colors">
               {synopsis || "Open to read the full teaser…"}
             </p>
           </div>
