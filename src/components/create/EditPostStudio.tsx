@@ -22,7 +22,9 @@ import { inferWritingPostType } from "@/lib/writing-tags";
 import { extractThemeMusicUrl, stripThemeMusic } from "@/lib/template-preview";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { PricingFields } from "@/components/create/PricingFields";
+import { WritingRichEditor } from "@/components/create/WritingRichEditor";
 import { WritingTagPicker } from "@/components/create/WritingTagPicker";
+import { normalizeWritingBody, plainTextToWritingHtml } from "@/lib/writing-content";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -128,7 +130,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
     if (editable.type === "code_template" || writingLoaded) return;
     setTitle(editable.title);
     setSynopsis(editable.plot_synopsis ?? editable.description ?? "");
-    setBody(editable.content ?? "");
+    setBody(plainTextToWritingHtml(editable.content ?? ""));
     setCoverUrl(editable.book_cover_url ?? "");
     setWritingTags(editable.tags.length > 0 ? editable.tags : ["writing"]);
     setWritingLoaded(true);
@@ -203,7 +205,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         title: title.trim(),
         description: synopsis.trim(),
         plot_synopsis: synopsis.trim(),
-        content: body.trim() || null,
+        content: normalizeWritingBody(body),
         book_cover_url: coverUrl.trim(),
         type: inferWritingPostType(writingTags),
         pricing,
@@ -321,12 +323,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
           />
           <div>
             <label className="block text-sm font-comic text-ink mb-1">Full text</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={10}
-              className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm leading-relaxed"
-            />
+            <WritingRichEditor value={body} onChange={setBody} />
           </div>
           <Button variant="comic" onClick={() => void handleSaveWriting()} disabled={saving}>
             {saving ? "Syncing…" : "Save changes"}

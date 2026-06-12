@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { PostView } from "@/components/content/PostView";
@@ -15,6 +15,8 @@ export function PostPageClient() {
   const params = useParams();
   const id = params.id as string;
   const post = usePost(id);
+  const searchParams = useSearchParams();
+  const invite = searchParams.get("invite");
   const { isLoggedIn, loading: authLoading } = useAuth();
 
   if (post === undefined) {
@@ -39,7 +41,7 @@ export function PostPageClient() {
     );
   }
 
-  if (!authLoading && !canViewPostDetail(post, isLoggedIn)) {
+  if (!authLoading && !canViewPostDetail(post, isLoggedIn, invite)) {
     return (
       <div className="space-y-6 max-w-lg mx-auto">
         <Link
@@ -48,7 +50,7 @@ export function PostPageClient() {
         >
           <ArrowLeft className="h-4 w-4" /> Back to feed
         </Link>
-        <LoginCTA message="Sign in to view code templates, live previews, and source access." />
+        <LoginCTA message="Sign in to read stories, templates, and full listings." />
       </div>
     );
   }

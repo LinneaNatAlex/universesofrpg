@@ -10,7 +10,9 @@ import { addPost, getPostFromStore } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { PricingFields } from "@/components/create/PricingFields";
+import { WritingRichEditor } from "@/components/create/WritingRichEditor";
 import { WritingTagPicker } from "@/components/create/WritingTagPicker";
+import { normalizeWritingBody } from "@/lib/writing-content";
 import { isValidCoverSource } from "@/lib/post-cover";
 import {
   countSynopsisWords,
@@ -116,7 +118,7 @@ export function CreateStudio() {
       title: title.trim(),
       description: synopsis.trim(),
       plot_synopsis: synopsis.trim(),
-      content: body.trim() || null,
+      content: normalizeWritingBody(body),
       html_code: null,
       css_code: null,
       js_code: null,
@@ -265,13 +267,10 @@ export function CreateStudio() {
           />
           <div>
             <label className="block text-sm font-comic text-ink mb-1">Full text</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={10}
-              className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm leading-relaxed"
-              placeholder="Your poem, letter, chapter, or prose…"
-            />
+            <p className="text-xs text-ink-muted mb-2">
+              Bold, italic, underline, headings, alignment, font, and size — like a simple word processor.
+            </p>
+            <WritingRichEditor value={body} onChange={setBody} />
           </div>
           <Button variant="comic" onClick={handlePublishWriting}>
             Publish writing

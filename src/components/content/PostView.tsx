@@ -27,6 +27,7 @@ import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { Badge } from "@/components/ui/badge";
 import { CommentSection } from "@/components/comments/CommentSection";
+import { WritingContentView } from "@/components/content/WritingContentView";
 import { PostEngagementBar } from "@/components/feed/PostEngagementBar";
 import type { FeedPost } from "@/types/database";
 
@@ -225,8 +226,8 @@ export function PostView({ post: rawPost }: PostViewProps) {
             previewFullAccess={fullAccess}
           />
           {fullAccess ? (
-            <div className="comic-panel p-6 prose-comic">
-              <p className="whitespace-pre-wrap leading-relaxed">{rawPost.content}</p>
+            <div className="comic-panel p-6 prose-comic writing-content">
+              <WritingContentView content={rawPost.content} />
               {rawPost.bbcode && (
                 <p className="mt-4 text-sm text-ink-muted font-mono">{rawPost.bbcode}</p>
               )}

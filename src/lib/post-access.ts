@@ -1,27 +1,32 @@
 import type { FeedPost } from "@/types/database";
 
+/** All listings require sign-in to open the post page (teasers stay on feed/explore only). */
 export function requiresLoginToViewPost(
-  post: Pick<FeedPost, "type">
+  _post?: Pick<FeedPost, "type">
 ): boolean {
-  return post.type === "code_template";
+  return true;
 }
 
 export function canViewPostDetail(
-  post: Pick<FeedPost, "type">,
-  isLoggedIn: boolean
+  post: Pick<FeedPost, "invite_token">,
+  isLoggedIn: boolean,
+  inviteToken?: string | null
 ): boolean {
-  if (!requiresLoginToViewPost(post)) return true;
-  return isLoggedIn;
+  if (isLoggedIn) return true;
+  if (inviteToken && post.invite_token && inviteToken === post.invite_token) {
+    return true;
+  }
+  return false;
 }
 
 export function postDetailHref(
-  post: Pick<FeedPost, "id" | "type">,
+  post: Pick<FeedPost, "id">,
   isLoggedIn: boolean,
   hash?: string
 ): string {
   const path = `/post/${post.id}${hash ? `#${hash.replace(/^#/, "")}` : ""}`;
-  if (requiresLoginToViewPost(post) && !isLoggedIn) {
-    return `/login?next=${encodeURIComponent(`/post/${post.id}${hash ? `#${hash.replace(/^#/, "")}` : ""}`)}`;
+  if (!isLoggedIn) {
+    return `/login?next=${encodeURIComponent(path)}`;
   }
   return path;
 }
