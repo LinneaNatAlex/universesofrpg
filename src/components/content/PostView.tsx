@@ -163,7 +163,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 mode="full"
                 height={240}
                 sourceLocked={requiresCodePurchase(rawPost) && !canViewSource}
-                defaultViewport="mobile"
+                defaultViewport="desktop"
               />
             ) : rawPost.preview_image_url ? (
               <AssetTeaserPreview
@@ -208,6 +208,15 @@ export function PostView({ post: rawPost }: PostViewProps) {
       {/* Story / text — back-of-book for guests */}
       {isStoryLike(rawPost.type) && (
         <section className="space-y-4">
+          {rawPost.preview_image_url && (
+            <div className="hidden md:block">
+              <AssetTeaserPreview
+                src={rawPost.preview_image_url}
+                alt={rawPost.title}
+                fullAccess={fullAccess}
+              />
+            </div>
+          )}
           <BookBackCover
             title={rawPost.title}
             synopsis={synopsis}

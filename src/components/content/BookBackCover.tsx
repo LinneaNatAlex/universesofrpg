@@ -1,20 +1,71 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Eye, Lock } from "lucide-react";
+import { truncateSynopsisWords } from "@/lib/synopsis-text";
 import { cn } from "@/lib/utils";
 
 interface BookBackCoverProps {
   title: string;
   synopsis: string;
   coverUrl?: string | null;
-  /** Main teaser art — shown beside the book cover when set. */
+  /** Main teaser art — mobile spread only; desktop shows this via PostView AssetTeaserPreview. */
   previewImageUrl?: string | null;
-  /** When false, preview art is blurred like other guest teasers. */
   previewFullAccess?: boolean;
   showCover?: boolean;
 }
 
-const ROW_HEIGHT = "h-44 sm:h-52 md:h-60";
+const MOBILE_ROW_HEIGHT = "h-44 sm:h-52";
+
+function BackCoverPanel({
+  title,
+  body,
+  scrollable = false,
+  className,
+}: {
+  title: string;
+  body: string;
+  scrollable?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "comic-panel overflow-hidden flex flex-col p-3 sm:p-4 md:p-5",
+        scrollable ? "min-h-0 h-full" : "relative flex-1 min-w-0",
+        className,
+      )}
+    >
+      <div className="shrink-0 flex items-center gap-2 mb-1.5 sm:mb-2 md:mb-3">
+        <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-comic-red shrink-0" />
+        <span className="font-comic text-[10px] sm:text-xs uppercase tracking-widest text-ink-muted">
+          Back cover
+        </span>
+      </div>
+      <h2
+        className={cn(
+          "font-comic text-ink leading-tight shrink-0 line-clamp-2",
+          scrollable ? "text-base sm:text-lg mb-1.5" : "text-xl mb-3",
+        )}
+      >
+        {title}
+      </h2>
+      <div
+        className={cn(
+          scrollable ? "flex-1 min-h-0 overflow-y-auto scrollbar-none" : undefined,
+        )}
+      >
+        <p
+          className={cn(
+            "leading-relaxed text-ink-muted italic",
+            scrollable ? "text-xs sm:text-sm" : "text-sm",
+          )}
+        >
+          {body || "Open to read the full story…"}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function PreviewImageSlot({
   src,
@@ -33,7 +84,7 @@ function PreviewImageSlot({
         src={src}
         alt={alt}
         fill
-        sizes="(max-width: 640px) 55vw, 320px"
+        sizes="55vw"
         className="object-cover object-center"
         unoptimized
       />
@@ -46,7 +97,7 @@ function PreviewImageSlot({
         src={src}
         alt=""
         fill
-        sizes="(max-width: 640px) 55vw, 320px"
+        sizes="55vw"
         className="object-cover blur-[10px] scale-110 brightness-[0.82] saturate-[0.65] pointer-events-none"
         draggable={false}
         unoptimized
@@ -86,70 +137,76 @@ export function BookBackCover({
   showCover = true,
 }: BookBackCoverProps) {
   const body = synopsis.trim();
+  const teaser = truncateSynopsisWords(body);
   const hasBookCover = Boolean(showCover && coverUrl);
 
   return (
-    <div
-      className={cn(
-        "grid gap-2 sm:gap-3 items-stretch w-full",
-        ROW_HEIGHT,
-        hasBookCover && previewImageUrl
-          ? "grid-cols-[4.25rem_minmax(0,2fr)_minmax(0,1fr)] sm:grid-cols-[7rem_minmax(0,2fr)_minmax(0,1fr)]"
-          : previewImageUrl
-            ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
-            : hasBookCover
-              ? "grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[8rem_minmax(0,1fr)]"
-              : "grid-cols-1",
-      )}
-    >
-      {hasBookCover && (
-        <div className="comic-cover relative overflow-hidden bg-surface min-h-0 h-full">
-          <Image
-            src={coverUrl!}
-            alt={`Cover of ${title}`}
-            fill
-            sizes="112px"
-            className="object-cover object-center"
-            unoptimized
-          />
-        </div>
-      )}
-
-      {previewImageUrl && (
-        <div
-          className={cn(
-            "comic-cover relative overflow-hidden bg-surface min-h-0 h-full w-full select-none",
-            !previewFullAccess && "asset-teaser-guard",
-          )}
-          onContextMenu={
-            previewFullAccess ? undefined : (e) => e.preventDefault()
-          }
-        >
-          <PreviewImageSlot
-            src={previewImageUrl}
-            alt={title}
-            fullAccess={previewFullAccess}
-            hint={body || undefined}
-          />
-        </div>
-      )}
-
-      <div className="comic-panel min-h-0 h-full overflow-hidden flex flex-col p-3 sm:p-4">
-        <div className="shrink-0 flex items-center gap-2 mb-1.5 sm:mb-2">
-          <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-comic-red shrink-0" />
-          <span className="font-comic text-[10px] sm:text-xs uppercase tracking-widest text-ink-muted">
-            Back cover
-          </span>
-        </div>
-        <h2 className="font-comic text-base sm:text-lg text-ink leading-tight shrink-0 line-clamp-2 mb-1.5">
-          {title}
-        </h2>
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
-          <p className="text-xs sm:text-sm leading-relaxed text-ink-muted italic">
-            {body || "Open to read the full story…"}
-          </p>
-        </div>
+    <>
+      {/* Desktop — original: book cover + back cover panel (preview image is above in PostView) */}
+      <div className="hidden md:flex gap-4 flex-row items-start w-full">
+        {hasBookCover && (
+          <div className="comic-cover shrink-0 mx-0 relative w-40 h-56 overflow-hidden bg-surface">
+            <Image
+              src={coverUrl!}
+              alt={`Cover of ${title}`}
+              fill
+              sizes="160px"
+              className="object-cover object-center"
+              unoptimized
+            />
+          </div>
+        )}
+        <BackCoverPanel title={title} body={teaser || body} />
       </div>
-    </div>
+
+      {/* Mobile — cover + wide preview image + scrollable back cover in one row */}
+      <div
+        className={cn(
+          "md:hidden grid gap-2 items-stretch w-full",
+          MOBILE_ROW_HEIGHT,
+          hasBookCover && previewImageUrl
+            ? "grid-cols-[4.25rem_minmax(0,2fr)_minmax(0,1fr)]"
+            : previewImageUrl
+              ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+              : hasBookCover
+                ? "grid-cols-[5.5rem_minmax(0,1fr)]"
+                : "grid-cols-1",
+        )}
+      >
+        {hasBookCover && (
+          <div className="comic-cover relative overflow-hidden bg-surface min-h-0 h-full">
+            <Image
+              src={coverUrl!}
+              alt={`Cover of ${title}`}
+              fill
+              sizes="68px"
+              className="object-cover object-center"
+              unoptimized
+            />
+          </div>
+        )}
+
+        {previewImageUrl && (
+          <div
+            className={cn(
+              "comic-cover relative overflow-hidden bg-surface min-h-0 h-full w-full select-none",
+              !previewFullAccess && "asset-teaser-guard",
+            )}
+            onContextMenu={
+              previewFullAccess ? undefined : (e) => e.preventDefault()
+            }
+          >
+            <PreviewImageSlot
+              src={previewImageUrl}
+              alt={title}
+              fullAccess={previewFullAccess}
+              hint={body || undefined}
+            />
+          </div>
+        )}
+
+        <BackCoverPanel title={title} body={body} scrollable />
+      </div>
+    </>
   );
 }
