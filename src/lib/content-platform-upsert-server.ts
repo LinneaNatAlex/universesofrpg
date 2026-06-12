@@ -1,0 +1,129 @@
+import type { CommentsPlatformState } from "@/app/api/content/comments/route";
+import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
+import type { PostsPlatformState } from "@/app/api/content/posts/route";
+import type { ForumsPlatformState } from "@/app/api/content/forums/route";
+import { sanitizeCommentsPlatformState } from "@/lib/comments-platform-sanitize";
+import { sanitizePostsPlatformState } from "@/lib/content-platform-sanitize";
+import { sanitizeDiscussionsPlatformState } from "@/lib/discussions-platform-sanitize";
+import {
+  mergeCommentsState,
+  mergeDiscussionsState,
+  mergeForumsState,
+  mergePostsState,
+} from "@/lib/content-platform-merge";
+import { sanitizeForumsPlatformState } from "@/lib/forums-platform-sanitize";
+import {
+  getPlatformContent,
+  setPlatformContent,
+} from "@/lib/content-platform-store";
+
+const POSTS_EMPTY: PostsPlatformState = {
+  custom: [],
+  deletedMockIds: [],
+  deletedCustomIds: [],
+  likeCounts: {},
+};
+
+const FORUMS_EMPTY: ForumsPlatformState = {
+  custom: [],
+  deletedMockIds: [],
+  deletedCustomIds: [],
+};
+
+const COMMENTS_EMPTY: CommentsPlatformState = {
+  custom: [],
+  deletedMockIds: [],
+};
+
+const DISCUSSIONS_EMPTY: DiscussionsPlatformState = {
+  customThreads: [],
+  customReplies: [],
+  deletedMockThreadIds: [],
+};
+
+function normalizePostsState(body: PostsPlatformState): PostsPlatformState {
+  return sanitizePostsPlatformState({
+    custom: Array.isArray(body.custom) ? body.custom : [],
+    deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
+    likeCounts:
+      body.likeCounts && typeof body.likeCounts === "object" ? body.likeCounts : {},
+  });
+}
+
+function normalizeForumsState(body: ForumsPlatformState): ForumsPlatformState {
+  return sanitizeForumsPlatformState({
+    custom: Array.isArray(body.custom) ? body.custom : [],
+    deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+    deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
+  });
+}
+
+function normalizeCommentsState(body: CommentsPlatformState): CommentsPlatformState {
+  return sanitizeCommentsPlatformState({
+    custom: Array.isArray(body.custom) ? body.custom : [],
+    deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+  });
+}
+
+function normalizeDiscussionsState(body: DiscussionsPlatformState): DiscussionsPlatformState {
+  return sanitizeDiscussionsPlatformState({
+    customThreads: Array.isArray(body.customThreads) ? body.customThreads : [],
+    customReplies: Array.isArray(body.customReplies) ? body.customReplies : [],
+    deletedMockThreadIds: Array.isArray(body.deletedMockThreadIds)
+      ? body.deletedMockThreadIds
+      : [],
+  });
+}
+
+/** Merge incoming client state with live Supabase data — never wipe other users' content. */
+export async function upsertPostsPlatformState(
+  incoming: PostsPlatformState
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("posts", POSTS_EMPTY);
+  const merged = normalizePostsState(
+    mergePostsState(normalizePostsState(incoming), normalizePostsState(existing))
+  );
+  const result = await setPlatformContent("posts", merged);
+  if (!result.ok) return result;
+  return { ok: true, count: merged.custom.length };
+}
+
+export async function upsertForumsPlatformState(
+  incoming: ForumsPlatformState
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("forums", FORUMS_EMPTY);
+  const merged = normalizeForumsState(
+    mergeForumsState(normalizeForumsState(incoming), normalizeForumsState(existing))
+  );
+  const result = await setPlatformContent("forums", merged);
+  if (!result.ok) return result;
+  return { ok: true, count: merged.custom.length };
+}
+
+export async function upsertCommentsPlatformState(
+  incoming: CommentsPlatformState
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("comments", COMMENTS_EMPTY);
+  const merged = normalizeCommentsState(
+    mergeCommentsState(normalizeCommentsState(incoming), normalizeCommentsState(existing))
+  );
+  const result = await setPlatformContent("comments", merged);
+  if (!result.ok) return result;
+  return { ok: true, count: merged.custom.length };
+}
+
+export async function upsertDiscussionsPlatformState(
+  incoming: DiscussionsPlatformState
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("discussions", DISCUSSIONS_EMPTY);
+  const merged = normalizeDiscussionsState(
+    mergeDiscussionsState(
+      normalizeDiscussionsState(incoming),
+      normalizeDiscussionsState(existing)
+    )
+  );
+  const result = await setPlatformContent("discussions", merged);
+  if (!result.ok) return result;
+  return { ok: true, count: merged.customThreads.length };
+}

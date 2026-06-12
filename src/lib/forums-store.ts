@@ -123,6 +123,15 @@ export function applyForumsPersistState(state: ForumsState): void {
 
 export async function syncForumsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  const {
+    fetchForumsPlatformState,
+    mergeForumsState,
+    pushForumsPlatformState,
+  } = await import("@/lib/content-sync");
+  const remote = await fetchForumsPlatformState();
+  if (remote) {
+    applyForumsPersistState(mergeForumsState(buildForumsPersistState(), remote));
+  }
   return pushForumsPlatformState(buildForumsPersistState());
 }
 

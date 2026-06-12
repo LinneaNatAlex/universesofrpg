@@ -172,6 +172,11 @@ export const MOCK_FEED: FeedPost[] = [
     js_code: null,
     bbcode: null,
     preview_image_url: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&h=400&fit=crop",
+    illustration_images: [
+      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&h=800&fit=crop",
+      "https://images.unsplash.com/photo-1614728263952-84ea256f9679?w=800&h=800&fit=crop",
+      "https://images.unsplash.com/photo-1518709268805-4e9042af9b33?w=800&h=800&fit=crop",
+    ],
     book_cover_url: null,
     invite_token: null,
     pricing: "one_time",

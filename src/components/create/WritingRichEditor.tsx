@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
   Bold,
+  ImageUp,
   Italic,
+  Link2,
   Strikethrough,
   Underline,
 } from "lucide-react";
+import {
+  COVER_IMAGE_ACCEPT,
+  MAX_INLINE_WRITING_IMAGE_BYTES,
+  readCoverImageFile,
+} from "@/lib/cover-image-upload";
 import { cn } from "@/lib/utils";
 
 const FONT_FAMILIES = [
@@ -72,6 +79,8 @@ export function WritingRichEditor({
   minHeight = "16rem",
 }: WritingRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
     const el = editorRef.current;
@@ -107,6 +116,42 @@ export function WritingRichEditor({
     },
     [runCommand]
   );
+
+  const insertImage = useCallback(
+    (src: string) => {
+      setImageError(null);
+      editorRef.current?.focus();
+      runCommand(
+        "insertHTML",
+        `<img src="${src.replace(/"/g, "&quot;")}" alt="" class="writing-inline-img" />`
+      );
+    },
+    [runCommand]
+  );
+
+  async function handleImageFile(file: File | null) {
+    if (!file) return;
+    setImageError(null);
+    try {
+      const dataUrl = await readCoverImageFile(file, {
+        maxBytes: MAX_INLINE_WRITING_IMAGE_BYTES,
+      });
+      insertImage(dataUrl);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Could not insert image.");
+    }
+  }
+
+  function handleImageUrl() {
+    const url = window.prompt("Paste an image URL (https://…)");
+    if (!url?.trim()) return;
+    const trimmed = url.trim();
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+      setImageError("Image URL must start with http:// or https://");
+      return;
+    }
+    insertImage(trimmed);
+  }
 
   return (
     <div className={cn("border-2 border-ink bg-surface", className)}>
@@ -176,7 +221,35 @@ export function WritingRichEditor({
             </option>
           ))}
         </select>
+
+        <span className="w-px h-6 bg-ink/30 mx-0.5" aria-hidden />
+
+        <ToolbarButton
+          label="Insert image from file"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <ImageUp className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton label="Insert image from URL" onClick={handleImageUrl}>
+          <Link2 className="h-4 w-4" />
+        </ToolbarButton>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={COVER_IMAGE_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            void handleImageFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
       </div>
+
+      {imageError && (
+        <p className="px-3 py-1.5 text-xs font-comic text-comic-red border-b-2 border-dashed border-ink bg-comic-red/5">
+          {imageError}
+        </p>
+      )}
 
       <div
         ref={editorRef}

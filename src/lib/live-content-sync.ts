@@ -9,8 +9,13 @@ export type LiveSyncResult = {
   needsSource: boolean;
 };
 
+const LIVE_SYNC_SETUP_HINT =
+  "Add SUPABASE_SERVICE_ROLE_KEY on Netlify, run migrations 005 and 006, then try again while logged in on the live site.";
+
 /** Wait for posts + paid template source to reach Supabase after a local save. */
-export async function syncCreationLive(post: Pick<FeedPost, "id" | "type" | "pricing">): Promise<LiveSyncResult> {
+export async function syncCreationLive(
+  post: Pick<FeedPost, "id" | "type" | "pricing">
+): Promise<LiveSyncResult> {
   const needsSource =
     post.type === "code_template" && requiresCodePurchase(post as FeedPost);
 
@@ -35,4 +40,30 @@ export function liveSyncErrorMessage(result: LiveSyncResult): string | null {
     return "Listing synced, but template source code did not reach the server.";
   }
   return null;
+}
+
+export function liveSyncSetupHint(): string {
+  return LIVE_SYNC_SETUP_HINT;
+}
+
+/** RPG topics / forum stories — fetch-merge-push to Supabase. */
+export async function syncForumLive(): Promise<boolean> {
+  const { syncForumsToServer } = await import("@/lib/forums-store");
+  return syncForumsToServer();
+}
+
+export function forumLiveSyncErrorMessage(ok: boolean): string | null {
+  if (ok) return null;
+  return "Topic saved locally but could not sync to the live server.";
+}
+
+/** Community discussions — fetch-merge-push to Supabase. */
+export async function syncDiscussionLive(): Promise<boolean> {
+  const { syncDiscussionsToServer } = await import("@/lib/discussions-store");
+  return syncDiscussionsToServer();
+}
+
+export function discussionLiveSyncErrorMessage(ok: boolean): string | null {
+  if (ok) return null;
+  return "Discussion saved locally but could not sync to the live server.";
 }

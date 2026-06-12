@@ -15,6 +15,11 @@ import {
   normalizeDiscussionTagList,
 } from "@/lib/discussion-tags";
 import { createDiscussionThread } from "@/lib/discussions-store";
+import {
+  discussionLiveSyncErrorMessage,
+  liveSyncSetupHint,
+  syncDiscussionLive,
+} from "@/lib/live-content-sync";
 
 export function NewDiscussionForm() {
   const router = useRouter();
@@ -26,6 +31,7 @@ export function NewDiscussionForm() {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (loading) {
     return (
@@ -48,7 +54,7 @@ export function NewDiscussionForm() {
     setTagInput("");
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!title.trim() || title.trim().length < 4) {
@@ -61,6 +67,7 @@ export function NewDiscussionForm() {
     }
     if (!identity) return;
 
+    setSubmitting(true);
     const thread = createDiscussionThread({
       title: title.trim(),
       body: body.trim(),
@@ -69,6 +76,15 @@ export function NewDiscussionForm() {
       category,
       tags,
     });
+
+    const ok = await syncDiscussionLive();
+    setSubmitting(false);
+    const syncMessage = discussionLiveSyncErrorMessage(ok);
+    if (syncMessage) {
+      setError(`${syncMessage} ${liveSyncSetupHint()}`);
+      return;
+    }
+
     router.push(`/discussions/${thread.id}`);
   }
 
@@ -179,8 +195,8 @@ export function NewDiscussionForm() {
           </p>
         )}
 
-        <Button type="submit" variant="comic">
-          Publish discussion
+        <Button type="submit" variant="comic" disabled={submitting}>
+          {submitting ? "Syncing to live server…" : "Publish discussion"}
         </Button>
       </form>
     </div>

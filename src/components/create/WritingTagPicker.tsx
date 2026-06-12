@@ -13,15 +13,27 @@ interface WritingTagPickerProps {
   value: string[];
   onChange: (tags: string[]) => void;
   className?: string;
+  suggestions?: readonly string[];
+  label?: string;
+  hint?: string;
+  maxTags?: number;
 }
 
-export function WritingTagPicker({ value, onChange, className }: WritingTagPickerProps) {
+export function WritingTagPicker({
+  value,
+  onChange,
+  className,
+  suggestions = WRITING_TAG_SUGGESTIONS,
+  label = "Tags",
+  hint = "Extra tags for Explore — genre, mood, RPG, horror, and more. Pick your main category above first.",
+  maxTags = MAX_WRITING_TAGS,
+}: WritingTagPickerProps) {
   const [customInput, setCustomInput] = useState("");
 
   function addTag(raw: string) {
     const tag = sanitizeTagInput(raw);
     if (!tag || value.includes(tag)) return;
-    if (value.length >= MAX_WRITING_TAGS) return;
+    if (value.length >= maxTags) return;
     onChange([...value, tag]);
   }
 
@@ -38,18 +50,15 @@ export function WritingTagPicker({ value, onChange, className }: WritingTagPicke
     <div className={cn("space-y-3", className)}>
       <div>
         <label className="block text-sm font-comic text-ink">
-          Tags<span className="text-comic-red"> *</span>
+          {label}<span className="text-comic-red"> *</span>
         </label>
-        <p className="text-xs text-ink-muted mt-1">
-          Categorize your piece — poem, RPG, letters, horror, and more. Readers search and
-          filter by these in Explore.
-        </p>
+        <p className="text-xs text-ink-muted mt-1">{hint}</p>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {WRITING_TAG_SUGGESTIONS.map((tag) => {
+        {suggestions.map((tag) => {
           const active = value.includes(tag);
-          const disabled = !active && value.length >= MAX_WRITING_TAGS;
+          const disabled = !active && value.length >= maxTags;
           return (
             <button
               key={tag}
@@ -86,7 +95,7 @@ export function WritingTagPicker({ value, onChange, className }: WritingTagPicke
         <button
           type="button"
           onClick={handleAddCustom}
-          disabled={value.length >= MAX_WRITING_TAGS}
+          disabled={value.length >= maxTags}
           className="px-3 py-2 text-sm font-comic border-2 border-ink bg-surface hover:bg-comic-yellow disabled:opacity-40"
         >
           Add tag
@@ -115,7 +124,7 @@ export function WritingTagPicker({ value, onChange, className }: WritingTagPicke
       )}
 
       <p className="text-[11px] text-ink-muted">
-        {value.length}/{MAX_WRITING_TAGS} tags · letters, numbers, and hyphens only
+        {value.length}/{maxTags} tags · letters, numbers, and hyphens only
       </p>
     </div>
   );

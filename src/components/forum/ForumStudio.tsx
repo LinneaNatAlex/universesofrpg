@@ -16,6 +16,11 @@ import { LoginCTA } from "@/components/auth/LoginCTA";
 import { useFriends } from "@/hooks/useFriends";
 import { isFriend } from "@/lib/friends-store";
 import {
+  forumLiveSyncErrorMessage,
+  liveSyncSetupHint,
+  syncForumLive,
+} from "@/lib/live-content-sync";
+import {
   addForumChapter,
   addForumReply,
   createForum,
@@ -321,7 +326,18 @@ export function NewForumForm() {
     return <LoginCTA message="You must be logged in to start an RPG topic." />;
   }
 
-  function handleCreate() {
+  async function finishForumSync(navigate: () => void) {
+    const ok = await syncForumLive();
+    setSubmitting(false);
+    const message = forumLiveSyncErrorMessage(ok);
+    if (message) {
+      setError(`${message} ${liveSyncSetupHint()}`);
+      return;
+    }
+    navigate();
+  }
+
+  async function handleCreate() {
     setError(null);
 
     if (!identity?.username) {
@@ -364,8 +380,10 @@ export function NewForumForm() {
           return;
         }
 
-        router.push(`/forum/${existingForumId}?chapter=${chapter.number}`);
-        router.refresh();
+        await finishForumSync(() => {
+          router.push(`/forum/${existingForumId}?chapter=${chapter.number}`);
+          router.refresh();
+        });
         return;
       }
 
@@ -384,10 +402,12 @@ export function NewForumForm() {
       }
 
       const lastPart = selectedForum.chapters[lastChapterIndex];
-      router.push(
-        `/forum/${existingForumId}?chapter=${lastPart?.number ?? 1}`
-      );
-      router.refresh();
+      await finishForumSync(() => {
+        router.push(
+          `/forum/${existingForumId}?chapter=${lastPart?.number ?? 1}`
+        );
+        router.refresh();
+      });
       return;
     }
 
@@ -428,8 +448,10 @@ export function NewForumForm() {
       return;
     }
 
-    router.push(`/forum/${forum.id}?chapter=1`);
-    router.refresh();
+    await finishForumSync(() => {
+      router.push(`/forum/${forum.id}?chapter=1`);
+      router.refresh();
+    });
   }
 
   const partLabel =
@@ -626,7 +648,7 @@ export function NewForumForm() {
 
         <Button
           variant="comic"
-          onClick={handleCreate}
+          onClick={() => void handleCreate()}
           disabled={
             submitting || (mode === "continue" && (writerForums.length === 0 || !existingForumId))
           }

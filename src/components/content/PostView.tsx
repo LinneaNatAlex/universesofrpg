@@ -29,6 +29,9 @@ import { Badge } from "@/components/ui/badge";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { WritingContentView } from "@/components/content/WritingContentView";
 import { PostEngagementBar } from "@/components/feed/PostEngagementBar";
+import { IllustrationGalleryView } from "@/components/content/IllustrationGalleryView";
+import { getIllustrationImages } from "@/lib/illustrations";
+import { getWritingCategoryLabel, getWritingTeaserLabel } from "@/lib/writing-categories";
 import type { FeedPost } from "@/types/database";
 
 interface PostViewProps {
@@ -71,6 +74,12 @@ export function PostView({ post: rawPost }: PostViewProps) {
     purchasedSource ?? getCodeTemplatePreviewBundle(rawPost, viewer);
   const showLiveCodePreview = previewBundle !== null;
   const synopsis = rawPost.plot_synopsis ?? rawPost.description ?? "";
+  const writingLabel = getWritingCategoryLabel(rawPost);
+  const teaserLabel = getWritingTeaserLabel(rawPost);
+  const illustrationImages = getIllustrationImages(rawPost);
+  const typeBadgeLabel =
+    writingLabel ??
+    (rawPost.type === "digital_asset" ? "Illustration" : rawPost.type.replaceAll("_", " "));
 
   const accessMessage =
     rawPost.pricing === "free"
@@ -129,7 +138,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
           {rawPost.title}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="comic">{rawPost.type.replace("_", " ")}</Badge>
+          <Badge variant="comic">{typeBadgeLabel}</Badge>
           {rawPost.pricing === "free" ? (
             <Badge variant="free">Free</Badge>
           ) : (
@@ -184,25 +193,35 @@ export function PostView({ post: rawPost }: PostViewProps) {
         </section>
       )}
 
-      {/* Asset / image previews (story types use BookBackCover spread instead) */}
-      {(rawPost.type === "digital_asset" ||
-        (rawPost.preview_image_url && !isStoryLike(rawPost.type))) &&
-        rawPost.type !== "code_template" &&
-        rawPost.preview_image_url && (
+      {/* Illustration packs — multi-image gallery */}
+      {rawPost.type === "digital_asset" && (
+        <section className="space-y-4">
+          {(rawPost.plot_synopsis ?? rawPost.description) && (
+            <p className="text-sm text-ink-muted italic leading-relaxed">
+              {rawPost.plot_synopsis ?? rawPost.description}
+            </p>
+          )}
+          <IllustrationGalleryView
+            images={illustrationImages}
+            title={rawPost.title}
+            fullAccess={fullAccess}
+          />
+          {!fullAccess && <LoginCTA message={accessMessage} />}
+        </section>
+      )}
+
+      {/* Single asset preview (non-illustration types with preview image) */}
+      {rawPost.type !== "digital_asset" &&
+        rawPost.preview_image_url &&
+        !isStoryLike(rawPost.type) &&
+        rawPost.type !== "code_template" && (
           <section className="space-y-3">
             <AssetTeaserPreview
               src={rawPost.preview_image_url}
               alt={rawPost.title}
               fullAccess={fullAccess}
-              hint={
-                rawPost.type === "digital_asset"
-                  ? (rawPost.plot_synopsis ?? rawPost.description ?? "Full-resolution pack for members.")
-                  : undefined
-              }
             />
-            {!fullAccess && (
-              <LoginCTA message={accessMessage} />
-            )}
+            {!fullAccess && <LoginCTA message={accessMessage} />}
           </section>
         )}
 
@@ -221,6 +240,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
           <BookBackCover
             title={rawPost.title}
             synopsis={synopsis}
+            teaserLabel={teaserLabel}
             coverUrl={rawPost.book_cover_url}
             previewImageUrl={rawPost.preview_image_url}
             previewFullAccess={fullAccess}

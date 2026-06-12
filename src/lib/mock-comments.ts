@@ -135,6 +135,15 @@ export function applyCommentsPersistState(state: CommentsState): void {
 
 export async function syncCommentsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  const {
+    fetchCommentsPlatformState,
+    mergeCommentsState,
+    pushCommentsPlatformState,
+  } = await import("@/lib/content-sync");
+  const remote = await fetchCommentsPlatformState();
+  if (remote) {
+    applyCommentsPersistState(mergeCommentsState(buildCommentsPersistState(), remote));
+  }
   return pushCommentsPlatformState(buildCommentsPersistState());
 }
 

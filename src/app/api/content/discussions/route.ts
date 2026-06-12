@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
-import {
-  getPlatformContent,
-  setPlatformContent,
-} from "@/lib/content-platform-store";
+import { getPlatformContent } from "@/lib/content-platform-store";
+import { upsertDiscussionsPlatformState } from "@/lib/content-platform-upsert-server";
 import { sanitizeDiscussionsPlatformState } from "@/lib/discussions-platform-sanitize";
 import type { DiscussionReply, DiscussionThread } from "@/types/database";
 
@@ -46,23 +44,20 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const state = sanitizeDiscussionsPlatformState({
+    const result = await upsertDiscussionsPlatformState({
       customThreads: Array.isArray(body.customThreads) ? body.customThreads : [],
       customReplies: Array.isArray(body.customReplies) ? body.customReplies : [],
       deletedMockThreadIds: Array.isArray(body.deletedMockThreadIds)
         ? body.deletedMockThreadIds
         : [],
     });
-
-    const result = await setPlatformContent("discussions", state);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
     return NextResponse.json({
       ok: true,
-      threads: state.customThreads.length,
-      replies: state.customReplies.length,
+      threads: result.count,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";

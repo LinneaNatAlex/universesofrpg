@@ -2,14 +2,20 @@ export const MAX_COVER_UPLOAD_BYTES = 1_500_000;
 
 export const COVER_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
-export function readCoverImageFile(file: File): Promise<string> {
+export const MAX_INLINE_WRITING_IMAGE_BYTES = 900_000;
+
+export function readCoverImageFile(
+  file: File,
+  options?: { maxBytes?: number }
+): Promise<string> {
+  const maxBytes = options?.maxBytes ?? MAX_COVER_UPLOAD_BYTES;
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
       reject(new Error("Please choose an image file (JPG, PNG, WebP, or GIF)."));
       return;
     }
-    if (file.size > MAX_COVER_UPLOAD_BYTES) {
-      const maxMb = Math.round(MAX_COVER_UPLOAD_BYTES / 1024 / 1024);
+    if (file.size > maxBytes) {
+      const maxMb = Math.round(maxBytes / 1024 / 1024);
       reject(
         new Error(
           `Image is too large (max ${maxMb} MB for local upload). Compress it or use an image URL instead.`

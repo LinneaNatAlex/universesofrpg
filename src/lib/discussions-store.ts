@@ -225,6 +225,17 @@ export function applyDiscussionsPersistState(state: DiscussionsState): void {
 
 export async function syncDiscussionsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  const {
+    fetchDiscussionsPlatformState,
+    mergeDiscussionsState,
+    pushDiscussionsPlatformState,
+  } = await import("@/lib/content-sync");
+  const remote = await fetchDiscussionsPlatformState();
+  if (remote) {
+    applyDiscussionsPersistState(
+      mergeDiscussionsState(buildDiscussionsPersistState(), remote)
+    );
+  }
   return pushDiscussionsPlatformState(buildDiscussionsPersistState());
 }
 

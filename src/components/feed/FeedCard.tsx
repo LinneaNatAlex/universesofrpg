@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { formatPrice } from "@/lib/utils";
 import { requiresCodePurchase } from "@/lib/posts";
+import { getWritingCategoryLabel, isWritingPostType } from "@/lib/writing-categories";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_ICONS = {
@@ -35,7 +36,7 @@ const TYPE_LABELS: Record<FeedPost["type"], string> = {
   character_sheet: "Character",
   code_template: "Template",
   story_segment: "Story",
-  digital_asset: "Asset",
+  digital_asset: "Illustration",
   collab_thread: "Collab",
   text_writing: "Writing",
 };
@@ -48,7 +49,9 @@ interface FeedCardProps {
 
 export function FeedCard({ post, editHref }: FeedCardProps) {
   const { isLoggedIn } = useAuth();
-  const Icon = TYPE_ICONS[post.type] ?? Code2;
+  const writingLabel = getWritingCategoryLabel(post);
+  const typeLabel = writingLabel ?? TYPE_LABELS[post.type];
+  const Icon = isWritingPostType(post.type) ? PenLine : (TYPE_ICONS[post.type] ?? Code2);
   const synopsis = post.plot_synopsis ?? post.description ?? "";
   const coverOnly =
     post.type === "code_template" ||
@@ -89,7 +92,7 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
             )}
             <Badge variant="comic" className="shrink-0 whitespace-nowrap">
               <Icon className="h-3 w-3 mr-1 inline" />
-              {TYPE_LABELS[post.type]}
+              {typeLabel}
             </Badge>
           </div>
         </div>

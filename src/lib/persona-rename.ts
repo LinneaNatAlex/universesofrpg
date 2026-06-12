@@ -1,6 +1,11 @@
 import type { FriendRequestsPlatformState } from "@/app/api/content/friend-requests/route";
 import type { FriendsPlatformState } from "@/app/api/content/friends/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
+import {
+  inferWritingCategoryFromTags,
+  isWritingCategoryId,
+  isWritingPostType,
+} from "@/lib/writing-categories";
 import type { FeedPost, FriendLink, FriendRequest, RpgForum } from "@/types/database";
 
 /** Legacy demo persona usernames → current identities */
@@ -56,8 +61,16 @@ export function migrateFeedPost(post: FeedPost): FeedPost {
     },
   };
 
+  const writingCategory =
+    migrated.writing_category && isWritingCategoryId(migrated.writing_category)
+      ? migrated.writing_category
+      : isWritingPostType(migrated.type)
+        ? inferWritingCategoryFromTags(migrated.tags, migrated.type)
+        : migrated.writing_category;
+
   return {
     ...migrated,
+    writing_category: writingCategory,
     title: migrateEmbeddedText(migrated.title) ?? migrated.title,
     description: migrateEmbeddedText(migrated.description) ?? migrated.description,
     plot_synopsis: migrateEmbeddedText(migrated.plot_synopsis) ?? migrated.plot_synopsis,

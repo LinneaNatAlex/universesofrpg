@@ -205,6 +205,10 @@ export interface Post {
   is_ai_generated: boolean;
   tags: string[];
   style_tags: string[];
+  /** Writing studio category — book, letter, character creation, etc. */
+  writing_category?: string | null;
+  /** Illustration gallery — digital_asset posts. First image is the list cover. */
+  illustration_images?: string[];
   like_count: number;
   comment_count: number;
   created_at: string;

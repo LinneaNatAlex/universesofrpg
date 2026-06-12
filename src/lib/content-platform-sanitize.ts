@@ -33,6 +33,11 @@ function sanitizePostForSync(post: FeedPost): FeedPost {
     css_code: trimSyncField(migrated.css_code) ?? migrated.css_code,
     js_code: trimSyncField(migrated.js_code) ?? migrated.js_code,
     bbcode: trimSyncField(migrated.bbcode) ?? migrated.bbcode,
+    illustration_images: Array.isArray(migrated.illustration_images)
+      ? migrated.illustration_images
+          .map((url) => trimSyncField(url))
+          .filter((url): url is string => !!url)
+      : migrated.illustration_images,
   };
 }
 

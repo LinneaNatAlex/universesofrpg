@@ -170,6 +170,15 @@ body {
   margin: 0.35rem 0;
 }
 
+.writing-rich-editor img.writing-inline-img,
+.writing-content img.writing-inline-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0;
+  border: 2px solid var(--ink);
+}
+
 /* Post view — rendered rich writing */
 .writing-content h1 {
   font-family: var(--font-comic), cursive;

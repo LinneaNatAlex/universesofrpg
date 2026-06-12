@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 interface BookBackCoverProps {
   title: string;
   synopsis: string;
+  /** Panel label — e.g. "Back cover", "Letter excerpt", "Character sheet". */
+  teaserLabel?: string;
   coverUrl?: string | null;
   /** Main teaser art — mobile spread only; desktop shows this via PostView AssetTeaserPreview. */
   previewImageUrl?: string | null;
@@ -19,11 +21,13 @@ const MOBILE_ROW_HEIGHT = "h-44 sm:h-52";
 function BackCoverPanel({
   title,
   body,
+  teaserLabel,
   scrollable = false,
   className,
 }: {
   title: string;
   body: string;
+  teaserLabel: string;
   scrollable?: boolean;
   className?: string;
 }) {
@@ -38,7 +42,7 @@ function BackCoverPanel({
       <div className="shrink-0 flex items-center gap-2 mb-1.5 sm:mb-2 md:mb-3">
         <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-comic-red shrink-0" />
         <span className="font-comic text-[10px] sm:text-xs uppercase tracking-widest text-ink-muted">
-          Back cover
+          {teaserLabel}
         </span>
       </div>
       <h2
@@ -131,6 +135,7 @@ function PreviewImageSlot({
 export function BookBackCover({
   title,
   synopsis,
+  teaserLabel = "Back cover",
   coverUrl,
   previewImageUrl,
   previewFullAccess = true,
@@ -156,7 +161,7 @@ export function BookBackCover({
             />
           </div>
         )}
-        <BackCoverPanel title={title} body={teaser || body} />
+        <BackCoverPanel title={title} body={teaser || body} teaserLabel={teaserLabel} />
       </div>
 
       {/* Mobile — cover + wide preview image + scrollable back cover in one row */}
@@ -205,7 +210,7 @@ export function BookBackCover({
           </div>
         )}
 
-        <BackCoverPanel title={title} body={body} scrollable />
+        <BackCoverPanel title={title} body={body} teaserLabel={teaserLabel} scrollable />
       </div>
     </>
   );

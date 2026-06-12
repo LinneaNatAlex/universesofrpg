@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
 import { sanitizePostsPlatformState } from "@/lib/content-platform-sanitize";
-import {
-  getPlatformContent,
-  setPlatformContent,
-} from "@/lib/content-platform-store";
+import { getPlatformContent } from "@/lib/content-platform-store";
+import { upsertPostsPlatformState } from "@/lib/content-platform-upsert-server";
 import type { FeedPost } from "@/types/database";
 
 export interface PostsPlatformState {
@@ -48,20 +46,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const state = sanitizePostsPlatformState({
+    const result = await upsertPostsPlatformState({
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
       deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
       likeCounts:
         body.likeCounts && typeof body.likeCounts === "object" ? body.likeCounts : {},
     });
-
-    const result = await setPlatformContent("posts", state);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, count: state.custom.length });
+    return NextResponse.json({ ok: true, count: result.count });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     return NextResponse.json({ error: message }, { status: 500 });

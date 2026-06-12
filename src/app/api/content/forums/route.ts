@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
-import {
-  getPlatformContent,
-  setPlatformContent,
-} from "@/lib/content-platform-store";
+import { getPlatformContent } from "@/lib/content-platform-store";
+import { upsertForumsPlatformState } from "@/lib/content-platform-upsert-server";
 import { sanitizeForumsPlatformState } from "@/lib/forums-platform-sanitize";
 import type { RpgForum } from "@/types/database";
 
@@ -44,18 +42,16 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const state = sanitizeForumsPlatformState({
+    const result = await upsertForumsPlatformState({
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
       deletedCustomIds: Array.isArray(body.deletedCustomIds) ? body.deletedCustomIds : [],
     });
-
-    const result = await setPlatformContent("forums", state);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, count: state.custom.length });
+    return NextResponse.json({ ok: true, count: result.count });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     return NextResponse.json({ error: message }, { status: 500 });

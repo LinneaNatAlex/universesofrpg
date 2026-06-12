@@ -165,7 +165,15 @@ export function applyPostsPersistState(state: PostsState): void {
 
 export async function syncPostsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const { pushPostsPlatformState } = await import("@/lib/content-sync");
+  const {
+    fetchPostsPlatformState,
+    mergePostsState,
+    pushPostsPlatformState,
+  } = await import("@/lib/content-sync");
+  const remote = await fetchPostsPlatformState();
+  if (remote) {
+    applyPostsPersistState(mergePostsState(buildPostsPersistState(), remote));
+  }
   return pushPostsPlatformState(buildPostsPersistState());
 }
 

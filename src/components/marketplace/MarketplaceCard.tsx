@@ -20,13 +20,14 @@ import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { PostDetailLink } from "@/components/content/PostDetailLink";
 import { postDetailHref } from "@/lib/post-access";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
+import { getWritingCategoryLabel, isWritingPostType } from "@/lib/writing-categories";
 import type { FeedPost } from "@/types/database";
 
 const TYPE_LABELS: Record<FeedPost["type"], string> = {
   character_sheet: "Character pack",
   code_template: "Profile theme",
   story_segment: "Story arc",
-  digital_asset: "Asset bundle",
+  digital_asset: "Illustration pack",
   collab_thread: "World kit",
   text_writing: "Writing pack",
 };
@@ -48,7 +49,9 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
   const { buy, busy, error } = useMarketplaceBuy();
-  const Icon = TYPE_ICONS[post.type];
+  const writingLabel = getWritingCategoryLabel(post);
+  const typeLabel = writingLabel ?? TYPE_LABELS[post.type];
+  const Icon = isWritingPostType(post.type) ? PenLine : TYPE_ICONS[post.type];
 
   async function handlePurchase() {
     if (!isLoggedIn) {
@@ -83,7 +86,7 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
           </div>
           <Badge variant="comic" className="bg-comic-yellow text-ink">
             <Icon className="h-3 w-3 mr-1 inline" />
-            {TYPE_LABELS[post.type]}
+            {typeLabel}
           </Badge>
         </div>
 

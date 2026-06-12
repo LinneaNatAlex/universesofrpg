@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
 import { sanitizeCommentsPlatformState } from "@/lib/comments-platform-sanitize";
-import {
-  getPlatformContent,
-  setPlatformContent,
-} from "@/lib/content-platform-store";
+import { getPlatformContent } from "@/lib/content-platform-store";
+import { upsertCommentsPlatformState } from "@/lib/content-platform-upsert-server";
 import type { Comment } from "@/types/database";
 
 export interface CommentsPlatformState {
@@ -41,17 +39,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const state = sanitizeCommentsPlatformState({
+    const result = await upsertCommentsPlatformState({
       custom: Array.isArray(body.custom) ? body.custom : [],
       deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
     });
-
-    const result = await setPlatformContent("comments", state);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, count: state.custom.length });
+    return NextResponse.json({ ok: true, count: result.count });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Server error";
     return NextResponse.json({ error: message }, { status: 500 });
