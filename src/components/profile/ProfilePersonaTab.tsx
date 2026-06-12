@@ -48,6 +48,7 @@ export function ProfilePersonaTab({
           css={personaPage.css_code}
           js={personaPage.js_code}
           mode="full"
+          defaultViewport="mobile"
         />
         {isOwnProfile && (
           <p className="text-xs text-ink-muted text-center">

@@ -236,7 +236,7 @@ export default function ProfilePage() {
             {identity &&
               !isPersonaSwitchInProgress(profile.username) &&
               profile.username.toLowerCase() !== identity.username.toLowerCase() && (
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
                   <ProfileFollowButton
                     actorUsername={identity.username}
                     targetUsername={profile.username}

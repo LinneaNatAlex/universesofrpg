@@ -195,9 +195,9 @@ export function ForumList() {
                 href={`/forum/${forum.id}`}
                 className="comic-card p-4 block hover:no-underline"
               >
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 items-center sm:items-start">
                   {forum.book_cover_url && (
-                    <div className="comic-cover shrink-0">
+                    <div className="comic-cover shrink-0 mx-auto sm:mx-0">
                       <Image
                         src={forum.book_cover_url}
                         alt=""
@@ -207,7 +207,7 @@ export function ForumList() {
                       />
                     </div>
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 w-full text-center sm:text-left">
                     <h3 className="font-comic text-xl text-ink">{forum.title}</h3>
                     {forum.plot_synopsis && (
                       <p className="text-xs text-ink-muted mt-1 line-clamp-2 italic">
@@ -755,14 +755,21 @@ export function ForumDetail({ forumId }: { forumId: string }) {
         ← Back to RPG topics
       </Link>
 
-      <div className="flex gap-4 items-start">
+      <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
         {forum.book_cover_url && (
-          <div className="comic-cover shrink-0">
-            <Image src={forum.book_cover_url} alt="" width={100} height={140} unoptimized />
+          <div className="comic-cover shrink-0 mx-auto sm:mx-0 relative w-[6.25rem] h-[8.75rem] overflow-hidden bg-surface">
+            <Image
+              src={forum.book_cover_url}
+              alt=""
+              fill
+              sizes="100px"
+              className="object-cover object-center"
+              unoptimized
+            />
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <h1 className="font-comic text-3xl text-ink">{forum.title}</h1>
+        <div className="flex-1 min-w-0 w-full text-center sm:text-left">
+          <h1 className="font-comic text-2xl sm:text-3xl text-ink">{forum.title}</h1>
           {forum.plot_synopsis && (
             <p className="text-sm text-ink-muted italic mt-2 leading-relaxed">
               {forum.plot_synopsis}

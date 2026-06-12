@@ -41,7 +41,7 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   return (
-    <div className="flex flex-col md:flex-row gap-5 md:gap-8 items-center md:items-start px-12 py-5 md:px-14 md:py-6">
+    <div className="flex flex-col md:flex-row gap-5 md:gap-8 items-center md:items-start px-4 sm:px-8 md:px-14 py-5 md:py-6">
       <SpotlightVisual post={post} />
 
       <div className="flex-1 min-w-0 text-center md:text-left">

@@ -8,6 +8,7 @@ import {
   UserCircle,
   ImageIcon,
   PenLine,
+  Pencil,
   Eye,
 } from "lucide-react";
 import { PostDetailLink } from "@/components/content/PostDetailLink";
@@ -41,9 +42,11 @@ const TYPE_LABELS: Record<FeedPost["type"], string> = {
 
 interface FeedCardProps {
   post: FeedPost;
+  /** When set, shows an Edit control in the card header (profile creations). */
+  editHref?: string;
 }
 
-export function FeedCard({ post }: FeedCardProps) {
+export function FeedCard({ post, editHref }: FeedCardProps) {
   const { isLoggedIn } = useAuth();
   const Icon = TYPE_ICONS[post.type] ?? Code2;
   const synopsis = post.plot_synopsis ?? post.description ?? "";
@@ -56,28 +59,39 @@ export function FeedCard({ post }: FeedCardProps) {
     <article className="comic-card group">
       <div className="comic-card-inner p-4 md:p-5">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b-2 border-ink border-dashed pb-3 mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap border-b-2 border-ink border-dashed pb-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <UserAvatar
               username={post.author.username}
               displayName={post.author.display_name}
               avatarUrl={post.author.avatar_url}
               size="sm"
             />
-            <div>
+            <div className="min-w-0">
               <Link
                 href={`/profile/${post.author.username}`}
                 className="font-comic font-bold text-ink hover:text-comic-red transition-colors"
               >
                 {post.author.display_name}
               </Link>
-              <p className="text-xs text-ink-muted">@{post.author.username}</p>
+              <p className="text-xs text-ink-muted truncate">@{post.author.username}</p>
             </div>
           </div>
-          <Badge variant="comic">
-            <Icon className="h-3 w-3 mr-1 inline" />
-            {TYPE_LABELS[post.type]}
-          </Badge>
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 ml-auto">
+            {editHref && (
+              <Link
+                href={editHref}
+                className="inline-flex items-center gap-1 px-2 py-1 font-comic text-xs border-2 border-ink bg-comic-yellow text-ink shadow-[2px_2px_0_#1a1a2e] hover:bg-comic-red hover:text-white transition-colors"
+              >
+                <Pencil className="h-3 w-3" />
+                Edit
+              </Link>
+            )}
+            <Badge variant="comic" className="shrink-0 whitespace-nowrap">
+              <Icon className="h-3 w-3 mr-1 inline" />
+              {TYPE_LABELS[post.type]}
+            </Badge>
+          </div>
         </div>
 
         {/* Title */}
@@ -89,14 +103,14 @@ export function FeedCard({ post }: FeedCardProps) {
 
         {/* Uniform cover + teaser for every post type */}
         <PostDetailLink post={post} className="block mt-3 group/teaser">
-          <div className="flex gap-3 items-start">
+          <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
             <PostCoverThumbnail
               post={post}
               size="feed"
               coverOnly={coverOnly}
-              className="shrink-0"
+              className="shrink-0 mx-auto sm:mx-0 w-full max-w-[8.5rem] sm:max-w-none"
             />
-            <p className="text-sm text-ink-muted italic leading-relaxed line-clamp-5 flex-1 min-w-0 group-hover/teaser:text-ink transition-colors">
+            <p className="text-sm text-ink-muted italic leading-relaxed line-clamp-5 flex-1 min-w-0 w-full text-center sm:text-left group-hover/teaser:text-ink transition-colors">
               {synopsis || "Open to read the full teaser…"}
             </p>
           </div>
@@ -117,7 +131,7 @@ export function FeedCard({ post }: FeedCardProps) {
         </div>
 
         {/* Footer */}
-        <div className="mt-4 flex items-center justify-between border-t-2 border-ink border-dashed pt-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t-2 border-ink border-dashed pt-3">
           <PostDetailLink
             post={post}
             className="inline-flex items-center gap-1 text-xs font-comic text-comic-red hover:underline"

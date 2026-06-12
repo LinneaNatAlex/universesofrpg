@@ -124,7 +124,9 @@ export function PostView({ post: rawPost }: PostViewProps) {
         >
           @{rawPost.author.username}
         </Link>
-        <h1 className="font-comic text-3xl md:text-4xl text-ink">{rawPost.title}</h1>
+        <h1 className="font-comic text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">
+          {rawPost.title}
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="comic">{rawPost.type.replace("_", " ")}</Badge>
           {rawPost.pricing === "free" ? (
@@ -161,7 +163,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 mode="full"
                 height={240}
                 sourceLocked={requiresCodePurchase(rawPost) && !canViewSource}
-                defaultViewport="desktop"
+                defaultViewport="mobile"
               />
             ) : rawPost.preview_image_url ? (
               <AssetTeaserPreview
@@ -181,8 +183,9 @@ export function PostView({ post: rawPost }: PostViewProps) {
         </section>
       )}
 
-      {/* Asset / image previews */}
-      {(rawPost.type === "digital_asset" || rawPost.preview_image_url) &&
+      {/* Asset / image previews (story types use BookBackCover spread instead) */}
+      {(rawPost.type === "digital_asset" ||
+        (rawPost.preview_image_url && !isStoryLike(rawPost.type))) &&
         rawPost.type !== "code_template" &&
         rawPost.preview_image_url && (
           <section className="space-y-3">
@@ -209,6 +212,8 @@ export function PostView({ post: rawPost }: PostViewProps) {
             title={rawPost.title}
             synopsis={synopsis}
             coverUrl={rawPost.book_cover_url}
+            previewImageUrl={rawPost.preview_image_url}
+            previewFullAccess={fullAccess}
           />
           {fullAccess ? (
             <div className="comic-panel p-6 prose-comic">

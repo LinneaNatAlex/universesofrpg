@@ -105,7 +105,7 @@ export function TopicChapterReader({
 
   return (
     <div className="space-y-3">
-      <div className="topic-a4-page comic-panel flex flex-col p-6 md:p-8">
+      <div className="topic-a4-page comic-panel flex flex-col p-4 sm:p-6 md:p-8">
         <header className="border-b-2 border-dashed border-ink pb-3 mb-4 shrink-0">
           <h2 className="font-comic text-xl text-ink">
             {formatPartLabel(chapter)}
@@ -125,16 +125,17 @@ export function TopicChapterReader({
               const author = findUserByUsername(post.author_username);
               const displayName = author?.display_name ?? post.author_username;
               return (
-                <article key={post.id} className="border-l-4 border-comic-red pl-3 space-y-2">
+                <article key={post.id} className="border-l-4 border-comic-red pl-3">
                   <CommentAuthorRow
                     username={post.author_username}
                     displayName={displayName}
                     size="xs"
                     meta={`@${post.author_username}`}
-                  />
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink pl-[2.75rem]">
-                    {post.body}
-                  </p>
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink mt-2">
+                      {post.body}
+                    </p>
+                  </CommentAuthorRow>
                 </article>
               );
             })

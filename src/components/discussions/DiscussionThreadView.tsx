@@ -118,7 +118,7 @@ export function DiscussionThreadView({ id }: { id: string }) {
         ) : (
           <ul className="space-y-4">
             {replies.map((reply) => (
-              <li key={reply.id} className="border-l-4 border-comic-yellow pl-3 py-2 space-y-2">
+              <li key={reply.id} className="border-l-4 border-comic-yellow pl-3 py-2">
                 <CommentAuthorRow
                   username={reply.author_username}
                   displayName={reply.author_display_name}
@@ -127,8 +127,9 @@ export function DiscussionThreadView({ id }: { id: string }) {
                       @{reply.author_username} · {formatWhen(reply.created_at)}
                     </>
                   }
-                />
-                <p className="text-sm text-ink whitespace-pre-wrap pl-[3.25rem]">{reply.body}</p>
+                >
+                  <p className="text-sm text-ink whitespace-pre-wrap mt-2">{reply.body}</p>
+                </CommentAuthorRow>
               </li>
             ))}
           </ul>

@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Pencil, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { Badge } from "@/components/ui/badge";
 import { getPostTags, postMatchesSearchQuery, postMatchesTagFilter } from "@/lib/post-tags";
@@ -99,19 +98,11 @@ export function ProfileCreationsTab({
       {filtered.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
           {filtered.map((post) => (
-            <div key={post.id} className="relative group">
-              {editable && (
-                <Link
-                  href={`/post/${post.id}/edit`}
-                  className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 font-comic text-xs border-2 border-ink bg-comic-yellow text-ink shadow-[2px_2px_0_#1a1a2e] hover:bg-comic-red hover:text-white transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit
-                </Link>
-              )}
-              <FeedCard post={post} />
-            </div>
+            <FeedCard
+              key={post.id}
+              post={post}
+              editHref={editable ? `/post/${post.id}/edit` : undefined}
+            />
           ))}
         </div>
       ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import { writeJson } from "@/lib/browser-storage";
+import { mergeRpgForumList } from "@/lib/forums-platform-merge";
 import { migrateFeedPost } from "@/lib/persona-rename";
 import type { CommentsPlatformState } from "@/app/api/content/comments/route";
 import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
@@ -216,9 +217,9 @@ export function mergeForumsState(
   const deletedCustomSet = new Set(deletedCustomIds);
 
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? []).filter(
+    custom: mergeRpgForumList(local.custom ?? [], remote.custom ?? []).filter(
       (forum) => !deletedCustomSet.has(forum.id)
-    ) as RpgForum[],
+    ),
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []

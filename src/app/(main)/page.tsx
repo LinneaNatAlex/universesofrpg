@@ -10,7 +10,7 @@ export default function FeedPage() {
       <MonthlySpotlight />
 
       <section>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-4">
           <h2 className="font-comic text-2xl text-ink">Latest from the realm</h2>
           <span className="text-xs font-comic text-ink-muted uppercase">Up to 10 newest · teasers</span>
         </div>

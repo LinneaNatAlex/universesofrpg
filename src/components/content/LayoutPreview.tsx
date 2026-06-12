@@ -190,6 +190,7 @@ export function LayoutPreview({
   const previewHtml = useMemo(() => sanitizeTemplatePreviewHtml(html), [html]);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const [viewportMode, setViewportMode] = useState<TemplateViewportMode>(defaultViewport);
+  const [viewportPinned, setViewportPinned] = useState(false);
   const [mobileOrientation, setMobileOrientation] =
     useState<MobileOrientation>("portrait");
   const [desktopLayoutWidth, setDesktopLayoutWidth] = useState(TEMPLATE_DESKTOP_WIDTH);
@@ -246,10 +247,12 @@ export function LayoutPreview({
       const w = el.clientWidth;
       if (w < 1) return;
       setContainerWidth(w);
+      if (!viewportPinned && w < 768 && viewportMode === "desktop") {
+        setViewportMode("mobile");
+      }
       if (viewportMode === "desktop") {
-        const next = Math.round(
-          Math.min(TEMPLATE_DESKTOP_WIDTH, Math.max(TEMPLATE_DESKTOP_MIN_WIDTH, w))
-        );
+        const floor = Math.min(TEMPLATE_DESKTOP_MIN_WIDTH, w);
+        const next = Math.round(Math.min(TEMPLATE_DESKTOP_WIDTH, Math.max(floor, w)));
         setDesktopLayoutWidth((prev) => (prev === next ? prev : next));
       }
     };
@@ -442,6 +445,7 @@ export function LayoutPreview({
                 <button
                   type="button"
                   onClick={() => {
+                    setViewportPinned(true);
                     setViewportMode("desktop");
                     setMobileOrientation("portrait");
                   }}
@@ -458,7 +462,10 @@ export function LayoutPreview({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewportMode("mobile")}
+                  onClick={() => {
+                    setViewportPinned(true);
+                    setViewportMode("mobile");
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-ink text-[10px] font-comic transition-colors",
                     viewportMode === "mobile"
