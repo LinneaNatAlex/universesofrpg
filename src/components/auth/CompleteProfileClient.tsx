@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ADULT_PURCHASE_AGE,
+  ageFromBirthDate,
   isMinorForPurchases,
+  maxSignupBirthDate,
+  minSignupBirthDate,
   MIN_ACCOUNT_AGE,
 } from "@/lib/account-age";
 import { normalizeAuthUsername } from "@/lib/auth-profile";
@@ -22,15 +25,15 @@ export function CompleteProfileClient() {
   const { user, loading: authLoading } = useAuth();
 
   const [username, setUsername] = useState("");
-  const [age, setAge] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [minorPurchaseAck, setMinorPurchaseAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const ageNumber = age.trim() ? Number(age) : NaN;
+  const signupAge = birthDate ? ageFromBirthDate(birthDate) : null;
   const showMinorPurchaseAck =
-    Number.isFinite(ageNumber) && isMinorForPurchases(Math.floor(ageNumber));
+    signupAge != null && isMinorForPurchases(signupAge);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +52,7 @@ export function CompleteProfileClient() {
     setSubmitting(true);
     const result = await applyOAuthProfileCompletion(user.id, {
       username: normalizeAuthUsername(username),
-      age: Math.floor(ageNumber),
+      birthDate: birthDate.trim(),
       minorPurchaseAck,
     });
     setSubmitting(false);
@@ -89,13 +92,13 @@ export function CompleteProfileClient() {
         <span className="font-comic text-xl">Finish your profile</span>
       </div>
       <p className="text-sm text-muted mb-6">
-        You signed in with Google. Pick a username, confirm your age, and accept our
-        terms to use Universes of RPG.
+        Google only verified your account — your real name and email stay private. Pick the username
+        that will appear on your profile, enter your birth date for age rules, and accept our terms.
       </p>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm text-muted mb-1.5">Username</label>
+          <label className="block text-sm text-muted mb-1.5">Public username</label>
           <input
             type="text"
             required
@@ -104,18 +107,24 @@ export function CompleteProfileClient() {
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
             placeholder="chaz_copper"
           />
+          <p className="text-xs text-muted mt-1">
+            This is what others see — not your Google name or email.
+          </p>
         </div>
         <div>
-          <label className="block text-sm text-muted mb-1.5">Age</label>
+          <label className="block text-sm text-muted mb-1.5">Birth date (fødselsdato)</label>
           <input
-            type="number"
+            type="date"
             required
-            min={MIN_ACCOUNT_AGE}
-            max={120}
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
+            min={minSignupBirthDate()}
+            max={maxSignupBirthDate()}
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
           />
+          <p className="text-xs text-muted mt-1">
+            Pick your real date of birth — not an age number. Never shown on your profile.
+          </p>
         </div>
 
         <div className="space-y-3 rounded-lg border border-border bg-background/60 px-3 py-3">

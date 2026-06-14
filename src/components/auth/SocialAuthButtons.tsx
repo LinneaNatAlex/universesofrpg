@@ -93,6 +93,11 @@ export function SocialAuthButtons({
         {loading ? "Redirecting…" : "Continue with Google"}
       </Button>
 
+      <p className="text-[11px] text-muted leading-snug text-center px-1">
+        Google is only used to verify your account. Your real name and Gmail address are{" "}
+        <strong>not</strong> shown on your public profile — you choose your own username.
+      </p>
+
       {error && (
         <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
           {error}
@@ -101,7 +106,7 @@ export function SocialAuthButtons({
 
       {mode === "signup" && (
         <p className="text-[11px] text-muted leading-snug text-center">
-          Fill in username, age, and accept the terms above before continuing with Google.
+          Fill in username, birth date, and accept the terms above before continuing with Google.
         </p>
       )}
     </div>

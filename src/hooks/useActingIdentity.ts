@@ -4,6 +4,10 @@ import { useMemo } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { usePersona } from "@/contexts/PersonaContext";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
+import {
+  resolvePublicDisplayName,
+  resolvePublicUsername,
+} from "@/lib/auth-profile";
 import type { Profile } from "@/types/database";
 
 export interface ActingIdentity {
@@ -24,11 +28,8 @@ export function useActingIdentity(): ActingIdentity | null {
     if (isAdmin && canSwitch && activePersona) {
       return activePersona.username.toLowerCase();
     }
-    const rawUsername =
-      (user.user_metadata?.username as string | undefined) ??
-      user.email?.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "_") ??
-      "adventurer";
-    return rawUsername.toLowerCase();
+    const metadata = user.user_metadata as Record<string, unknown> | undefined;
+    return resolvePublicUsername(metadata, null);
   }, [isLoggedIn, user, isAdmin, canSwitch, activePersona]);
 
   const avatarUrl = useProfileAvatar(actingUsername);
@@ -49,8 +50,8 @@ export function useActingIdentity(): ActingIdentity | null {
       };
     }
 
-    const displayName =
-      (user.user_metadata?.display_name as string | undefined) ?? actingUsername;
+    const metadata = user.user_metadata as Record<string, unknown> | undefined;
+    const displayName = resolvePublicDisplayName(actingUsername, metadata);
 
     const profile: Profile = {
       id: user.id,

@@ -192,17 +192,34 @@ export default function RightsPage() {
             Universes of RPG.
           </li>
           <li>
+            At signup we ask for your <strong>birth date</strong> only — it is used for age rules
+            and is <strong>not shown</strong> on your public profile.
+          </li>
+          <li>
             If you are <strong>under 18</strong>, a parent or legal guardian must review these
             terms with you when you sign up, and must approve each paid Shop purchase before
             checkout.
           </li>
           <li>
-            By registering, you confirm that the age you provide is accurate and that you accept
-            these Rights &amp; Terms.
+            By registering, you confirm that your birth date is accurate and that you accept these
+            Rights &amp; Terms.
           </li>
           <li>
             Paid purchases use Stripe. Minors should not complete checkout without guardian
             approval. The platform may block checkout when age rules are not met.
+          </li>
+        </ul>
+      </InfoSection>
+
+      <InfoSection title="Google sign-in & privacy">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            You may sign in with Google to verify your account. We do <strong>not</strong> display
+            your Gmail address or Google real name on your public profile.
+          </li>
+          <li>
+            You choose your own <strong>public username</strong> — that is what other members see
+            on posts, comments, and your profile page.
           </li>
         </ul>
       </InfoSection>

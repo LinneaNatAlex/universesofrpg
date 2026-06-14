@@ -8,6 +8,10 @@ import {
   getProfileAvatarUrl,
   setProfileAvatarUrl,
 } from "@/lib/profile-avatars-store";
+import {
+  resolvePublicDisplayName,
+  resolvePublicUsername,
+} from "@/lib/auth-profile";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Profile } from "@/types/database";
@@ -63,13 +67,9 @@ export function useAccountIdentity(): AccountIdentity | null {
   const base = useMemo((): Omit<AccountIdentity, "profile"> & { profile: Omit<Profile, "avatar_url"> } | null => {
     if (!isLoggedIn || !user) return null;
 
-    const rawUsername =
-      (user.user_metadata?.username as string | undefined) ??
-      user.email?.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "_") ??
-      "adventurer";
-    const username = (dbUsername ?? rawUsername).toLowerCase();
-    const displayName =
-      (user.user_metadata?.display_name as string | undefined) ?? username;
+    const metadata = user.user_metadata as Record<string, unknown> | undefined;
+    const username = resolvePublicUsername(metadata, dbUsername);
+    const displayName = resolvePublicDisplayName(username, metadata);
 
     return {
       authorId: user.id,

@@ -19,8 +19,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "auth") {
+    const err = params.get("error");
+    if (err === "auth") {
       setError("Login failed. Try again.");
+    } else if (err === "cancelled") {
+      setError("Sign-in cancelled. You can try again or use email instead.");
     }
     setRedirectTo(safeRedirectPath(params.get("next")));
   }, []);

@@ -9,8 +9,11 @@ import { formatAuthError } from "@/lib/auth-error-messages";
 import { authCallbackUrl } from "@/lib/site-url";
 import {
   ADULT_PURCHASE_AGE,
+  ageFromBirthDate,
   isMinorForPurchases,
-  isValidSignupAge,
+  isValidSignupBirthDate,
+  maxSignupBirthDate,
+  minSignupBirthDate,
   MIN_ACCOUNT_AGE,
   TERMS_VERSION,
 } from "@/lib/account-age";
@@ -24,16 +27,27 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [age, setAge] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [minorPurchaseAck, setMinorPurchaseAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const ageNumber = age.trim() ? Number(age) : NaN;
+  const signupAge = birthDate ? ageFromBirthDate(birthDate) : null;
   const showMinorPurchaseAck =
-    Number.isFinite(ageNumber) && isMinorForPurchases(Math.floor(ageNumber));
+    signupAge != null && isMinorForPurchases(signupAge);
+
+  function validateBirthDate(): string | null {
+    const value = birthDate.trim();
+    if (!isValidSignupBirthDate(value)) {
+      setError(
+        `Pick a valid birth date — you must be at least ${MIN_ACCOUNT_AGE}. You cannot register by typing an age number.`
+      );
+      return null;
+    }
+    return value;
+  }
 
   function buildSignupDraft(): OAuthSignupDraft | null {
     const cleanUsername = normalizeAuthUsername(username);
@@ -42,13 +56,8 @@ export default function SignupPage() {
       return null;
     }
 
-    const signupAge = Math.floor(ageNumber);
-    if (!isValidSignupAge(signupAge)) {
-      setError(
-        `You must be at least ${MIN_ACCOUNT_AGE} years old to join Universes of RPG.`
-      );
-      return null;
-    }
+    const date = validateBirthDate();
+    if (!date) return null;
 
     if (!acceptedTerms) {
       setError("Read and accept the Rights & Terms before creating an account.");
@@ -65,7 +74,7 @@ export default function SignupPage() {
     setError(null);
     return {
       username: cleanUsername,
-      age: signupAge,
+      birthDate: date,
       minorPurchaseAck: showMinorPurchaseAck ? minorPurchaseAck : false,
     };
   }
@@ -83,11 +92,8 @@ export default function SignupPage() {
       return;
     }
 
-    const signupAge = Math.floor(ageNumber);
-    if (!isValidSignupAge(signupAge)) {
-      setError(
-        `You must be at least ${MIN_ACCOUNT_AGE} years old to join Universes of RPG.`
-      );
+    const date = validateBirthDate();
+    if (!date) {
       setLoading(false);
       return;
     }
@@ -115,12 +121,13 @@ export default function SignupPage() {
           data: {
             username: cleanUsername,
             display_name: cleanUsername,
-            age: signupAge,
+            birth_date: date,
             terms_accepted_at: new Date().toISOString(),
             terms_version: TERMS_VERSION,
             minor_purchase_rules_acknowledged: showMinorPurchaseAck
               ? minorPurchaseAck
               : false,
+            profile_completed: true,
           },
           emailRedirectTo: authCallbackUrl(window.location.origin),
         },
@@ -154,7 +161,7 @@ export default function SignupPage() {
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm text-muted mb-1.5">Username</label>
+          <label className="block text-sm text-muted mb-1.5">Public username</label>
           <input
             type="text"
             required
@@ -163,21 +170,24 @@ export default function SignupPage() {
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
             placeholder="chaz_copper"
           />
+          <p className="text-xs text-muted mt-1">
+            This is what others see on your profile — not your email.
+          </p>
         </div>
         <div>
-          <label className="block text-sm text-muted mb-1.5">Age</label>
+          <label className="block text-sm text-muted mb-1.5">Birth date (fødselsdato)</label>
           <input
-            type="number"
+            type="date"
             required
-            min={MIN_ACCOUNT_AGE}
-            max={120}
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
+            min={minSignupBirthDate()}
+            max={maxSignupBirthDate()}
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-            placeholder={`${MIN_ACCOUNT_AGE}+`}
           />
           <p className="text-xs text-muted mt-1">
-            You must be at least {MIN_ACCOUNT_AGE} to use Universes of RPG.
+            Pick your real date of birth from the calendar — you cannot just type &quot;13&quot; or
+            any age number. Used only for age rules; never shown on your profile.
           </p>
         </div>
         <div>

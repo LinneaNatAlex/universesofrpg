@@ -1,6 +1,6 @@
 export interface OAuthSignupDraft {
   username: string;
-  age: number;
+  birthDate: string;
   minorPurchaseAck: boolean;
 }
 
@@ -16,13 +16,25 @@ export function readOAuthSignupDraft(): OAuthSignupDraft | null {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as OAuthSignupDraft;
+    const parsed = JSON.parse(raw) as OAuthSignupDraft & {
+      birthYear?: number;
+      age?: number;
+    };
+    let birthDate: string | null =
+      typeof parsed.birthDate === "string" ? parsed.birthDate : null;
+    if (!birthDate && typeof parsed.birthYear === "number") {
+      birthDate = `${parsed.birthYear}-01-01`;
+    }
     if (
       typeof parsed.username === "string" &&
-      typeof parsed.age === "number" &&
+      typeof birthDate === "string" &&
       typeof parsed.minorPurchaseAck === "boolean"
     ) {
-      return parsed;
+      return {
+        username: parsed.username,
+        birthDate,
+        minorPurchaseAck: parsed.minorPurchaseAck,
+      };
     }
   } catch {
     // ignore corrupt draft

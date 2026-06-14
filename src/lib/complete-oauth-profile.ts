@@ -1,7 +1,8 @@
 import {
   ADULT_PURCHASE_AGE,
+  ageFromBirthDate,
   isMinorForPurchases,
-  isValidSignupAge,
+  isValidSignupBirthDate,
   TERMS_VERSION,
 } from "@/lib/account-age";
 import { normalizeAuthUsername } from "@/lib/auth-profile";
@@ -10,7 +11,7 @@ import type { OAuthSignupDraft } from "@/lib/oauth-signup-draft";
 
 export interface CompleteProfileInput {
   username: string;
-  age: number;
+  birthDate: string;
   minorPurchaseAck: boolean;
 }
 
@@ -23,12 +24,13 @@ export async function applyOAuthProfileCompletion(
     return { ok: false, error: "Username must be at least 3 characters (a-z, 0-9, _)." };
   }
 
-  const signupAge = Math.floor(input.age);
-  if (!isValidSignupAge(signupAge)) {
-    return { ok: false, error: "Enter a valid age to continue." };
+  const birthDate = input.birthDate.trim();
+  if (!isValidSignupBirthDate(birthDate)) {
+    return { ok: false, error: "Enter a valid birth date to continue." };
   }
 
-  const showMinorAck = isMinorForPurchases(signupAge);
+  const age = ageFromBirthDate(birthDate);
+  const showMinorAck = isMinorForPurchases(age);
   if (showMinorAck && !input.minorPurchaseAck) {
     return {
       ok: false,
@@ -42,10 +44,11 @@ export async function applyOAuthProfileCompletion(
     data: {
       username: cleanUsername,
       display_name: cleanUsername,
-      age: signupAge,
+      birth_date: birthDate,
       terms_accepted_at: new Date().toISOString(),
       terms_version: TERMS_VERSION,
       minor_purchase_rules_acknowledged: showMinorAck ? input.minorPurchaseAck : false,
+      profile_completed: true,
     },
   });
 
@@ -77,7 +80,7 @@ export async function applyOAuthProfileCompletion(
 export function draftToProfileInput(draft: OAuthSignupDraft): CompleteProfileInput {
   return {
     username: draft.username,
-    age: draft.age,
+    birthDate: draft.birthDate,
     minorPurchaseAck: draft.minorPurchaseAck,
   };
 }
