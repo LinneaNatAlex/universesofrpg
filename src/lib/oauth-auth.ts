@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 import { authCallbackUrl } from "@/lib/site-url";
 import { safeRedirectPath } from "@/lib/post-access";
 
-export type OAuthProvider = "google" | "facebook";
+export type OAuthProvider = "google";
 
 export function buildOAuthRedirectUrl(nextPath: string, origin: string): string {
   const next = encodeURIComponent(safeRedirectPath(nextPath));

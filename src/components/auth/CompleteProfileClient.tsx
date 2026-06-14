@@ -89,7 +89,7 @@ export function CompleteProfileClient() {
         <span className="font-comic text-xl">Finish your profile</span>
       </div>
       <p className="text-sm text-muted mb-6">
-        You signed in with Google or Facebook. Pick a username, confirm your age, and accept our
+        You signed in with Google. Pick a username, confirm your age, and accept our
         terms to use Universes of RPG.
       </p>
 

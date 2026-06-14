@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatAuthError } from "@/lib/auth-error-messages";
-import { signInWithOAuthProvider, type OAuthProvider } from "@/lib/oauth-auth";
+import { signInWithOAuthProvider } from "@/lib/oauth-auth";
 import { saveOAuthSignupDraft, type OAuthSignupDraft } from "@/lib/oauth-signup-draft";
 
 interface SocialAuthButtonsProps {
@@ -38,17 +38,6 @@ function GoogleIcon() {
   );
 }
 
-function FacebookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-      <path
-        fill="#1877F2"
-        d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.026 10.125 23.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.026 24 18.1 24 12.073z"
-      />
-    </svg>
-  );
-}
-
 export function SocialAuthButtons({
   mode,
   redirectTo = "/",
@@ -56,10 +45,10 @@ export function SocialAuthButtons({
   buildSignupDraft,
   onSignupValidationError,
 }: SocialAuthButtonsProps) {
-  const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleOAuth(provider: OAuthProvider) {
+  async function handleGoogle() {
     setError(null);
 
     if (mode === "signup") {
@@ -68,24 +57,22 @@ export function SocialAuthButtons({
       saveOAuthSignupDraft(draft);
     }
 
-    setLoadingProvider(provider);
+    setLoading(true);
     try {
-      const { error: oauthError } = await signInWithOAuthProvider(provider, redirectTo);
+      const { error: oauthError } = await signInWithOAuthProvider("google", redirectTo);
       if (oauthError) {
         const message = formatAuthError(oauthError);
         setError(message);
         onSignupValidationError?.(message);
       }
     } catch {
-      const message = "Could not start social sign-in. Check Supabase OAuth settings.";
+      const message = "Could not start Google sign-in. Check Supabase OAuth settings.";
       setError(message);
       onSignupValidationError?.(message);
     } finally {
-      setLoadingProvider(null);
+      setLoading(false);
     }
   }
-
-  const busy = disabled || loadingProvider !== null;
 
   return (
     <div className="space-y-3">
@@ -95,28 +82,16 @@ export function SocialAuthButtons({
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full gap-2"
-          disabled={busy}
-          onClick={() => void handleOAuth("google")}
-        >
-          <GoogleIcon />
-          {loadingProvider === "google" ? "Redirecting…" : "Google"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full gap-2"
-          disabled={busy}
-          onClick={() => void handleOAuth("facebook")}
-        >
-          <FacebookIcon />
-          {loadingProvider === "facebook" ? "Redirecting…" : "Facebook"}
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full gap-2"
+        disabled={disabled || loading}
+        onClick={() => void handleGoogle()}
+      >
+        <GoogleIcon />
+        {loading ? "Redirecting…" : "Continue with Google"}
+      </Button>
 
       {error && (
         <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
@@ -126,8 +101,7 @@ export function SocialAuthButtons({
 
       {mode === "signup" && (
         <p className="text-[11px] text-muted leading-snug text-center">
-          Fill in username, age, and accept the terms above before continuing with Google or
-          Facebook.
+          Fill in username, age, and accept the terms above before continuing with Google.
         </p>
       )}
     </div>

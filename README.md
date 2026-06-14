@@ -72,20 +72,17 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication →
   - `https://YOUR-SITE.netlify.app/auth/callback`
   - `http://localhost:3000/auth/callback` (for local dev only)
 
-### Google & Facebook sign-in
+### Google sign-in
 
-In Supabase → **Authentication → Providers**, enable **Google** and/or **Facebook** and paste the client ID/secret from each provider console.
+In Supabase → **Authentication → Providers**, enable **Google** and paste the client ID/secret from Google Cloud Console.
 
 **Google** ([Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → OAuth 2.0 Client):
 
+- Application type: **Web application**
 - Authorized redirect URI: `https://YOUR-PROJECT.supabase.co/auth/v1/callback` (copy exact URL from Supabase provider settings)
+- Publish the OAuth consent screen so all users can sign in (not just test users)
 
-**Facebook** ([Meta for Developers](https://developers.facebook.com/) → your app → Facebook Login → Settings):
-
-- Valid OAuth Redirect URIs: same Supabase callback URL (`https://YOUR-PROJECT.supabase.co/auth/v1/callback`)
-- Add **Facebook Login** product to the app; use the App ID and App Secret in Supabase
-
-After enabling providers, users can use **Google** / **Facebook** on the login and signup pages. New social signups still require age and terms (collected on signup before OAuth, or on `/complete-profile` if they used login first).
+After enabling Google, users can sign in from the login and signup pages. New social signups still require age and terms (collected on signup before OAuth, or on `/complete-profile` if they used login first).
 
 Replace `YOUR-SITE` with your Netlify subdomain (e.g. `universofrpg.netlify.app`).
 

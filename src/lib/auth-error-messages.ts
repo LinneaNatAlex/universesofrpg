@@ -11,7 +11,7 @@ export function formatAuthError(message: string): string {
   }
 
   if (lower.includes("provider is not enabled")) {
-    return "This sign-in provider is not enabled yet. Ask the site admin to turn on Google/Facebook in Supabase → Authentication → Providers.";
+    return "This sign-in provider is not enabled yet. Ask the site admin to turn on Google in Supabase → Authentication → Providers.";
   }
 
   return message;
