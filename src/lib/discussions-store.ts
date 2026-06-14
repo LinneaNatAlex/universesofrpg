@@ -225,17 +225,7 @@ export function applyDiscussionsPersistState(state: DiscussionsState): void {
 
 export async function syncDiscussionsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const {
-    fetchDiscussionsPlatformState,
-    mergeDiscussionsState,
-    pushDiscussionsPlatformState,
-  } = await import("@/lib/content-sync");
-  const remote = await fetchDiscussionsPlatformState();
-  if (remote) {
-    applyDiscussionsPersistState(
-      mergeDiscussionsState(buildDiscussionsPersistState(), remote)
-    );
-  }
+  const { pushDiscussionsPlatformState } = await import("@/lib/content-sync");
   return pushDiscussionsPlatformState(buildDiscussionsPersistState());
 }
 
@@ -314,7 +304,6 @@ export function createDiscussionThread(input: NewDiscussionInput): DiscussionThr
   threads = [thread, ...threads];
   persist();
   notify();
-  void syncDiscussionsToServer();
   return thread;
 }
 

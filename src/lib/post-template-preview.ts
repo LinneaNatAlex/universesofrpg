@@ -1,5 +1,6 @@
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
 import { normalizeFreeCodeListing } from "@/lib/moderation";
+import { stripThemeMusic } from "@/lib/template-preview";
 import type { FeedPost } from "@/types/database";
 
 function requiresCodePurchase(post: FeedPost): boolean {
@@ -83,9 +84,11 @@ export function ensureTemplatePreviewFields(post: FeedPost): FeedPost {
 
   if (!html || !css) return post;
 
+  const cleanHtml = stripThemeMusic(html);
+
   return {
     ...post,
-    preview_html_code: html,
+    preview_html_code: cleanHtml,
     preview_css_code: css,
     preview_js_code: js,
   };

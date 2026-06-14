@@ -6,11 +6,9 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import {
-  liveSyncErrorMessage,
-  liveSyncSetupHint,
-  syncCreationLive,
+  scheduleCreationLiveSync,
 } from "@/lib/live-content-sync";
-import { addPost, getPostFromStore } from "@/lib/posts-store";
+import { addPost } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { PricingFields } from "@/components/create/PricingFields";
@@ -66,27 +64,9 @@ export function CreateStudio() {
   const [pricing, setPricing] = useState<PricingType>("free");
   const [priceCents, setPriceCents] = useState(499);
   const [publishNote, setPublishNote] = useState<string | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  async function finishLivePublish(postId: string) {
-    const saved = getPostFromStore(postId);
-    if (!saved) return;
-
-    setSaving(true);
-    setSyncError(null);
-
-    const result = await syncCreationLive(saved);
-    const message = liveSyncErrorMessage(result);
-    setSaving(false);
-
-    if (message) {
-      setSyncError(
-        `${message} ${liveSyncSetupHint()}`
-      );
-      return;
-    }
-
+  function finishLivePublish(postId: string) {
+    scheduleCreationLiveSync(postId);
     router.push(`/post/${postId}`);
     router.refresh();
   }
@@ -170,7 +150,7 @@ export function CreateStudio() {
       );
     }
 
-    await finishLivePublish(post.id);
+    finishLivePublish(post.id);
   }
 
   async function handlePublishIllustrations() {
@@ -229,7 +209,7 @@ export function CreateStudio() {
       );
     }
 
-    await finishLivePublish(post.id);
+    finishLivePublish(post.id);
   }
 
   return (
@@ -283,30 +263,18 @@ export function CreateStudio() {
         </p>
       )}
 
-      {syncError && (
-        <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-red/10 border-2 border-comic-red">
-          {syncError}
-        </p>
-      )}
-
-      {saving && (
-        <p className="comic-panel px-4 py-3 text-sm font-comic text-ink bg-comic-yellow/50 border-2 border-ink">
-          Syncing to live server…
-        </p>
-      )}
-
       {mode === "code" && (
         <CodePlayground
           loggedIn
           pricing={pricing}
           priceCents={priceCents}
-          onPublished={async ({ pending, postId }) => {
+          onPublished={({ pending, postId }) => {
             if (pending) {
               setPublishNote(
                 "Submitted for editor review. Your paid template will appear in the Shop once approved."
               );
             }
-            await finishLivePublish(postId);
+            finishLivePublish(postId);
           }}
         />
       )}

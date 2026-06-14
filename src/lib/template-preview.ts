@@ -208,7 +208,17 @@ export function extractThemeMusicUrl(html: string | null | undefined): string {
   return match?.[1]?.replace(/&quot;/g, '"') ?? "";
 }
 
-/** Optional theme music URL — injected into template HTML for preview & publish. */
+/** Resolve theme music from post field or legacy injected markup. */
+export function resolveThemeMusicUrl(
+  html: string | null | undefined,
+  explicitUrl?: string | null
+): string {
+  const fromField = explicitUrl?.trim();
+  if (fromField) return fromField;
+  return extractThemeMusicUrl(html);
+}
+
+/** Optional theme music URL — legacy: injected into HTML. Prefer theme_music_url on posts. */
 export function injectThemeMusic(html: string, musicUrl: string | null | undefined): string {
   const url = musicUrl?.trim();
   if (!url) return html;

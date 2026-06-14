@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { savePersonaProfilePage } from "@/lib/persona-profile-store";
-import { injectThemeMusic } from "@/lib/template-preview";
 import { Button } from "@/components/ui/button";
 import type { PersonaPageMode, PersonaProfilePage } from "@/types/database";
 import { ArrowLeft } from "lucide-react";
@@ -50,8 +49,6 @@ export function PersonaProfileEditor({
   );
   const [musicUrl, setMusicUrl] = useState(initial?.music_url ?? "");
   const [saved, setSaved] = useState(false);
-
-  const previewHtml = injectThemeMusic(html, musicUrl);
 
   function handleSave() {
     savePersonaProfilePage({
@@ -146,7 +143,7 @@ export function PersonaProfileEditor({
               />
             </div>
           ))}
-          <LayoutPreview html={previewHtml} css={css} js={js} mode="full" />
+          <LayoutPreview html={html} css={css} js={js} musicUrl={musicUrl} mode="full" />
         </div>
       )}
 

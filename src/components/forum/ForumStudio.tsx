@@ -16,9 +16,7 @@ import { LoginCTA } from "@/components/auth/LoginCTA";
 import { useFriends } from "@/hooks/useFriends";
 import { isFriend } from "@/lib/friends-store";
 import {
-  forumLiveSyncErrorMessage,
-  liveSyncSetupHint,
-  syncForumLive,
+  scheduleForumLiveSync,
 } from "@/lib/live-content-sync";
 import {
   addForumChapter,
@@ -326,15 +324,9 @@ export function NewForumForm() {
     return <LoginCTA message="You must be logged in to start an RPG topic." />;
   }
 
-  async function finishForumSync(navigate: () => void) {
-    const ok = await syncForumLive();
+  function finishForumSync(navigate: () => void) {
     setSubmitting(false);
-    const message = forumLiveSyncErrorMessage(ok);
-    if (message) {
-      setError(`${message} ${liveSyncSetupHint()}`);
-      return;
-    }
-    navigate();
+    scheduleForumLiveSync(navigate);
   }
 
   async function handleCreate() {
@@ -380,7 +372,7 @@ export function NewForumForm() {
           return;
         }
 
-        await finishForumSync(() => {
+        finishForumSync(() => {
           router.push(`/forum/${existingForumId}?chapter=${chapter.number}`);
           router.refresh();
         });
@@ -402,7 +394,7 @@ export function NewForumForm() {
       }
 
       const lastPart = selectedForum.chapters[lastChapterIndex];
-      await finishForumSync(() => {
+      finishForumSync(() => {
         router.push(
           `/forum/${existingForumId}?chapter=${lastPart?.number ?? 1}`
         );
@@ -448,7 +440,7 @@ export function NewForumForm() {
       return;
     }
 
-    await finishForumSync(() => {
+    finishForumSync(() => {
       router.push(`/forum/${forum.id}?chapter=1`);
       router.refresh();
     });

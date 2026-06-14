@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { addPost, updatePost } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
-import { injectThemeMusic } from "@/lib/template-preview";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { isValidCoverSource } from "@/lib/post-cover";
@@ -97,8 +96,6 @@ export function CodePlayground({
     setCodeLocked(initialValues.codeLocked ?? false);
   }, [initialValues]);
 
-  const previewHtml = injectThemeMusic(html, musicUrl);
-
   async function handlePublish() {
     if (!title.trim()) {
       alert("Add a title before publishing.");
@@ -122,7 +119,7 @@ export function CodePlayground({
       description: description.trim() || "Code template",
       plot_synopsis: null,
       content: null,
-      html_code: previewHtml,
+      html_code: html,
       css_code: css,
       js_code: js,
       bbcode: null,
@@ -136,6 +133,7 @@ export function CodePlayground({
       is_ai_generated: false,
       tags: ["profile", "code"],
       style_tags: [] as string[],
+      theme_music_url: musicUrl.trim() || null,
     };
 
     let postId: string;
@@ -148,7 +146,7 @@ export function CodePlayground({
           description: description.trim() || "Code template",
           plot_synopsis: null,
           content: null,
-          html_code: previewHtml,
+          html_code: html,
           css_code: css,
           js_code: js,
           bbcode: null,
@@ -161,6 +159,7 @@ export function CodePlayground({
           is_ai_generated: false,
           tags: ["profile", "code"],
           style_tags: [],
+          theme_music_url: musicUrl.trim() || null,
         });
         postId = editPostId;
         pendingReview = updated.moderation_status === "pending";
@@ -306,9 +305,10 @@ export function CodePlayground({
 
         {showPreview && (
           <LayoutPreview
-            html={previewHtml}
+            html={html}
             css={css}
             js={js}
+            musicUrl={musicUrl}
             mode="full"
             defaultViewport="desktop"
             className="min-h-[480px]"

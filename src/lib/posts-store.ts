@@ -223,23 +223,15 @@ export function applyPostsPersistState(state: PostsState): void {
 
 export async function syncPostsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const {
-    fetchPostsPlatformState,
-    mergePostsState,
-    pushPostsPlatformState,
-  } = await import("@/lib/content-sync");
-  const remote = await fetchPostsPlatformState();
-  if (remote) {
-    applyPostsPersistState(mergePostsState(buildPostsPersistState(), remote));
-  }
+  const { pushPostsPlatformState } = await import("@/lib/content-sync");
   return pushPostsPlatformState(buildPostsPersistState());
 }
 
-function persist(): boolean {
+function persist(scheduleSync = true): boolean {
   if (typeof window === "undefined") return false;
   const state = buildPostsPersistState();
   const ok = writeJson(STORAGE_KEY, state);
-  if (ok) {
+  if (ok && scheduleSync) {
     schedulePostsPlatformPush(state);
   }
   return ok;
@@ -328,14 +320,13 @@ export function addPost(input: NewPostInput): FeedPost {
     comment_count: 0,
   });
   posts = [post, ...posts];
-  if (!persist()) {
+  if (!persist(false)) {
     posts = posts.filter((p) => p.id !== post.id);
     throw new Error(
       "Could not save your post in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file."
     );
   }
   notify();
-  void syncPostsToServer();
   return post;
 }
 
@@ -374,12 +365,11 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
   });
   posts[idx] = updated;
   posts = sortPosts(posts);
-  if (!persist()) {
+  if (!persist(false)) {
     throw new Error(
       "Could not save your changes in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file."
     );
   }
   notify();
-  void syncPostsToServer();
   return updated;
 }

@@ -11,6 +11,7 @@ import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import { requiresCodePurchase } from "@/lib/posts";
+import { stripThemeMusic } from "@/lib/template-preview";
 import { subscribePurchases } from "@/lib/purchases-store";
 import { verifySourceAccess } from "@/lib/verify-marketplace-purchase";
 import type { FeedPost } from "@/types/database";
@@ -145,7 +146,9 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
     {
       id: "html",
       label: "HTML",
-      code: needsPurchase ? (bundle?.html_code ?? null) : (bundle?.html_code ?? post.html_code),
+      code: stripThemeMusic(
+        needsPurchase ? (bundle?.html_code ?? "") : (bundle?.html_code ?? post.html_code ?? "")
+      ) || null,
     },
     {
       id: "css",

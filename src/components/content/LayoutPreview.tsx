@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  extractThemeMusicUrl,
   sanitizeTemplatePreviewHtml,
+  stripThemeMusic,
   TEMPLATE_IFRAME_ALLOW,
   TEMPLATE_IFRAME_SANDBOX,
   TEMPLATE_PREVIEW_CONTAINMENT_CSS,
@@ -24,6 +26,7 @@ import {
   type TemplateViewportMode,
 } from "@/lib/template-viewport";
 import { usePinchPanZoom } from "@/hooks/usePinchPanZoom";
+import { TemplateThemeMusic } from "@/components/content/TemplateThemeMusic";
 import { cn } from "@/lib/utils";
 import {
   Monitor,
@@ -169,6 +172,8 @@ interface LayoutPreviewProps {
   /** Desktop / mobile toggle in full mode. */
   showViewportToggle?: boolean;
   defaultViewport?: TemplateViewportMode;
+  /** Ambient track — rendered outside the template frame, not inside the iframe. */
+  musicUrl?: string | null;
 }
 
 export function LayoutPreview({
@@ -182,12 +187,17 @@ export function LayoutPreview({
   showHeader = true,
   showViewportToggle,
   defaultViewport = "desktop",
+  musicUrl,
 }: LayoutPreviewProps) {
   const previewId = useId();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const srcDocRef = useRef("");
   const frameWrapperRef = useRef<HTMLDivElement>(null);
-  const previewHtml = useMemo(() => sanitizeTemplatePreviewHtml(html), [html]);
+  const previewHtml = useMemo(
+    () => stripThemeMusic(sanitizeTemplatePreviewHtml(html)),
+    [html]
+  );
+  const themeMusicUrl = musicUrl?.trim() || extractThemeMusicUrl(html) || null;
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const [viewportMode, setViewportMode] = useState<TemplateViewportMode>(defaultViewport);
   const [viewportPinned, setViewportPinned] = useState(false);
@@ -209,17 +219,8 @@ export function LayoutPreview({
   const mobileZoomEnabled = isMobileView;
   const mobileZoom = usePinchPanZoom(mobileZoomEnabled, { panAtBaseScale: true });
 
-  /** On narrow screens, rotate the landscape phone 90° so it reads as horizontal. */
-  const rotateLandscapePhone =
-    isLandscape &&
-    containerWidth > 0 &&
-    containerWidth < TEMPLATE_MOBILE_LANDSCAPE_WIDTH - 20;
-
-  const landscapeFitScale = isLandscape
-    ? rotateLandscapePhone
-      ? Math.min(1, (containerWidth - 24) / TEMPLATE_MOBILE_LANDSCAPE_HEIGHT)
-      : landscapePreviewFitScale(containerWidth)
-    : 1;
+  /** Scale the landscape phone frame to fit — template inside is never rotated. */
+  const landscapeFitScale = isLandscape ? landscapePreviewFitScale(containerWidth) : 1;
 
   const baseScale = isLandscape ? landscapeFitScale : 1;
   const panScale = mobileZoom.transform.scale;
@@ -391,9 +392,7 @@ export function LayoutPreview({
 
   const mobilePanContainerHeight = isMobileView
     ? isLandscape
-      ? rotateLandscapePhone
-        ? Math.ceil(TEMPLATE_MOBILE_LANDSCAPE_WIDTH * landscapeFitScale) + 48
-        : Math.ceil(TEMPLATE_MOBILE_LANDSCAPE_HEIGHT * landscapeFitScale) + 48
+      ? Math.ceil(TEMPLATE_MOBILE_LANDSCAPE_HEIGHT * landscapeFitScale) + 48
       : TEMPLATE_PREVIEW_FRAME_HEIGHT
     : TEMPLATE_PREVIEW_FRAME_HEIGHT;
 
@@ -415,8 +414,11 @@ export function LayoutPreview({
     />
   );
 
-  const hasAudio =
-    /<audio\b/i.test(html) || /new\s+Audio\s*\(/i.test(js ?? "") || /\.play\s*\(/i.test(js ?? "");
+  const hasTemplateAudio =
+    /<audio\b/i.test(previewHtml) ||
+    /new\s+Audio\s*\(/i.test(js ?? "") ||
+    /\.play\s*\(/i.test(js ?? "");
+  const showThemeMusic = Boolean(themeMusicUrl);
 
   return (
     <div
@@ -433,9 +435,14 @@ export function LayoutPreview({
             {sourceLocked
               ? "Template preview — source hidden until purchase"
               : "Template preview"}
-            {hasAudio && (
+            {hasTemplateAudio && (
               <span className="normal-case font-normal opacity-80 ml-1">
-                · use play controls inside preview for music
+                · template includes its own audio
+              </span>
+            )}
+            {showThemeMusic && (
+              <span className="normal-case font-normal opacity-80 ml-1">
+                · theme music plays below preview
               </span>
             )}
           </span>
@@ -524,12 +531,10 @@ export function LayoutPreview({
                   )}
                   aria-pressed={isLandscape}
                 >
-                  <RotateCw
-                    className={cn("h-3.5 w-3.5", isLandscape && "rotate-90")}
-                  />
+                  <RotateCw className="h-3.5 w-3.5" />
                   {isLandscape
-                    ? "Landscape on — tap for portrait"
-                    : "Rotate to landscape (horizontal)"}
+                    ? "Landscape phone — tap for portrait"
+                    : "Switch to landscape phone"}
                 </button>
               )}
             </div>
@@ -568,9 +573,7 @@ export function LayoutPreview({
                   height: isLandscape
                     ? TEMPLATE_MOBILE_LANDSCAPE_HEIGHT
                     : undefined,
-                  transform: rotateLandscapePhone
-                    ? `rotate(90deg) scale(${totalScale})`
-                    : `scale(${totalScale})`,
+                  transform: `scale(${totalScale})`,
                 }}
               >
                 {iframeEl}
@@ -581,11 +584,14 @@ export function LayoutPreview({
           iframeEl
         )}
       </div>
+      {showThemeMusic && isFull && (
+        <TemplateThemeMusic url={themeMusicUrl} />
+      )}
       {mobileZoomEnabled && (
         <p className="px-3 py-1.5 text-[10px] font-comic text-ink-muted border-t-2 border-dashed border-ink">
           {isLandscape
-            ? "Landscape — wide phone layout (844×390). Drag to pan · pinch or +/- to zoom."
-            : "Portrait — drag to pan · pinch or +/- to zoom · use Rotate for horizontal layout."}
+            ? "Landscape phone frame (844×390) — template stays upright. Drag to pan · pinch or +/- to zoom."
+            : "Portrait phone frame — drag to pan · pinch or +/- to zoom · switch to landscape for a wide phone frame."}
           {" "}
           Tilting your device also switches orientation when Mobile is active.
         </p>

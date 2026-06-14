@@ -209,6 +209,8 @@ export interface Post {
   writing_category?: string | null;
   /** Illustration gallery — digital_asset posts. First image is the list cover. */
   illustration_images?: string[];
+  /** Optional ambient track for code templates — not part of sold source. */
+  theme_music_url?: string | null;
   like_count: number;
   comment_count: number;
   created_at: string;

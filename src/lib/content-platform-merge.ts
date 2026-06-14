@@ -34,7 +34,7 @@ function mergeRecordsById<
   return [...map.values()];
 }
 
-function pickMergedPost(local: FeedPost, remote: FeedPost): FeedPost {
+export function mergeSinglePost(local: FeedPost, remote: FeedPost): FeedPost {
   const a = normalizeFreeCodeListing(local);
   const b = normalizeFreeCodeListing(remote);
   const localTime = itemRevisionTime(a);
@@ -61,7 +61,7 @@ function mergePostsById(a: FeedPost[], b: FeedPost[]): FeedPost[] {
       map.set(item.id, item);
       continue;
     }
-    map.set(item.id, pickMergedPost(prev, item));
+    map.set(item.id, mergeSinglePost(prev, item));
   }
   return [...map.values()];
 }

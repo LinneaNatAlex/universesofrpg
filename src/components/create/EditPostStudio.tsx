@@ -8,9 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { usePost } from "@/hooks/usePost";
 import {
-  liveSyncErrorMessage,
-  liveSyncSetupHint,
-  syncCreationLive,
+  scheduleCreationLiveSync,
 } from "@/lib/live-content-sync";
 import { updatePost } from "@/lib/posts-store";
 import { canEditPost, getPostForEditing } from "@/lib/posts";
@@ -66,8 +64,6 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
   const [sourceReady, setSourceReady] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [remoteBundle, setRemoteBundle] = useState<PostCodeBundle | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
 
   const editable = useMemo(() => {
     if (!post) return undefined;
@@ -126,7 +122,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       css,
       js,
       coverUrl: latest.preview_image_url ?? "",
-      musicUrl: extractThemeMusicUrl(rawHtml),
+      musicUrl: latest.theme_music_url ?? extractThemeMusicUrl(rawHtml),
       codeLocked: latest.is_code_locked,
     };
   }, [editable, sourceReady, remoteBundle]);
@@ -199,22 +195,9 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
     );
   }
 
-  async function finishLiveSave(savedPost: typeof post) {
+  function finishLiveSave(savedPost: typeof post) {
     if (!savedPost) return;
-    setSaving(true);
-    setSyncError(null);
-
-    const result = await syncCreationLive(savedPost);
-    const message = liveSyncErrorMessage(result);
-    setSaving(false);
-
-    if (message) {
-      setSyncError(
-        `${message} ${liveSyncSetupHint()}`
-      );
-      return;
-    }
-
+    scheduleCreationLiveSync(savedPost.id);
     router.push(`/post/${savedPost.id}`);
     router.refresh();
   }
@@ -256,7 +239,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       return;
     }
 
-    await finishLiveSave(getPostForEditing(post.id) ?? post);
+    finishLiveSave(getPostForEditing(post.id) ?? post);
   }
 
   async function handleSaveIllustrations() {
@@ -288,7 +271,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       return;
     }
 
-    await finishLiveSave(getPostForEditing(post.id) ?? post);
+    finishLiveSave(getPostForEditing(post.id) ?? post);
   }
 
   const isCode = post.type === "code_template";
@@ -324,22 +307,10 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         onPriceCentsChange={setPriceCents}
       />
 
-      {syncError && (
-        <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-red/10 border-2 border-comic-red">
-          {syncError}
-        </p>
-      )}
-
       {sourceError && isCode && (
         <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-yellow/50 border-2 border-ink">
           Could not load saved source from the server ({sourceError}). You can still edit from
           preview fields — save once to sync full code for buyers.
-        </p>
-      )}
-
-      {saving && (
-        <p className="comic-panel px-4 py-3 text-sm font-comic text-ink bg-comic-yellow/50 border-2 border-ink">
-          Syncing to live server…
         </p>
       )}
 
@@ -351,9 +322,9 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             priceCents={priceCents}
             editPostId={post.id}
             initialValues={codeInitialValues}
-            onPublished={async () => {
+            onPublished={() => {
               const saved = getPostForEditing(post.id) ?? post;
-              await finishLiveSave(saved);
+              finishLiveSave(saved);
             }}
           />
         ) : (
@@ -386,8 +357,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             label="Tags"
             hint="Categorize your art — portrait, map, fantasy, token, and more."
           />
-          <Button variant="comic" onClick={() => void handleSaveIllustrations()} disabled={saving}>
-            {saving ? "Syncing…" : "Save changes"}
+          <Button variant="comic" onClick={() => void handleSaveIllustrations()}>
+            Save changes
           </Button>
         </Card>
       ) : (
@@ -431,8 +402,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             <label className="block text-sm font-comic text-ink mb-1">Full text</label>
             <WritingRichEditor value={body} onChange={setBody} />
           </div>
-          <Button variant="comic" onClick={() => void handleSaveWriting()} disabled={saving}>
-            {saving ? "Syncing…" : "Save changes"}
+          <Button variant="comic" onClick={() => void handleSaveWriting()}>
+            Save changes
           </Button>
         </Card>
       )}

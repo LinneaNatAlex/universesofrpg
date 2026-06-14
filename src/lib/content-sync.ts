@@ -6,6 +6,7 @@ import type { DiscussionsPlatformState } from "@/app/api/content/discussions/rou
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { createClient } from "@/lib/supabase/client";
+import type { FeedPost } from "@/types/database";
 
 export {
   mergeCommentsState,
@@ -112,6 +113,37 @@ async function pushPlatformState(
     const error = err instanceof Error ? err.message : "Network error";
     dispatchSyncFailure({ target, status: 0, error });
     console.warn(`[content-sync] ${target} failed:`, error);
+    return false;
+  }
+}
+
+export async function pushSinglePostToServer(post: FeedPost): Promise<boolean> {
+  try {
+    const headers = await authHeaders();
+    const res = await fetch(`/api/content/posts/${post.id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers,
+      body: JSON.stringify(post),
+    });
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      const error =
+        payload.error ??
+        (res.status === 401
+          ? "Sign in required to save live."
+          : `Could not save post live (${res.status}).`);
+      dispatchSyncFailure({ target: "posts", status: res.status, error });
+      console.warn("[content-sync] single post failed:", error);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Network error";
+    dispatchSyncFailure({ target: "posts", status: 0, error });
+    console.warn("[content-sync] single post failed:", error);
     return false;
   }
 }

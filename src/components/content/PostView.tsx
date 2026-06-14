@@ -25,6 +25,7 @@ import { LoginCTA } from "@/components/auth/LoginCTA";
 import { BookBackCover } from "@/components/content/BookBackCover";
 import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
+import { resolveThemeMusicUrl } from "@/lib/template-preview";
 import { Badge } from "@/components/ui/badge";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { WritingContentView } from "@/components/content/WritingContentView";
@@ -170,6 +171,10 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 html={previewBundle.html_code}
                 css={previewBundle.css_code}
                 js={previewBundle.js_code}
+                musicUrl={resolveThemeMusicUrl(
+                  previewBundle.html_code,
+                  rawPost.theme_music_url
+                )}
                 mode="full"
                 height={240}
                 sourceLocked={requiresCodePurchase(rawPost) && !canViewSource}

@@ -3,7 +3,11 @@ import type { DiscussionsPlatformState } from "@/app/api/content/discussions/rou
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { sanitizeCommentsPlatformState } from "@/lib/comments-platform-sanitize";
-import { sanitizePostsPlatformState } from "@/lib/content-platform-sanitize";
+import {
+  sanitizePostForSync,
+  sanitizePostsPlatformState,
+} from "@/lib/content-platform-sanitize";
+import { mergeSinglePost } from "@/lib/content-platform-merge";
 import { sanitizeDiscussionsPlatformState } from "@/lib/discussions-platform-sanitize";
 import {
   mergeCommentsState,
@@ -16,6 +20,7 @@ import {
   getPlatformContent,
   setPlatformContent,
 } from "@/lib/content-platform-store";
+import type { FeedPost } from "@/types/database";
 
 const POSTS_EMPTY: PostsPlatformState = {
   custom: [],
@@ -74,6 +79,26 @@ function normalizeDiscussionsState(body: DiscussionsPlatformState): DiscussionsP
       ? body.deletedMockThreadIds
       : [],
   });
+}
+
+/** Upsert one post into platform state — server merges with the live record for that id. */
+export async function upsertSinglePostPlatformState(
+  incoming: FeedPost
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("posts", POSTS_EMPTY);
+  const normalized = normalizePostsState(existing);
+  const sanitized = sanitizePostForSync(incoming);
+  const idx = normalized.custom.findIndex((post) => post.id === sanitized.id);
+
+  const custom =
+    idx === -1
+      ? [sanitized, ...normalized.custom]
+      : normalized.custom.map((post, i) =>
+          i === idx ? mergeSinglePost(post, sanitized) : post
+        );
+
+  const merged = normalizePostsState({ ...normalized, custom });
+  return setPlatformContent("posts", merged);
 }
 
 /** Merge incoming client state with live Supabase data — never wipe other users' content. */

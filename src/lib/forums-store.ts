@@ -123,15 +123,7 @@ export function applyForumsPersistState(state: ForumsState): void {
 
 export async function syncForumsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const {
-    fetchForumsPlatformState,
-    mergeForumsState,
-    pushForumsPlatformState,
-  } = await import("@/lib/content-sync");
-  const remote = await fetchForumsPlatformState();
-  if (remote) {
-    applyForumsPersistState(mergeForumsState(buildForumsPersistState(), remote));
-  }
+  const { pushForumsPlatformState } = await import("@/lib/content-sync");
   return pushForumsPlatformState(buildForumsPersistState());
 }
 
@@ -497,6 +489,9 @@ export function publishForumToShop(
   forum.shop_price_cents = priceCents;
   saveForumChanges(forum);
   notify();
+  void import("@/lib/live-content-sync").then(({ scheduleCreationLiveSync }) => {
+    scheduleCreationLiveSync(post.id);
+  });
   return post.id;
 }
 

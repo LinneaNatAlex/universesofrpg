@@ -18,7 +18,7 @@ function trimSyncField(value: string | null | undefined): string | null | undefi
   return value;
 }
 
-function sanitizePostForSync(post: FeedPost): FeedPost {
+export function sanitizePostForSync(post: FeedPost): FeedPost {
   const migrated = normalizeFreeCodeListing(migrateFeedPost(post));
   return {
     ...migrated,

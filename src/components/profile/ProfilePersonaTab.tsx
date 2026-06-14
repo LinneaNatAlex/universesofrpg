@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
-import { injectThemeMusic } from "@/lib/template-preview";
 import type { PersonaProfilePage, Profile } from "@/types/database";
 import { PenLine } from "lucide-react";
 
@@ -40,13 +39,13 @@ export function ProfilePersonaTab({
   }
 
   if (personaPage.mode === "code" && personaPage.html_code && personaPage.css_code) {
-    const html = injectThemeMusic(personaPage.html_code, personaPage.music_url);
     return (
       <div className="space-y-3">
         <LayoutPreview
-          html={html}
+          html={personaPage.html_code}
           css={personaPage.css_code}
           js={personaPage.js_code}
+          musicUrl={personaPage.music_url}
           mode="full"
           defaultViewport="desktop"
         />

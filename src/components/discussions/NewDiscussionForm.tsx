@@ -16,9 +16,7 @@ import {
 } from "@/lib/discussion-tags";
 import { createDiscussionThread } from "@/lib/discussions-store";
 import {
-  discussionLiveSyncErrorMessage,
-  liveSyncSetupHint,
-  syncDiscussionLive,
+  scheduleDiscussionLiveSync,
 } from "@/lib/live-content-sync";
 
 export function NewDiscussionForm() {
@@ -67,7 +65,7 @@ export function NewDiscussionForm() {
     }
     if (!identity) return;
 
-    setSubmitting(true);
+    setSubmitting(false);
     const thread = createDiscussionThread({
       title: title.trim(),
       body: body.trim(),
@@ -77,15 +75,9 @@ export function NewDiscussionForm() {
       tags,
     });
 
-    const ok = await syncDiscussionLive();
-    setSubmitting(false);
-    const syncMessage = discussionLiveSyncErrorMessage(ok);
-    if (syncMessage) {
-      setError(`${syncMessage} ${liveSyncSetupHint()}`);
-      return;
-    }
-
-    router.push(`/discussions/${thread.id}`);
+    scheduleDiscussionLiveSync(() => {
+      router.push(`/discussions/${thread.id}`);
+    });
   }
 
   return (
