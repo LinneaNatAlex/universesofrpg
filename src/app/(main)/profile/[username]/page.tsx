@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useAuthorPosts } from "@/hooks/useAuthorPosts";
 import { usePersonaProfile } from "@/hooks/usePersonaProfile";
@@ -39,6 +39,7 @@ type ProfileTab = "persona" | "creations" | "purchases" | "friends" | "following
 
 export default function ProfilePage() {
   const params = useParams();
+  const router = useRouter();
   const username = ((params.username as string) ?? "").toLowerCase();
   const identity = useActingIdentity();
   const { isPersonaSwitchInProgress } = usePersona();
@@ -64,6 +65,12 @@ export default function ProfilePage() {
   useEffect(() => {
     setClientReady(true);
   }, []);
+
+  useEffect(() => {
+    if (username === "adventurer") {
+      router.replace("/");
+    }
+  }, [username, router]);
 
   const creationAuthor = creations.find(
     (p) => p.author.username.toLowerCase() === username

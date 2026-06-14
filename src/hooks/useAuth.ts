@@ -20,20 +20,54 @@ export function useAuth() {
     }
 
     const supabase = createClient();
+    let cancelled = false;
 
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
+    async function syncUser() {
+      const {
+        data: { user: validated },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
+      if (error || !validated) {
+        const stillHasSession = (await supabase.auth.getSession()).data.session;
+        if (stillHasSession) {
+          await supabase.auth.signOut();
+        }
+        setUser(null);
+      } else {
+        setUser(validated);
+      }
       setLoading(false);
-    });
+    }
+
+    void syncUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      void syncUser();
     });
 
-    return () => subscription.unsubscribe();
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void syncUser();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   return { user, loading, isLoggedIn: !!user };

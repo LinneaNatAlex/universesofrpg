@@ -23,16 +23,20 @@ export interface ActingIdentity {
 export function useActingIdentity(): ActingIdentity | null {
   const { user, isLoggedIn, isAdmin } = useAdmin();
   const { activePersona, canSwitch } = usePersona();
-  const dbUsername = useProfileDbUsername(user?.id, isLoggedIn && !(isAdmin && canSwitch && activePersona));
+  const { username: dbUsername, loading: profileLoading } = useProfileDbUsername(
+    user?.id,
+    isLoggedIn && !(isAdmin && canSwitch && activePersona)
+  );
 
   const actingUsername = useMemo(() => {
     if (!isLoggedIn || !user) return null;
     if (isAdmin && canSwitch && activePersona) {
       return activePersona.username.toLowerCase();
     }
+    if (profileLoading) return null;
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
     return resolvePublicUsername(metadata, dbUsername);
-  }, [isLoggedIn, user, isAdmin, canSwitch, activePersona, dbUsername]);
+  }, [isLoggedIn, user, isAdmin, canSwitch, activePersona, dbUsername, profileLoading]);
 
   const avatarUrl = useProfileAvatar(actingUsername);
 

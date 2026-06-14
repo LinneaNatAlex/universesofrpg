@@ -18,6 +18,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { useInvalidSessionCleanup } from "@/hooks/useInvalidSessionCleanup";
 import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { ContentSyncNotice } from "@/components/content/ContentSyncNotice";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
@@ -165,9 +166,15 @@ function AppShellNav() {
   );
 }
 
+function SessionGuard() {
+  useInvalidSessionCleanup();
+  return null;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PersonaProvider>
+      <SessionGuard />
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
         <ContentHydrator />

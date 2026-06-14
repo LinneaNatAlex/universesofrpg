@@ -5,17 +5,25 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getProfileAvatarUrl, setProfileAvatarUrl } from "@/lib/profile-avatars-store";
 
+export interface ProfileDbRecord {
+  username: string | null;
+  loading: boolean;
+}
+
 /** Username from public.profiles for the signed-in user. */
-export function useProfileDbUsername(userId: string | undefined, enabled: boolean): string | null {
-  const [dbUsername, setDbUsername] = useState<string | null>(null);
+export function useProfileDbUsername(userId: string | undefined, enabled: boolean): ProfileDbRecord {
+  const [username, setUsername] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!enabled || !userId || !isSupabaseConfigured()) {
-      setDbUsername(null);
+      setUsername(null);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
 
     void (async () => {
       try {
@@ -26,17 +34,24 @@ export function useProfileDbUsername(userId: string | undefined, enabled: boolea
           .eq("id", userId)
           .maybeSingle();
 
-        if (cancelled || error || !data?.username) return;
+        if (cancelled) return;
 
-        const username = data.username.toLowerCase();
-        setDbUsername(username);
+        if (error || !data?.username) {
+          setUsername(null);
+          return;
+        }
+
+        const resolved = data.username.toLowerCase();
+        setUsername(resolved);
 
         const remote = data.avatar_url?.trim() || null;
-        if (remote && !getProfileAvatarUrl(username)) {
-          setProfileAvatarUrl(username, remote);
+        if (remote && !getProfileAvatarUrl(resolved)) {
+          setProfileAvatarUrl(resolved, remote);
         }
       } catch {
-        // profiles row may not exist yet
+        if (!cancelled) setUsername(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -45,5 +60,5 @@ export function useProfileDbUsername(userId: string | undefined, enabled: boolea
     };
   }, [enabled, userId]);
 
-  return dbUsername;
+  return { username, loading };
 }

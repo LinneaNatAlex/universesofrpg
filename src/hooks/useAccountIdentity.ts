@@ -21,13 +21,19 @@ export interface AccountIdentity {
 /** Always the signed-in user — never an admin demo persona. */
 export function useAccountIdentity(): AccountIdentity | null {
   const { user, isLoggedIn } = useAdmin();
-  const dbUsername = useProfileDbUsername(user?.id, isLoggedIn);
+  const { username: dbUsername, loading: profileLoading } = useProfileDbUsername(
+    user?.id,
+    isLoggedIn
+  );
 
   const base = useMemo((): Omit<AccountIdentity, "profile"> & { profile: Omit<Profile, "avatar_url"> } | null => {
     if (!isLoggedIn || !user) return null;
+    if (profileLoading) return null;
 
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
     const username = resolvePublicUsername(metadata, dbUsername);
+    if (!username) return null;
+
     const displayName = resolvePublicDisplayName(username, metadata);
 
     return {
@@ -45,7 +51,7 @@ export function useAccountIdentity(): AccountIdentity | null {
         created_at: user.created_at ?? "",
       },
     };
-  }, [isLoggedIn, user, dbUsername]);
+  }, [isLoggedIn, user, dbUsername, profileLoading]);
 
   const avatarUrl = useProfileAvatar(base?.username ?? null);
 

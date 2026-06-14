@@ -25,16 +25,16 @@ export function normalizeAuthUsername(raw: string): string {
   return raw.toLowerCase().replace(/[^a-z0-9_]/g, "_");
 }
 
-/** Public identity — never fall back to email or OAuth provider names. */
+/** Public identity — never fall back to email, Google name, or placeholder usernames. */
 export function resolvePublicUsername(
   metadata: Record<string, unknown> | undefined,
   dbUsername: string | null
-): string {
+): string | null {
   if (dbUsername) return dbUsername.toLowerCase();
   if (typeof metadata?.username === "string" && metadata.username.trim().length >= 3) {
     return metadata.username.trim().toLowerCase();
   }
-  return "adventurer";
+  return null;
 }
 
 export function resolvePublicDisplayName(

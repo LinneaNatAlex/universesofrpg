@@ -13,21 +13,20 @@ export interface SessionUser {
 
 function usernameFromUser(user: {
   id: string;
-  email?: string | null;
   user_metadata?: Record<string, unknown>;
-}): string {
+}): string | null {
   const fromMeta = user.user_metadata?.username;
   if (typeof fromMeta === "string" && fromMeta.trim().length >= 3) {
     return fromMeta.trim().toLowerCase();
   }
-  return "adventurer";
+  return null;
 }
 
 async function usernameFromProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  fallback: string
-): Promise<string> {
+  fallback: string | null
+): Promise<string | null> {
   const { data } = await supabase
     .from("profiles")
     .select("username")
@@ -51,6 +50,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
     const metaUsername = usernameFromUser(user);
     const username = await usernameFromProfile(supabase, user.id, metaUsername);
+    if (!username) return null;
 
     return {
       id: user.id,
@@ -88,6 +88,7 @@ export async function getSessionUserFromRequest(
 
   const metaUsername = usernameFromUser(user);
   const username = await usernameFromProfile(service, user.id, metaUsername);
+  if (!username) return null;
 
   return {
     id: user.id,

@@ -35,6 +35,9 @@ export function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  const hasPublicProfile = Boolean(account?.username || identity?.username);
+  const showLoggedIn = isLoggedIn && hasPublicProfile;
+
   const profileHref =
     identity?.isActingAsPersona && identity.username
       ? `/profile/${identity.username}`
@@ -75,7 +78,7 @@ export function UserMenu() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!showLoggedIn) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2">
         <Link
