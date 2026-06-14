@@ -104,7 +104,7 @@ export function CodePlayground({
     setHtml(initialValues.html || DEFAULT_HTML);
     setCss(initialValues.css || DEFAULT_CSS);
     setJs(initialValues.js || DEFAULT_JS);
-    setCoverUrl(initialValues.coverUrl);
+    setCoverUrl(initialValues.coverUrl ?? "");
     setMusicUrl(initialValues.musicUrl ?? "");
     setCodeLocked(initialValues.codeLocked ?? false);
     if (initialValues.containsSexualContent !== undefined) {

@@ -108,8 +108,9 @@ export function CoverImageField({
       </div>
 
       {mode === "upload" ? (
-        <div className="space-y-2">
+        <div key="cover-upload" className="space-y-2">
           <input
+            key="cover-file"
             ref={fileInputRef}
             type="file"
             accept={COVER_IMAGE_ACCEPT}
@@ -155,8 +156,9 @@ export function CoverImageField({
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div key="cover-url" className="space-y-2">
           <input
+            key="cover-url-field"
             value={value.startsWith("data:") ? "" : value}
             onChange={(e) => onChange(e.target.value)}
             className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
