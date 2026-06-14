@@ -21,7 +21,9 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err === "auth") {
-      setError("Login failed. Try again.");
+      setError(
+        "Login failed. Check Supabase URL settings: Site URL must be https://universofrpg.netlify.app and Redirect URLs must include https://universofrpg.netlify.app/**"
+      );
     } else if (err === "cancelled") {
       setError("Sign-in cancelled. You can try again or use email instead.");
     }

@@ -27,9 +27,18 @@ export function OAuthReturnClient() {
 
     async function finish() {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+
+      let user = null;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const {
+          data: { user: current },
+        } = await supabase.auth.getUser();
+        if (current) {
+          user = current;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
 
       if (cancelled) return;
 
