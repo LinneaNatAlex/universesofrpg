@@ -31,8 +31,8 @@ export function resolvePublicUsername(
   dbUsername: string | null
 ): string {
   if (dbUsername) return dbUsername.toLowerCase();
-  if (hasCompletedProfile(metadata) && typeof metadata?.username === "string") {
-    return metadata.username.toLowerCase();
+  if (typeof metadata?.username === "string" && metadata.username.trim().length >= 3) {
+    return metadata.username.trim().toLowerCase();
   }
   return "adventurer";
 }
@@ -41,7 +41,7 @@ export function resolvePublicDisplayName(
   username: string,
   metadata: Record<string, unknown> | undefined
 ): string {
-  if (hasCompletedProfile(metadata) && typeof metadata?.display_name === "string") {
+  if (typeof metadata?.display_name === "string") {
     const chosen = metadata.display_name.trim();
     if (chosen) return chosen;
   }

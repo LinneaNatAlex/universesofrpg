@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
+import { useProfileDbUsername } from "@/hooks/useProfileDbUsername";
 import { registerKnownUser } from "@/lib/known-users-store";
-import {
-  getProfileAvatarUrl,
-  setProfileAvatarUrl,
-} from "@/lib/profile-avatars-store";
 import {
   resolvePublicDisplayName,
   resolvePublicUsername,
 } from "@/lib/auth-profile";
-import { createClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Profile } from "@/types/database";
 
 export interface AccountIdentity {
@@ -26,43 +21,7 @@ export interface AccountIdentity {
 /** Always the signed-in user — never an admin demo persona. */
 export function useAccountIdentity(): AccountIdentity | null {
   const { user, isLoggedIn } = useAdmin();
-  const [dbUsername, setDbUsername] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isLoggedIn || !user?.id || !isSupabaseConfigured()) {
-      setDbUsername(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (cancelled || error || !data?.username) return;
-
-        const username = data.username.toLowerCase();
-        setDbUsername(username);
-
-        const remote = data.avatar_url?.trim() || null;
-        if (remote && !getProfileAvatarUrl(username)) {
-          setProfileAvatarUrl(username, remote);
-        }
-      } catch {
-        // profiles row may not exist yet in dev
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, user?.id]);
+  const dbUsername = useProfileDbUsername(user?.id, isLoggedIn);
 
   const base = useMemo((): Omit<AccountIdentity, "profile"> & { profile: Omit<Profile, "avatar_url"> } | null => {
     if (!isLoggedIn || !user) return null;

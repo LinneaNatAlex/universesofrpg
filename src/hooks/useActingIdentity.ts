@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { usePersona } from "@/contexts/PersonaContext";
 import { useProfileAvatar } from "@/hooks/useProfileAvatar";
+import { useProfileDbUsername } from "@/hooks/useProfileDbUsername";
 import {
   resolvePublicDisplayName,
   resolvePublicUsername,
@@ -22,6 +23,7 @@ export interface ActingIdentity {
 export function useActingIdentity(): ActingIdentity | null {
   const { user, isLoggedIn, isAdmin } = useAdmin();
   const { activePersona, canSwitch } = usePersona();
+  const dbUsername = useProfileDbUsername(user?.id, isLoggedIn && !(isAdmin && canSwitch && activePersona));
 
   const actingUsername = useMemo(() => {
     if (!isLoggedIn || !user) return null;
@@ -29,8 +31,8 @@ export function useActingIdentity(): ActingIdentity | null {
       return activePersona.username.toLowerCase();
     }
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
-    return resolvePublicUsername(metadata, null);
-  }, [isLoggedIn, user, isAdmin, canSwitch, activePersona]);
+    return resolvePublicUsername(metadata, dbUsername);
+  }, [isLoggedIn, user, isAdmin, canSwitch, activePersona, dbUsername]);
 
   const avatarUrl = useProfileAvatar(actingUsername);
 

@@ -42,8 +42,13 @@ export function UserMenu() {
         ? `/profile/${account.username}`
         : "/login";
 
-  const displayName = identity?.displayName ?? account?.displayName ?? "Account";
-  const username = identity?.username ?? account?.username;
+  const isPersona = identity?.isActingAsPersona ?? false;
+  const displayName = isPersona
+    ? (identity?.displayName ?? "Account")
+    : (account?.displayName ?? identity?.displayName ?? "Account");
+  const username = isPersona
+    ? identity?.username
+    : (account?.username ?? identity?.username);
   const { unread: unreadMessages } = useConversations(username ?? null);
 
   useEffect(() => {
