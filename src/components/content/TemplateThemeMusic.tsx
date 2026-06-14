@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Music2, Pause, Play } from "lucide-react";
 import {
   createYouTubeBackgroundPlayer,
+  isThemeMusicPausedByUser,
   resolveThemeMusicSource,
+  setThemeMusicPausedByUser,
+  themeMusicPauseKey,
   type YouTubePlayerInstance,
 } from "@/lib/theme-music";
 import { cn } from "@/lib/utils";
@@ -17,12 +20,36 @@ interface TemplateThemeMusicProps {
 /** Ambient theme music — outside the template iframe, not part of the sold layout. */
 export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) {
   const source = useMemo(() => resolveThemeMusicSource(url), [url]);
+  const pauseKey = useMemo(() => themeMusicPauseKey(source), [source]);
   const audioRef = useRef<HTMLAudioElement>(null);
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<YouTubePlayerInstance | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(source.kind === "youtube");
   const [error, setError] = useState<string | null>(null);
+
+  const startPlayback = useCallback(
+    async (userInitiated = false) => {
+      if (!userInitiated && isThemeMusicPausedByUser(pauseKey)) return;
+
+      try {
+        setError(null);
+        if (source.kind === "youtube") {
+          ytPlayerRef.current?.playVideo();
+          return;
+        }
+        if (source.kind === "audio") {
+          await audioRef.current?.play();
+        }
+      } catch {
+        if (userInitiated) {
+          setError("Could not play this audio link. Use a direct .mp3/.wav URL.");
+          setPlaying(false);
+        }
+      }
+    },
+    [pauseKey, source.kind]
+  );
 
   useEffect(() => {
     if (source.kind !== "youtube" || !ytContainerRef.current) return;
@@ -50,6 +77,9 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
         }
         ytPlayerRef.current = player;
         setLoading(false);
+        if (!isThemeMusicPausedByUser(pauseKey)) {
+          player.playVideo();
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -63,7 +93,27 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
       ytPlayerRef.current?.destroy();
       ytPlayerRef.current = null;
     };
-  }, [source]);
+  }, [pauseKey, source]);
+
+  useEffect(() => {
+    if (source.kind !== "audio") return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const tryAutoplay = () => {
+      void startPlayback(false);
+    };
+
+    audio.addEventListener("canplay", tryAutoplay);
+    if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      tryAutoplay();
+    }
+
+    return () => {
+      audio.removeEventListener("canplay", tryAutoplay);
+    };
+  }, [source, startPlayback]);
 
   if (source.kind === "invalid") return null;
 
@@ -73,10 +123,12 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
 
     try {
       if (playing) {
+        setThemeMusicPausedByUser(pauseKey, true);
         audio.pause();
         setPlaying(false);
         return;
       }
+      setThemeMusicPausedByUser(pauseKey, false);
       setError(null);
       await audio.play();
       setPlaying(true);
@@ -92,9 +144,11 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
 
     try {
       if (playing) {
+        setThemeMusicPausedByUser(pauseKey, true);
         player.pauseVideo();
         setPlaying(false);
       } else {
+        setThemeMusicPausedByUser(pauseKey, false);
         setError(null);
         player.playVideo();
         setPlaying(true);
@@ -126,6 +180,7 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
       <Music2 className="h-4 w-4 text-comic-red shrink-0" aria-hidden />
       <span className="text-[11px] font-comic text-ink-muted uppercase tracking-wide">
         {label}
+        {playing ? " · playing" : ""}
       </span>
       <button
         type="button"
@@ -156,7 +211,7 @@ export function TemplateThemeMusic({ url, className }: TemplateThemeMusicProps) 
           ref={audioRef}
           src={source.url}
           loop
-          preload="metadata"
+          preload="auto"
           className="sr-only"
           onEnded={() => setPlaying(false)}
           onPause={() => setPlaying(false)}

@@ -60,7 +60,35 @@ export function resolveThemeMusicSource(url: string | null | undefined): ThemeMu
 }
 
 export const THEME_MUSIC_HINT =
-  "Direct .mp3/.wav link or a YouTube URL (watch, youtu.be, or Shorts). Press Play below the preview for background music.";
+  "Direct .mp3/.wav link or a YouTube URL (watch, youtu.be, or Shorts). Background music starts automatically — use Pause if you want silence.";
+
+export function themeMusicPauseKey(source: ThemeMusicSource): string | null {
+  if (source.kind === "invalid") return null;
+  if (source.kind === "youtube") return `yt:${source.videoId}`;
+  return `audio:${source.url}`;
+}
+
+export function isThemeMusicPausedByUser(key: string | null): boolean {
+  if (!key || typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(`uorpg-music-pause:${key}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setThemeMusicPausedByUser(key: string | null, paused: boolean): void {
+  if (!key || typeof window === "undefined") return;
+  try {
+    if (paused) {
+      sessionStorage.setItem(`uorpg-music-pause:${key}`, "1");
+    } else {
+      sessionStorage.removeItem(`uorpg-music-pause:${key}`);
+    }
+  } catch {
+    // Private browsing / storage blocked.
+  }
+}
 
 let youtubeApiPromise: Promise<void> | null = null;
 
@@ -143,7 +171,7 @@ export function createYouTubeBackgroundPlayer(
           height: "1",
           width: "1",
           playerVars: {
-            autoplay: 0,
+            autoplay: 1,
             controls: 0,
             disablekb: 1,
             fs: 0,
