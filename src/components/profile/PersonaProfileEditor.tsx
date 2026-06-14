@@ -7,6 +7,7 @@ import { LayoutPreview } from "@/components/content/LayoutPreview";
 import { savePersonaProfilePage } from "@/lib/persona-profile-store";
 import { Button } from "@/components/ui/button";
 import type { PersonaPageMode, PersonaProfilePage } from "@/types/database";
+import { THEME_MUSIC_HINT } from "@/lib/theme-music";
 import { ArrowLeft } from "lucide-react";
 
 interface PersonaProfileEditorProps {
@@ -111,8 +112,9 @@ export function PersonaProfileEditor({
           value={musicUrl}
           onChange={(e) => setMusicUrl(e.target.value)}
           className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
-          placeholder="https://…/theme.mp3"
+          placeholder="https://youtu.be/… or https://…/theme.mp3"
         />
+        <p className="text-xs text-ink-muted mt-1">{THEME_MUSIC_HINT}</p>
       </div>
 
       {mode === "text" ? (

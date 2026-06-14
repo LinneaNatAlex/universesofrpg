@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import type { PricingType } from "@/types/database";
+import { THEME_MUSIC_HINT } from "@/lib/theme-music";
 import { Eye, Code2, Lock } from "lucide-react";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -274,12 +275,9 @@ export function CodePlayground({
               value={musicUrl}
               onChange={(e) => setMusicUrl(e.target.value)}
               className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
-              placeholder="https://…/your-track.mp3"
+              placeholder="https://youtu.be/… or https://…/track.mp3"
             />
-            <p className="text-xs text-ink-muted mt-1">
-              Adds a play button inside the template preview. You can also embed{" "}
-              <code className="font-mono">&lt;audio&gt;</code> in your HTML.
-            </p>
+            <p className="text-xs text-ink-muted mt-1">{THEME_MUSIC_HINT}</p>
           </div>
           <ContentRatingDeclaration
             containsSexualContent={containsSexualContent}
