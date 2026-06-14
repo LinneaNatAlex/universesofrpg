@@ -29,7 +29,8 @@ function validateOAuthStartUrl(url: string): string | null {
 
 export async function signInWithOAuthProvider(
   provider: OAuthProvider,
-  nextPath = "/"
+  nextPath = "/",
+  signupMetadata?: Record<string, string | boolean>
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const redirectTo = buildOAuthRedirectUrl(nextPath, window.location.origin);
@@ -39,6 +40,7 @@ export async function signInWithOAuthProvider(
     options: {
       redirectTo,
       skipBrowserRedirect: true,
+      ...(signupMetadata ? { data: signupMetadata } : {}),
     },
   });
 

@@ -17,11 +17,26 @@ function usernameFromUser(user: {
   user_metadata?: Record<string, unknown>;
 }): string {
   const fromMeta = user.user_metadata?.username;
-  if (typeof fromMeta === "string" && fromMeta.trim()) {
+  if (typeof fromMeta === "string" && fromMeta.trim().length >= 3) {
     return fromMeta.trim().toLowerCase();
   }
-  const fromEmail = user.email?.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-  return fromEmail && fromEmail.length >= 3 ? fromEmail : "adventurer";
+  return "adventurer";
+}
+
+async function usernameFromProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  fallback: string
+): Promise<string> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", userId)
+    .maybeSingle();
+  if (typeof data?.username === "string" && data.username.length >= 3) {
+    return data.username.toLowerCase();
+  }
+  return fallback;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -34,10 +49,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     } = await supabase.auth.getUser();
     if (!user) return null;
 
+    const metaUsername = usernameFromUser(user);
+    const username = await usernameFromProfile(supabase, user.id, metaUsername);
+
     return {
       id: user.id,
       email: user.email ?? null,
-      username: usernameFromUser(user),
+      username,
     };
   } catch {
     return null;
@@ -68,10 +86,13 @@ export async function getSessionUserFromRequest(
   } = await service.auth.getUser(token);
   if (error || !user) return null;
 
+  const metaUsername = usernameFromUser(user);
+  const username = await usernameFromProfile(service, user.id, metaUsername);
+
   return {
     id: user.id,
     email: user.email ?? null,
-    username: usernameFromUser(user),
+    username,
   };
 }
 

@@ -37,6 +37,12 @@ export default function SignupPage() {
   const signupAge = birthDate ? ageFromBirthDate(birthDate) : null;
   const showMinorPurchaseAck =
     signupAge != null && isMinorForPurchases(signupAge);
+  const cleanUsernamePreview = normalizeAuthUsername(username);
+  const googleSignupReady =
+    cleanUsernamePreview.length >= 3 &&
+    Boolean(birthDate.trim()) &&
+    acceptedTerms &&
+    (!showMinorPurchaseAck || minorPurchaseAck);
 
   function validateBirthDate(): string | null {
     const value = birthDate.trim();
@@ -171,7 +177,8 @@ export default function SignupPage() {
             placeholder="chaz_copper"
           />
           <p className="text-xs text-muted mt-1">
-            This is what others see on your profile — not your email.
+            This is your public name on the site — not your Google name or email. Required before
+            &quot;Continue with Google&quot;.
           </p>
         </div>
         <div>
@@ -271,6 +278,7 @@ export default function SignupPage() {
         <SocialAuthButtons
           mode="signup"
           disabled={loading}
+          signupReady={googleSignupReady}
           buildSignupDraft={buildSignupDraft}
           onSignupValidationError={setError}
         />

@@ -108,6 +108,13 @@ export default function LoginPage() {
 
         <div className="mt-6">
           <SocialAuthButtons mode="login" redirectTo={redirectTo} disabled={loading} />
+          <p className="mt-3 text-[11px] text-muted text-center leading-snug">
+            First time here?{" "}
+            <Link href="/signup" className="text-comic-red font-comic hover:underline">
+              Sign up
+            </Link>{" "}
+            first to choose your public username before using Google.
+          </p>
         </div>
 
         <p className="mt-6 text-center text-sm text-muted">

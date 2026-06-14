@@ -54,7 +54,6 @@ export function OAuthReturnClient() {
           user.id,
           draftToProfileInput(draft)
         );
-        clearOAuthSignupDraft();
 
         if (cancelled) return;
 
@@ -63,6 +62,7 @@ export function OAuthReturnClient() {
           return;
         }
 
+        clearOAuthSignupDraft();
         router.replace(next);
         router.refresh();
         return;

@@ -4,12 +4,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatAuthError } from "@/lib/auth-error-messages";
 import { signInWithOAuthProvider } from "@/lib/oauth-auth";
+import { buildOAuthSignupMetadata } from "@/lib/oauth-signup-metadata";
 import { saveOAuthSignupDraft, type OAuthSignupDraft } from "@/lib/oauth-signup-draft";
 
 interface SocialAuthButtonsProps {
   mode: "login" | "signup";
   redirectTo?: string;
   disabled?: boolean;
+  /** Signup only — block Google until username, birth date, and terms are ready. */
+  signupReady?: boolean;
   /** Required for signup — validates fields and returns draft to store before OAuth redirect. */
   buildSignupDraft?: () => OAuthSignupDraft | null;
   onSignupValidationError?: (message: string) => void;
@@ -42,6 +45,7 @@ export function SocialAuthButtons({
   mode,
   redirectTo = "/",
   disabled = false,
+  signupReady = true,
   buildSignupDraft,
   onSignupValidationError,
 }: SocialAuthButtonsProps) {
@@ -51,15 +55,21 @@ export function SocialAuthButtons({
   async function handleGoogle() {
     setError(null);
 
+    let draft: OAuthSignupDraft | null = null;
     if (mode === "signup") {
-      const draft = buildSignupDraft?.();
+      draft = buildSignupDraft?.() ?? null;
       if (!draft) return;
       saveOAuthSignupDraft(draft);
     }
 
     setLoading(true);
     try {
-      const { error: oauthError } = await signInWithOAuthProvider("google", redirectTo);
+      const signupMetadata = draft ? buildOAuthSignupMetadata(draft) : undefined;
+      const { error: oauthError } = await signInWithOAuthProvider(
+        "google",
+        redirectTo,
+        signupMetadata
+      );
       if (oauthError) {
         const message = formatAuthError(oauthError);
         setError(message);
@@ -86,7 +96,7 @@ export function SocialAuthButtons({
         type="button"
         variant="secondary"
         className="w-full gap-2"
-        disabled={disabled || loading}
+        disabled={disabled || loading || (mode === "signup" && !signupReady)}
         onClick={() => void handleGoogle()}
       >
         <GoogleIcon />

@@ -39,11 +39,8 @@ export function resolvePublicUsername(
 
 export function resolvePublicDisplayName(
   username: string,
-  metadata: Record<string, unknown> | undefined
+  _metadata?: Record<string, unknown> | undefined
 ): string {
-  if (typeof metadata?.display_name === "string") {
-    const chosen = metadata.display_name.trim();
-    if (chosen) return chosen;
-  }
+  // Never show Google/OAuth real names — only the chosen public username.
   return username;
 }
