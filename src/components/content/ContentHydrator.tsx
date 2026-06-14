@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useRef } from "react";
 import {
   CONTENT_SYNCED_EVENT,
   fetchCommentsPlatformState,
@@ -17,34 +16,40 @@ import {
 import {
   applyCommentsPersistState,
   buildCommentsPersistState,
-  syncCommentsToServer,
 } from "@/lib/mock-comments";
 import {
   applyDiscussionsPersistState,
   buildDiscussionsPersistState,
-  syncDiscussionsToServer,
 } from "@/lib/discussions-store";
 import {
   applyForumsPersistState,
   buildForumsPersistState,
-  syncForumsToServer,
 } from "@/lib/forums-store";
 import {
   applyPostsPersistState,
   buildPostsPersistState,
-  syncPostsToServer,
 } from "@/lib/posts-store";
 
+function notifyContentReady(): void {
+  markContentSyncSettled();
+  window.dispatchEvent(new Event(CONTENT_SYNCED_EVENT));
+}
+
 /**
- * Loads live posts, RPG topics, comments, and discussions from Supabase on every visit.
- * When signed in, merges this browser's local drafts and pushes back to the server.
+ * Shows cached/mock content immediately and pulls live data in the background.
+ * Writes are pushed when the user edits — not on every page load.
  */
 export function ContentHydrator() {
-  const { isLoggedIn, loading } = useAuth();
+  const settledRef = useRef(false);
 
   useEffect(() => {
-    if (loading) return;
+    if (!settledRef.current) {
+      settledRef.current = true;
+      notifyContentReady();
+    }
+  }, []);
 
+  useEffect(() => {
     let cancelled = false;
 
     void (async () => {
@@ -55,6 +60,7 @@ export function ContentHydrator() {
           fetchCommentsPlatformState(),
           fetchDiscussionsPlatformState(),
         ]);
+
       if (cancelled) return;
 
       if (remotePosts) {
@@ -77,25 +83,13 @@ export function ContentHydrator() {
         applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
       }
 
-      if (isLoggedIn) {
-        await Promise.all([
-          syncPostsToServer(),
-          syncForumsToServer(),
-          syncCommentsToServer(),
-          syncDiscussionsToServer(),
-        ]);
-      }
-
-      if (!cancelled) {
-        markContentSyncSettled();
-        window.dispatchEvent(new Event(CONTENT_SYNCED_EVENT));
-      }
+      notifyContentReady();
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, loading]);
+  }, []);
 
   return null;
 }

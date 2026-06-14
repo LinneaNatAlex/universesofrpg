@@ -10,9 +10,6 @@ export type LiveSyncResult = {
   needsSource: boolean;
 };
 
-const LIVE_SYNC_SETUP_HINT =
-  "Add SUPABASE_SERVICE_ROLE_KEY on Netlify, run migrations 005 and 006, then try again while logged in on the live site.";
-
 /** Sync one post (+ vaulted source when paid) — server merges; no full-state round trip. */
 export async function syncCreationLive(
   post: FeedPost
@@ -21,14 +18,14 @@ export async function syncCreationLive(
     post.type === "code_template" && requiresCodePurchase(post);
 
   const [posts, source] = await Promise.all([
-    pushSinglePostToServer(post),
+    pushSinglePostToServer(post, { retries: 4 }),
     needsSource ? syncVaultedCodeToServer(post.id) : Promise.resolve(true),
   ]);
 
   return { posts, source, needsSource };
 }
 
-/** Fire-and-forget live sync after local save — errors surface via ContentSyncNotice. */
+/** Fire-and-forget live sync after local save. */
 export function scheduleCreationLiveSync(postId: string): void {
   const post = getPostFromStore(postId);
   if (!post) return;
@@ -48,10 +45,6 @@ export function liveSyncErrorMessage(result: LiveSyncResult): string | null {
   return null;
 }
 
-export function liveSyncSetupHint(): string {
-  return LIVE_SYNC_SETUP_HINT;
-}
-
 /** RPG topics / forum stories — push to Supabase (server merges). */
 export async function syncForumLive(): Promise<boolean> {
   const { syncForumsToServer } = await import("@/lib/forums-store");
@@ -65,19 +58,7 @@ export function forumLiveSyncErrorMessage(ok: boolean): string | null {
 
 export function scheduleForumLiveSync(navigate?: () => void): void {
   navigate?.();
-  void syncForumLive().then((ok) => {
-    if (!ok && typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("uorpg-content-sync-failed", {
-          detail: {
-            target: "forums",
-            status: 0,
-            error: forumLiveSyncErrorMessage(false) ?? "Forum sync failed.",
-          },
-        })
-      );
-    }
-  });
+  void syncForumLive();
 }
 
 /** Community discussions — push to Supabase (server merges). */
@@ -93,18 +74,5 @@ export function discussionLiveSyncErrorMessage(ok: boolean): string | null {
 
 export function scheduleDiscussionLiveSync(navigate?: () => void): void {
   navigate?.();
-  void syncDiscussionLive().then((ok) => {
-    if (!ok && typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("uorpg-content-sync-failed", {
-          detail: {
-            target: "discussions",
-            status: 0,
-            error:
-              discussionLiveSyncErrorMessage(false) ?? "Discussion sync failed.",
-          },
-        })
-      );
-    }
-  });
+  void syncDiscussionLive();
 }

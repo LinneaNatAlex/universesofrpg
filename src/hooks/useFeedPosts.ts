@@ -9,6 +9,8 @@ import { getCommentCount, subscribeComments } from "@/lib/mock-comments";
 import { getAllPosts, subscribePosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
+const SYNC_FALLBACK_MS = 4_000;
+
 function enrich(posts: FeedPost[], viewerCtx: ContentViewerContext): FeedPost[] {
   return posts
     .filter(isPublicFeedPost)
@@ -22,15 +24,23 @@ function sortByNewest(posts: FeedPost[]): FeedPost[] {
   );
 }
 
+function hasCachedPosts(): boolean {
+  if (typeof window === "undefined") return false;
+  return getAllPosts().length > 0;
+}
+
 export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolean } {
-  const { ctx, loading: viewerLoading } = useContentViewer();
-  const [ready, setReady] = useState(() => isContentSyncSettled());
+  const { ctx } = useContentViewer();
+  const [ready, setReady] = useState(
+    () => hasCachedPosts() || isContentSyncSettled()
+  );
   const [posts, setPosts] = useState<FeedPost[]>([]);
 
   useEffect(() => {
     const refresh = () => {
       const enriched = sortByNewest(enrich(getAllPosts(), ctx));
       setPosts(limit !== undefined ? enriched.slice(0, limit) : enriched);
+      if (enriched.length > 0) setReady(true);
     };
 
     const markReady = () => {
@@ -39,7 +49,7 @@ export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolea
     };
 
     refresh();
-    if (isContentSyncSettled()) {
+    if (isContentSyncSettled() || hasCachedPosts()) {
       setReady(true);
     }
 
@@ -47,7 +57,7 @@ export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolea
     window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
     const unsubPosts = subscribePosts(refresh);
     const unsubComments = subscribeComments(refresh);
-    const timeout = window.setTimeout(() => setReady(true), 12_000);
+    const timeout = window.setTimeout(() => setReady(true), SYNC_FALLBACK_MS);
 
     return () => {
       window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
@@ -57,5 +67,5 @@ export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolea
     };
   }, [limit, ctx]);
 
-  return { posts, ready: ready && !viewerLoading };
+  return { posts, ready };
 }

@@ -20,7 +20,9 @@ export function FriendsHydrator() {
       await hydrateSocialFromServer({ pushIfLoggedIn: isLoggedIn });
     };
 
-    void run();
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void run();
+    }, 1_500);
 
     const onVisible = () => {
       if (document.visibilityState !== "visible" || cancelled) return;
@@ -28,12 +30,11 @@ export function FriendsHydrator() {
     };
 
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
     };
   }, [isLoggedIn, loading]);
 

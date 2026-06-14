@@ -3,7 +3,7 @@
 import type { FriendRequestsPlatformState } from "@/app/api/content/friend-requests/route";
 import type { FriendsPlatformState } from "@/app/api/content/friends/route";
 import { writeJson } from "@/lib/browser-storage";
-import { createClient } from "@/lib/supabase/client";
+import { authHeadersForSync } from "@/lib/sync-auth";
 import type { FriendLink, FriendRequest } from "@/types/database";
 
 const REQUESTS_KEY = "uorpg-friend-requests";
@@ -16,23 +16,7 @@ let friendsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushChain: Promise<void> = Promise.resolve();
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
-    }
-  } catch {
-    // Cookie session may still work.
-  }
-
-  return headers;
+  return authHeadersForSync();
 }
 
 function requestTimestamp(req: FriendRequest): number {

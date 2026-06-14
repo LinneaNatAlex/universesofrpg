@@ -13,13 +13,20 @@ export interface SessionUser {
 
 function usernameFromUser(user: {
   id: string;
+  email?: string | null;
   user_metadata?: Record<string, unknown>;
 }): string | null {
   const fromMeta = user.user_metadata?.username;
   if (typeof fromMeta === "string" && fromMeta.trim().length >= 3) {
     return fromMeta.trim().toLowerCase();
   }
-  return null;
+
+  const emailLocal = user.email?.split("@")[0]?.trim().toLowerCase();
+  if (emailLocal && emailLocal.length >= 3) {
+    return emailLocal;
+  }
+
+  return `user_${user.id.replace(/-/g, "").slice(0, 12)}`;
 }
 
 async function usernameFromProfile(
@@ -49,7 +56,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     if (!user) return null;
 
     const metaUsername = usernameFromUser(user);
-    const username = await usernameFromProfile(supabase, user.id, metaUsername);
+    const profileUsername = await usernameFromProfile(supabase, user.id, null);
+    const username = profileUsername ?? metaUsername;
     if (!username) return null;
 
     return {
@@ -87,7 +95,8 @@ export async function getSessionUserFromRequest(
   if (error || !user) return null;
 
   const metaUsername = usernameFromUser(user);
-  const username = await usernameFromProfile(service, user.id, metaUsername);
+  const profileUsername = await usernameFromProfile(service, user.id, null);
+  const username = profileUsername ?? metaUsername;
   if (!username) return null;
 
   return {

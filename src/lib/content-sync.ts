@@ -5,7 +5,7 @@ import type { CommentsPlatformState } from "@/app/api/content/comments/route";
 import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
-import { createClient } from "@/lib/supabase/client";
+import { authHeadersForSync } from "@/lib/sync-auth";
 import type { FeedPost } from "@/types/database";
 
 export {
@@ -21,7 +21,6 @@ const COMMENTS_KEY = "uorpg-comments-state";
 const DISCUSSIONS_KEY = "uorpg-discussions-state";
 
 export const CONTENT_SYNCED_EVENT = "uorpg-content-synced";
-export const CONTENT_SYNC_FAILED_EVENT = "uorpg-content-sync-failed";
 
 let contentSyncSettled = false;
 
@@ -36,10 +35,8 @@ export function markContentSyncSettled(): void {
 
 export type ContentSyncTarget = "posts" | "forums" | "comments" | "discussions";
 
-export type ContentSyncFailure = {
-  target: ContentSyncTarget;
-  status: number;
-  error: string;
+type PushOptions = {
+  retries?: number;
 };
 
 let postsPushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -48,33 +45,30 @@ let commentsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let discussionsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushChain: Promise<void> = Promise.resolve();
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+async function fetchWithAuthRetry(
+  url: string,
+  init: RequestInit,
+  retries = 3
+): Promise<Response> {
+  let lastRes: Response | null = null;
 
-  try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const headers = await authHeadersForSync();
+    const res = await fetch(url, {
+      ...init,
+      credentials: "include",
+      headers: { ...headers, ...(init.headers as Record<string, string>) },
+    });
+    lastRes = res;
+    if (res.ok) return res;
+    if (res.status === 401 && attempt < retries - 1) {
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      continue;
     }
-  } catch {
-    // Cookie session may still work.
+    return res;
   }
 
-  return headers;
-}
-
-function dispatchSyncFailure(failure: ContentSyncFailure): void {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent<ContentSyncFailure>(CONTENT_SYNC_FAILED_EVENT, {
-      detail: failure,
-    })
-  );
+  return lastRes!;
 }
 
 type PlatformState =
@@ -85,65 +79,59 @@ type PlatformState =
 
 async function pushPlatformState(
   target: ContentSyncTarget,
-  state: PlatformState
+  state: PlatformState,
+  options: PushOptions = {}
 ): Promise<boolean> {
+  const retries = options.retries ?? 3;
+
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`/api/content/${target}`, {
-      method: "PUT",
-      credentials: "include",
-      headers,
-      body: JSON.stringify(state),
-    });
+    const res = await fetchWithAuthRetry(
+      `/api/content/${target}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(state),
+      },
+      retries
+    );
 
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      const error =
-        payload.error ??
-        (res.status === 401
-          ? "Sign in required to save live."
-          : `Could not save ${target} live (${res.status}).`);
-      dispatchSyncFailure({ target, status: res.status, error });
-      console.warn(`[content-sync] ${target} failed:`, error);
+      console.warn(`[content-sync] ${target} failed:`, payload.error ?? res.status);
       return false;
     }
 
     return true;
   } catch (err) {
-    const error = err instanceof Error ? err.message : "Network error";
-    dispatchSyncFailure({ target, status: 0, error });
-    console.warn(`[content-sync] ${target} failed:`, error);
+    console.warn(`[content-sync] ${target} failed:`, err);
     return false;
   }
 }
 
-export async function pushSinglePostToServer(post: FeedPost): Promise<boolean> {
+export async function pushSinglePostToServer(
+  post: FeedPost,
+  options: PushOptions = {}
+): Promise<boolean> {
+  const retries = options.retries ?? 3;
+
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`/api/content/posts/${post.id}`, {
-      method: "PUT",
-      credentials: "include",
-      headers,
-      body: JSON.stringify(post),
-    });
+    const res = await fetchWithAuthRetry(
+      `/api/content/posts/${post.id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(post),
+      },
+      retries
+    );
 
     if (!res.ok) {
       const payload = (await res.json().catch(() => ({}))) as { error?: string };
-      const error =
-        payload.error ??
-        (res.status === 401
-          ? "Sign in required to save live."
-          : `Could not save post live (${res.status}).`);
-      dispatchSyncFailure({ target: "posts", status: res.status, error });
-      console.warn("[content-sync] single post failed:", error);
+      console.warn("[content-sync] single post failed:", payload.error ?? res.status);
       return false;
     }
 
     return true;
   } catch (err) {
-    const error = err instanceof Error ? err.message : "Network error";
-    dispatchSyncFailure({ target: "posts", status: 0, error });
-    console.warn("[content-sync] single post failed:", error);
+    console.warn("[content-sync] single post failed:", err);
     return false;
   }
 }
@@ -188,39 +176,49 @@ export async function fetchDiscussionsPlatformState(): Promise<DiscussionsPlatfo
   }
 }
 
-export function pushPostsPlatformState(state: PostsPlatformState): Promise<boolean> {
+export function pushPostsPlatformState(
+  state: PostsPlatformState,
+  options?: PushOptions
+): Promise<boolean> {
   return new Promise((resolve) => {
     pushChain = pushChain.then(async () => {
-      const ok = await pushPlatformState("posts", state);
+      const ok = await pushPlatformState("posts", state, options);
       resolve(ok);
     });
   });
 }
 
-export function pushForumsPlatformState(state: ForumsPlatformState): Promise<boolean> {
+export function pushForumsPlatformState(
+  state: ForumsPlatformState,
+  options?: PushOptions
+): Promise<boolean> {
   return new Promise((resolve) => {
     pushChain = pushChain.then(async () => {
-      const ok = await pushPlatformState("forums", state);
+      const ok = await pushPlatformState("forums", state, options);
       resolve(ok);
     });
   });
 }
 
-export function pushCommentsPlatformState(state: CommentsPlatformState): Promise<boolean> {
+export function pushCommentsPlatformState(
+  state: CommentsPlatformState,
+  options?: PushOptions
+): Promise<boolean> {
   return new Promise((resolve) => {
     pushChain = pushChain.then(async () => {
-      const ok = await pushPlatformState("comments", state);
+      const ok = await pushPlatformState("comments", state, options);
       resolve(ok);
     });
   });
 }
 
 export function pushDiscussionsPlatformState(
-  state: DiscussionsPlatformState
+  state: DiscussionsPlatformState,
+  options?: PushOptions
 ): Promise<boolean> {
   return new Promise((resolve) => {
     pushChain = pushChain.then(async () => {
-      const ok = await pushPlatformState("discussions", state);
+      const ok = await pushPlatformState("discussions", state, options);
       resolve(ok);
     });
   });

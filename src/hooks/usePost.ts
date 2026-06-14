@@ -9,7 +9,7 @@ import { getPostById } from "@/lib/posts";
 import { subscribePosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
-const SYNC_WAIT_MS = 12_000;
+const SYNC_WAIT_MS = 4_000;
 
 export function usePost(id: string): FeedPost | undefined | null {
   const [post, setPost] = useState<FeedPost | undefined | null>(undefined);

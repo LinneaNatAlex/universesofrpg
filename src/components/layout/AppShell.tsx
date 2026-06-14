@@ -20,7 +20,6 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { useInvalidSessionCleanup } from "@/hooks/useInvalidSessionCleanup";
 import { ContentHydrator } from "@/components/content/ContentHydrator";
-import { ContentSyncNotice } from "@/components/content/ContentSyncNotice";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { FriendsHydrator } from "@/components/social/FriendsHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
@@ -178,7 +177,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
         <ContentHydrator />
-        <ContentSyncNotice />
         <FriendsHydrator />
         <PurchasesHydrator />
         <VerificationCheckoutReturn />
