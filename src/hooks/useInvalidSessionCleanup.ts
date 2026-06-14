@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProfileDbUsername } from "@/hooks/useProfileDbUsername";
-import { resolvePublicUsername } from "@/lib/auth-profile";
+import { needsProfileCompletion, resolvePublicUsername } from "@/lib/auth-profile";
 import { createClient } from "@/lib/supabase/client";
 
-/** Sign out stale sessions with no real profile (e.g. deleted account, ghost JWT). */
+/** Redirect incomplete OAuth signups — only sign out when the auth user no longer exists. */
 export function useInvalidSessionCleanup() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isLoggedIn, loading } = useAdmin();
   const { username: dbUsername, loading: profileLoading } = useProfileDbUsername(
     user?.id,
@@ -23,10 +24,24 @@ export function useInvalidSessionCleanup() {
     const resolved = resolvePublicUsername(metadata, dbUsername);
     if (resolved) return;
 
+    if (needsProfileCompletion(metadata)) {
+      if (!pathname.startsWith("/complete-profile")) {
+        router.replace("/complete-profile?next=%2F");
+      }
+      return;
+    }
+
     void (async () => {
       const supabase = createClient();
-      await supabase.auth.signOut();
-      router.refresh();
+      const {
+        data: { user: validated },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error || !validated) {
+        await supabase.auth.signOut();
+        router.refresh();
+      }
     })();
-  }, [loading, profileLoading, isLoggedIn, user, dbUsername, router]);
+  }, [loading, profileLoading, isLoggedIn, user, dbUsername, router, pathname]);
 }

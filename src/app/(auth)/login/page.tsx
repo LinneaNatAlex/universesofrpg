@@ -21,8 +21,12 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err === "auth") {
+      const origin = window.location.origin;
+      const isPreviewDeploy = origin.includes("--universofrpg.netlify.app");
       setError(
-        "Login failed. Check Supabase URL settings: Site URL must be https://universofrpg.netlify.app and Redirect URLs must include https://universofrpg.netlify.app/**"
+        isPreviewDeploy
+          ? "Google login failed on this Netlify preview link. Open https://universofrpg.netlify.app/login instead, or add this preview URL to Supabase Redirect URLs."
+          : "Login failed. Try again, or use email and password. If you used Google, confirm Supabase Redirect URLs include https://universofrpg.netlify.app/**"
       );
     } else if (err === "cancelled") {
       setError("Sign-in cancelled. You can try again or use email instead.");
@@ -47,8 +51,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(redirectTo);
+      await supabase.auth.getSession();
       router.refresh();
+      router.push(redirectTo);
     } catch {
       setError("Supabase is not configured. Check .env.local");
     } finally {
