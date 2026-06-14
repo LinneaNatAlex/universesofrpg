@@ -14,5 +14,9 @@ export function formatAuthError(message: string): string {
     return "This sign-in provider is not enabled yet. Ask the site admin to turn on Google in Supabase → Authentication → Providers.";
   }
 
+  if (lower.includes("redirect") && lower.includes("not allowed")) {
+    return "Return URL not allowed in Supabase. Add your site under Authentication → URL Configuration → Redirect URLs, e.g. https://universofrpg.netlify.app/**";
+  }
+
   return message;
 }

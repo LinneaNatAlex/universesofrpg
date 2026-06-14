@@ -13,7 +13,14 @@ export function getPublicSiteUrl(fallbackOrigin?: string): string {
   return "";
 }
 
+/** Email confirm / password reset — prefers NEXT_PUBLIC_SITE_URL on Netlify. */
 export function authCallbackUrl(fallbackOrigin?: string): string {
   const base = getPublicSiteUrl(fallbackOrigin);
   return base ? `${base}/auth/callback` : "/auth/callback";
+}
+
+/** Google OAuth return — always the page you are on (never NEXT_PUBLIC_SITE_URL). */
+export function oauthCallbackUrl(origin: string): string {
+  const base = origin.replace(/\/$/, "");
+  return `${base}/auth/callback`;
 }

@@ -68,9 +68,9 @@ Set on **Netlify → Environment variables**:
 In [Supabase Dashboard](https://supabase.com/dashboard) → **Authentication → URL Configuration**:
 
 - **Site URL:** `https://YOUR-SITE.netlify.app` (must **not** be `http://localhost:3000` in production — otherwise confirm-email links open `localhost` on phones and fail)
-- **Redirect URLs:** add:
-  - `https://YOUR-SITE.netlify.app/auth/callback`
-  - `http://localhost:3000/auth/callback` (for local dev only)
+- **Redirect URLs:** add (wildcards cover `?next=` query params):
+  - `https://YOUR-SITE.netlify.app/**`
+  - `http://localhost:3000/**` (for local dev only)
 
 ### Google sign-in
 
@@ -82,9 +82,11 @@ In Supabase → **Authentication → Providers**, enable **Google** and paste th
 - Authorized redirect URI: `https://YOUR-PROJECT.supabase.co/auth/v1/callback` (copy exact URL from Supabase provider settings)
 - Publish the OAuth consent screen so all users can sign in (not just test users)
 
-After enabling Google, users can sign in from the login and signup pages. New social signups still require age and terms (collected on signup before OAuth, or on `/complete-profile` if they used login first).
+After enabling Google, users can sign in from the login and signup pages. New social signups still require birth date and terms (collected on signup before OAuth, or on `/complete-profile` if they used login first).
 
 Replace `YOUR-SITE` with your Netlify subdomain (e.g. `universofrpg.netlify.app`).
+
+**If Google sends you to a Supabase login page instead of Google:** check that `NEXT_PUBLIC_SUPABASE_URL` is `https://YOUR-PROJECT.supabase.co` (not `supabase.com`), Site URL is your Netlify URL, and Redirect URLs include `https://YOUR-SITE.netlify.app/**`. In Google Cloud, the only redirect URI is `https://YOUR-PROJECT.supabase.co/auth/v1/callback` — not your Netlify URL.
 
 After changing Supabase URLs, ask users who already received a broken link to use **Sign up** again or resend confirmation from Supabase → Authentication → Users.
 
