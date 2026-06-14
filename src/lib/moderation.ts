@@ -27,6 +27,7 @@ export function moderationStatusOnPricingChange(
  */
 export function isPublicFeedPost(post: FeedPost): boolean {
   if (post.moderation_status !== "approved") return false;
+  if (post.show_on_feed === false) return false;
   return true;
 }
 

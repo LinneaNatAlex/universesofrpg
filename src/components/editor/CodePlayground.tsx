@@ -63,6 +63,7 @@ interface CodePlaygroundProps {
   initialValues?: CodePlaygroundInitialValues;
   containsSexualContent?: boolean;
   onContainsSexualContentChange?: (value: boolean) => void;
+  saveToCharacterCreations?: boolean;
   onPublished?: (
     result: { pending: boolean; postId: string }
   ) => void | Promise<void>;
@@ -76,6 +77,7 @@ export function CodePlayground({
   initialValues,
   containsSexualContent: containsSexualProp,
   onContainsSexualContentChange,
+  saveToCharacterCreations = false,
   onPublished,
 }: CodePlaygroundProps) {
   const identity = useActingIdentity();
@@ -145,10 +147,11 @@ export function CodePlayground({
       is_code_locked: pricing === "free" ? false : true,
       moderation_status: moderation,
       is_ai_generated: false,
-      tags: ["profile", "code"],
+      tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
       style_tags: [] as string[],
       theme_music_url: musicUrl.trim() || null,
       contains_sexual_content: containsSexualContent,
+      show_on_feed: !saveToCharacterCreations,
     };
 
     let postId: string;
@@ -172,10 +175,11 @@ export function CodePlayground({
           price_cents: pricing === "free" ? 0 : priceCents,
           is_code_locked: pricing === "free" ? false : true,
           is_ai_generated: false,
-          tags: ["profile", "code"],
+          tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
           style_tags: [],
           theme_music_url: musicUrl.trim() || null,
           contains_sexual_content: containsSexualContent,
+          show_on_feed: !saveToCharacterCreations,
         });
         postId = editPostId;
         pendingReview = updated.moderation_status === "pending";

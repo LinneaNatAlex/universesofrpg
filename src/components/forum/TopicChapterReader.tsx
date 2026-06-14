@@ -10,7 +10,7 @@ import {
   subscribeTopicBookmarks,
 } from "@/lib/topic-bookmarks-store";
 import { paginateForumPosts } from "@/lib/topic-pagination";
-import type { ForumChapter } from "@/types/database";
+import type { ForumChapter, TopicCharacter } from "@/types/database";
 import { formatPartLabel } from "@/lib/forum-access";
 import { findUserByUsername } from "@/lib/discover-users";
 import { CommentAuthorRow } from "@/components/comments/CommentAuthorRow";
@@ -31,6 +31,7 @@ interface TopicChapterReaderProps {
   chapterIndex: number;
   chapter: ForumChapter;
   username: string | null;
+  characters?: TopicCharacter[];
   jumpToLastOnNewPost?: boolean;
 }
 
@@ -39,6 +40,7 @@ export function TopicChapterReader({
   chapterIndex,
   chapter,
   username,
+  characters = [],
   jumpToLastOnNewPost = false,
 }: TopicChapterReaderProps) {
   const pages = useMemo(() => paginateForumPosts(chapter.posts), [chapter.posts]);
@@ -124,13 +126,20 @@ export function TopicChapterReader({
             postsOnPage.map((post) => {
               const author = findUserByUsername(post.author_username);
               const displayName = author?.display_name ?? post.author_username;
+              const character = post.character_id
+                ? characters.find((entry) => entry.id === post.character_id)
+                : undefined;
+              const speakerName = character?.name ?? displayName;
+              const speakerMeta = character
+                ? `as ${character.name}${character.age ? ` · age ${character.age}` : ""} · @${post.author_username}`
+                : `@${post.author_username}`;
               return (
                 <article key={post.id} className="border-l-4 border-comic-red pl-3">
                   <CommentAuthorRow
                     username={post.author_username}
-                    displayName={displayName}
+                    displayName={speakerName}
                     size="xs"
-                    meta={`@${post.author_username}`}
+                    meta={speakerMeta}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink mt-2">
                       {post.body}

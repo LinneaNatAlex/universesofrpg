@@ -58,7 +58,7 @@ export const WRITING_CATEGORIES: WritingCategoryMeta[] = [
     teaserLabel: "Character sheet",
     synopsisHint: "A quick snapshot — class, vibe, or hook for this character…",
     coverLabel: "Character portrait",
-    postType: "text_writing",
+    postType: "character_sheet",
   },
   {
     id: "poem",

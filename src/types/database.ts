@@ -221,6 +221,8 @@ export interface Post {
   created_at: string;
   /** Bumped on every edit — used when merging local vs live Supabase state. */
   updated_at?: string;
+  /** When false, post appears only on profile Character Creations — not home feed / Explore. */
+  show_on_feed?: boolean;
   author?: Profile;
 }
 
@@ -265,6 +267,17 @@ export interface DiscussionReply {
   created_at: string;
 }
 
+export interface TopicCharacter {
+  id: string;
+  name: string;
+  /** Free-form age — e.g. "24", "ancient", "unknown". */
+  age: string | null;
+  owner_username: string;
+  /** Optional link to a profile Character Creation post. */
+  linked_post_id: string | null;
+  created_at: string;
+}
+
 export interface RpgForumMeta {
   era: string;
   season: string;
@@ -284,6 +297,8 @@ export interface ForumPost {
   author_username: string;
   body: string;
   created_at: string;
+  /** In-character voice for this reply — set from the writer's topic character. */
+  character_id?: string | null;
 }
 
 export interface RpgForum {
@@ -297,6 +312,8 @@ export interface RpgForum {
   tags: string[];
   members: string[];
   chapters: ForumChapter[];
+  /** Play-by-post personas registered by writers in this topic. */
+  characters?: TopicCharacter[];
   /** Members-only — hidden from public topic list */
   is_private: boolean;
   /** Story marked complete — no new parts or replies */

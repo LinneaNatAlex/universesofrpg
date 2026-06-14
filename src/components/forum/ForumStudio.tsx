@@ -28,7 +28,9 @@ import {
   addForumReply,
   createForum,
   getNextChapterNumber,
+  getUserTopicCharacter,
   isForumMember,
+  upsertTopicCharacter,
 } from "@/lib/forums-store";
 import {
   formatPartLabel,
@@ -37,6 +39,7 @@ import {
   isForumVisibleInList,
 } from "@/lib/forum-access";
 import { TopicCreatorPanel } from "@/components/forum/TopicCreatorPanel";
+import { TopicCharacterPanel } from "@/components/forum/TopicCharacterPanel";
 import { TopicShopGate } from "@/components/forum/TopicShopGate";
 import { subscribePurchases } from "@/lib/purchases-store";
 import { Button } from "@/components/ui/button";
@@ -300,6 +303,8 @@ export function NewForumForm() {
     when: "",
   });
   const [firstPost, setFirstPost] = useState("");
+  const [characterName, setCharacterName] = useState("");
+  const [characterAge, setCharacterAge] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [containsSexualContent, setContainsSexualContent] = useState(false);
@@ -351,6 +356,17 @@ export function NewForumForm() {
     }
 
     setSubmitting(true);
+
+    if (characterName.trim()) {
+      const forumIdForCharacter =
+        mode === "continue" ? existingForumId : null;
+      if (forumIdForCharacter) {
+        upsertTopicCharacter(forumIdForCharacter, identity.username, {
+          name: characterName.trim(),
+          age: characterAge.trim() || null,
+        });
+      }
+    }
 
     if (mode === "continue") {
       if (!existingForumId || !selectedForum) {
@@ -441,6 +457,9 @@ export function NewForumForm() {
         chapter_meta: meta,
         opening_post: firstPost.trim(),
         contains_sexual_content: containsSexualContent,
+        creator_character: characterName.trim()
+          ? { name: characterName.trim(), age: characterAge.trim() || null }
+          : undefined,
       });
     } catch (err) {
       setSubmitting(false);
@@ -642,6 +661,27 @@ export function NewForumForm() {
           />
         </div>
 
+        <div className="border-2 border-dashed border-ink p-3 space-y-2 bg-comic-yellow/10">
+          <p className="text-xs font-comic text-ink">
+            Your character in this story{" "}
+            <span className="text-ink-muted font-normal">(optional now — add before you reply)</span>
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+              className="w-full border-2 border-ink px-3 py-2 text-sm bg-surface"
+              placeholder="Character name"
+            />
+            <input
+              value={characterAge}
+              onChange={(e) => setCharacterAge(e.target.value)}
+              className="w-full border-2 border-ink px-3 py-2 text-sm bg-surface"
+              placeholder="Age (optional)"
+            />
+          </div>
+        </div>
+
         {mode === "new" && (
           <ContentRatingDeclaration
             containsSexualContent={containsSexualContent}
@@ -777,6 +817,10 @@ export function ForumDetail({ forumId }: { forumId: string }) {
     return <p className="font-comic text-center">This topic has no parts yet.</p>;
   }
 
+  const myCharacter = identity?.username
+    ? getUserTopicCharacter(forum, identity.username)
+    : undefined;
+
   function handleReply() {
     setReplyError(null);
     if (!reply.trim()) {
@@ -870,6 +914,10 @@ export function ForumDetail({ forumId }: { forumId: string }) {
         <TopicCreatorPanel forum={forum} creatorUsername={identity.username} />
       )}
 
+      {canWrite && identity && (
+        <TopicCharacterPanel forum={forum} username={identity.username} />
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         {forum.chapters.map((ch, i) => (
           <button
@@ -899,16 +947,26 @@ export function ForumDetail({ forumId }: { forumId: string }) {
         chapterIndex={activeChapter}
         chapter={chapter}
         username={identity?.username ?? null}
+        characters={forum.characters ?? []}
         jumpToLastOnNewPost={canWrite}
       />
 
       {canWrite ? (
         <div className="space-y-2">
+          {!myCharacter && (
+            <p className="text-xs font-comic text-ink-muted comic-panel px-3 py-2">
+              Add your character above so replies show in-character automatically.
+            </p>
+          )}
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             rows={3}
-            placeholder="Write your reply…"
+            placeholder={
+              myCharacter
+                ? `Write as ${myCharacter.name}…`
+                : "Write your reply…"
+            }
             className="w-full border-2 border-ink px-3 py-2 text-sm bg-surface"
           />
           {replyError && <p className="text-xs text-comic-red">{replyError}</p>}

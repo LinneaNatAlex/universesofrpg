@@ -38,6 +38,7 @@ import {
   normalizeIllustrationImages,
 } from "@/lib/illustrations";
 import { Code2, ImageIcon, PenLine } from "lucide-react";
+import { CharacterCreationOption } from "@/components/create/CharacterCreationOption";
 import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 
 const CodePlayground = dynamic(
@@ -66,6 +67,7 @@ export function CreateStudio() {
   const [priceCents, setPriceCents] = useState(499);
   const [containsSexualContent, setContainsSexualContent] = useState(false);
   const [publishNote, setPublishNote] = useState<string | null>(null);
+  const [saveToCharacterCreations, setSaveToCharacterCreations] = useState(false);
 
   function finishLivePublish(postId: string) {
     scheduleCreationLiveSync(postId);
@@ -113,7 +115,9 @@ export function CreateStudio() {
     }
 
     const moderation = initialModerationStatus(pricing);
-    const postType = inferWritingPostTypeForCategory(writingCategory, writingTags);
+    const postType = saveToCharacterCreations
+      ? "character_sheet"
+      : inferWritingPostTypeForCategory(writingCategory, writingTags);
 
     let post;
     try {
@@ -137,10 +141,13 @@ export function CreateStudio() {
       is_code_locked: false,
       moderation_status: moderation,
       is_ai_generated: false,
-      tags: writingTags,
+      tags: saveToCharacterCreations
+        ? [...new Set([...writingTags, "character"])]
+        : writingTags,
       style_tags: [],
-      writing_category: writingCategory,
+      writing_category: saveToCharacterCreations ? "character" : writingCategory,
       contains_sexual_content: containsSexualContent,
+      show_on_feed: !saveToCharacterCreations,
     });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not publish your writing.");
@@ -198,9 +205,12 @@ export function CreateStudio() {
         is_code_locked: false,
         moderation_status: moderation,
         is_ai_generated: false,
-        tags: illTags,
+        tags: saveToCharacterCreations
+          ? [...new Set([...illTags, "character"])]
+          : illTags,
         style_tags: [],
         contains_sexual_content: containsSexualContent,
+        show_on_feed: !saveToCharacterCreations,
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not publish your illustrations.");
@@ -261,6 +271,11 @@ export function CreateStudio() {
         onPriceCentsChange={setPriceCents}
       />
 
+      <CharacterCreationOption
+        checked={saveToCharacterCreations}
+        onChange={setSaveToCharacterCreations}
+      />
+
       {mode !== "code" && (
         <ContentRatingDeclaration
           containsSexualContent={containsSexualContent}
@@ -281,6 +296,7 @@ export function CreateStudio() {
           priceCents={priceCents}
           containsSexualContent={containsSexualContent}
           onContainsSexualContentChange={setContainsSexualContent}
+          saveToCharacterCreations={saveToCharacterCreations}
           onPublished={({ pending, postId }) => {
             if (pending) {
               setPublishNote(

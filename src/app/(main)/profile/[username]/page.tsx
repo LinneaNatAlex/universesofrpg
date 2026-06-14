@@ -11,7 +11,12 @@ import { EditorBadge } from "@/components/editor/EditorBadge";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { ProfilePersonaTab } from "@/components/profile/ProfilePersonaTab";
+import { ProfileCharacterCreationsTab } from "@/components/profile/ProfileCharacterCreationsTab";
 import { ProfileCreationsTab } from "@/components/profile/ProfileCreationsTab";
+import {
+  filterCharacterCreations,
+  filterFeedCreations,
+} from "@/lib/character-posts";
 import { ProfilePurchasesTab } from "@/components/profile/ProfilePurchasesTab";
 import { ProfileFriendsTab } from "@/components/profile/ProfileFriendsTab";
 import { ProfileFollowingTab } from "@/components/profile/ProfileFollowingTab";
@@ -33,9 +38,15 @@ import { useProfilePrivacy } from "@/hooks/useProfilePrivacy";
 import { usePersona } from "@/contexts/PersonaContext";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
-import { Shield, User, FolderOpen, Users, BookOpen, ShoppingBag } from "lucide-react";
+import { Shield, User, FolderOpen, Users, BookOpen, ShoppingBag, UserCircle2 } from "lucide-react";
 
-type ProfileTab = "persona" | "creations" | "purchases" | "friends" | "following";
+type ProfileTab =
+  | "persona"
+  | "creations"
+  | "characters"
+  | "purchases"
+  | "friends"
+  | "following";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -52,6 +63,11 @@ export default function ProfilePage() {
   const staticProfile = useMemo(() => resolveStaticProfile(username), [username]);
   const personaPage = usePersonaProfile(username);
   const creations = useAuthorPosts(username, isOwnProfile);
+  const feedCreations = useMemo(() => filterFeedCreations(creations), [creations]);
+  const characterCreations = useMemo(
+    () => filterCharacterCreations(creations),
+    [creations]
+  );
   const showPurchasesTab = isOwnProfile;
   const { entries: purchasedEntries, purchaseCount, loading: purchasesLoading } =
     usePurchasedPosts(
@@ -180,7 +196,14 @@ export default function ProfilePage() {
       label: "Creations",
       shortLabel: "Works",
       icon: FolderOpen,
-      count: creations.length,
+      count: feedCreations.length,
+    },
+    {
+      id: "characters",
+      label: "Character Creations",
+      shortLabel: "Chars",
+      icon: UserCircle2,
+      count: characterCreations.length,
     },
     ...(showPurchasesTab
       ? [
@@ -267,10 +290,10 @@ export default function ProfilePage() {
           <ProfileActions isOwnProfile={isOwnProfile} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge variant="comic">RPG Persona</Badge>
-            {creations.some((p) => p.pricing === "free") && (
+            {feedCreations.some((p) => p.pricing === "free") && (
               <Badge variant="free">Free works</Badge>
             )}
-            {creations.some((p) => p.pricing !== "free") && (
+            {feedCreations.some((p) => p.pricing !== "free") && (
               <Badge variant="paid">Premium</Badge>
             )}
             <ProfileFollowerCount username={profile.username} className="sm:ml-auto" />
@@ -292,7 +315,13 @@ export default function ProfilePage() {
         />
       ) : tab === "creations" ? (
         <ProfileCreationsTab
-          creations={creations}
+          creations={feedCreations}
+          showPendingNote={isOwnProfile}
+          editable={isOwnProfile}
+        />
+      ) : tab === "characters" ? (
+        <ProfileCharacterCreationsTab
+          characters={characterCreations}
           showPendingNote={isOwnProfile}
           editable={isOwnProfile}
         />

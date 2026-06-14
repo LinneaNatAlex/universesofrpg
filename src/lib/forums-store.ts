@@ -16,7 +16,7 @@ import {
   applySexualContentTags,
   resolveContentRating,
 } from "@/lib/content-rating";
-import type { ForumChapter, ForumPost, RpgForum, RpgForumMeta } from "@/types/database";
+import type { ForumChapter, ForumPost, RpgForum, RpgForumMeta, TopicCharacter } from "@/types/database";
 
 const STORAGE_KEY = "uorpg-forums-state";
 const MOCK_FORUM_IDS = new Set(MOCK_FORUMS.map((f) => f.id));
@@ -75,6 +75,15 @@ function normalizeForum(forum: RpgForum): RpgForum {
     chapters: forum.chapters.map((ch) => ({
       ...ch,
       title: normalizePartTitle(ch.number, ch.title),
+      posts: ch.posts.map((post) => ({
+        ...post,
+        character_id: post.character_id ?? null,
+      })),
+    })),
+    characters: (forum.characters ?? []).map((character) => ({
+      ...character,
+      age: character.age ?? null,
+      linked_post_id: character.linked_post_id ?? null,
     })),
   };
 }
@@ -197,6 +206,80 @@ export function getForumsForMember(username: string): RpgForum[] {
   return forums.filter((forum) => isForumMember(forum, username));
 }
 
+function characterIdForAuthor(forum: RpgForum, authorUsername: string): string | null {
+  const owner = authorUsername.toLowerCase();
+  const character = forum.characters?.find(
+    (entry) => entry.owner_username.toLowerCase() === owner
+  );
+  return character?.id ?? null;
+}
+
+function buildForumPost(authorUsername: string, body: string, characterId: string | null): ForumPost {
+  return {
+    id: `fp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    author_username: authorUsername,
+    body: body.trim(),
+    created_at: new Date().toISOString(),
+    character_id: characterId,
+  };
+}
+
+export function getUserTopicCharacter(
+  forum: RpgForum,
+  ownerUsername: string
+): TopicCharacter | undefined {
+  const owner = ownerUsername.toLowerCase();
+  return forum.characters?.find((entry) => entry.owner_username.toLowerCase() === owner);
+}
+
+export function getTopicCharacterById(
+  forum: RpgForum,
+  characterId: string | null | undefined
+): TopicCharacter | undefined {
+  if (!characterId) return undefined;
+  return forum.characters?.find((entry) => entry.id === characterId);
+}
+
+export function upsertTopicCharacter(
+  forumId: string,
+  ownerUsername: string,
+  input: { name: string; age?: string | null; linked_post_id?: string | null }
+): TopicCharacter | null {
+  ensureLoaded();
+  const forum = forums.find((entry) => entry.id === forumId);
+  if (!forum) return null;
+  if (!isForumMember(forum, ownerUsername)) return null;
+
+  const name = input.name.trim();
+  if (!name) return null;
+
+  const characters = forum.characters ?? [];
+  const owner = ownerUsername.toLowerCase();
+  const existing = characters.find((entry) => entry.owner_username.toLowerCase() === owner);
+  const age = input.age?.trim() || null;
+  const linkedPostId = input.linked_post_id?.trim() || null;
+
+  if (existing) {
+    existing.name = name;
+    existing.age = age;
+    if (linkedPostId) existing.linked_post_id = linkedPostId;
+  } else {
+    characters.push({
+      id: `tc-${Date.now()}`,
+      name,
+      age,
+      owner_username: ownerUsername,
+      linked_post_id: linkedPostId,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  forum.characters = characters;
+  saveForumChanges(forum);
+  notify();
+  return getUserTopicCharacter(forum, ownerUsername) ?? null;
+}
+
 export interface NewForumInput {
   title: string;
   plot_synopsis: string | null;
@@ -211,6 +294,7 @@ export interface NewForumInput {
   opening_post: string;
   contains_sexual_content?: boolean;
   content_rating?: RpgForum["content_rating"];
+  creator_character?: { name: string; age?: string | null };
 }
 
 export function createForum(input: NewForumInput): RpgForum {
@@ -226,14 +310,30 @@ export function createForum(input: NewForumInput): RpgForum {
     new Set([creator, ...invitedFriends.map((u) => u.toLowerCase())])
   );
 
-  const openingPosts: ForumPost[] = [];
-  if (input.opening_post.trim()) {
-    openingPosts.push({
-      id: `fp-${Date.now()}`,
-      author_username: input.creator_username,
-      body: input.opening_post.trim(),
+  const characters: TopicCharacter[] = [];
+  let creatorCharacterId: string | null = null;
+  const creatorCharacterName = input.creator_character?.name?.trim();
+  if (creatorCharacterName) {
+    creatorCharacterId = `tc-${Date.now()}`;
+    characters.push({
+      id: creatorCharacterId,
+      name: creatorCharacterName,
+      age: input.creator_character?.age?.trim() || null,
+      owner_username: input.creator_username,
+      linked_post_id: null,
       created_at: new Date().toISOString(),
     });
+  }
+
+  const openingPosts: ForumPost[] = [];
+  if (input.opening_post.trim()) {
+    openingPosts.push(
+      buildForumPost(
+        input.creator_username,
+        input.opening_post,
+        creatorCharacterId
+      )
+    );
   }
 
   const chapter: ForumChapter = {
@@ -260,6 +360,7 @@ export function createForum(input: NewForumInput): RpgForum {
     locked_at: null,
     shop_post_id: null,
     shop_price_cents: null,
+    characters,
     chapters: [chapter],
     created_at: new Date().toISOString(),
   });
@@ -300,12 +401,11 @@ export function addForumChapter(input: AddForumChapterInput): ForumChapter | nul
   const chapterNumber = getNextChapterNumber(forum);
   const chapterTitle = normalizePartTitle(chapterNumber, input.chapter_title);
 
-  const openingPost: ForumPost = {
-    id: `fp-${Date.now()}`,
-    author_username: input.author_username,
-    body: input.opening_post.trim(),
-    created_at: new Date().toISOString(),
-  };
+  const openingPost = buildForumPost(
+    input.author_username,
+    input.opening_post,
+    characterIdForAuthor(forum, input.author_username)
+  );
 
   const chapter: ForumChapter = {
     number: chapterNumber,
@@ -348,12 +448,11 @@ export function addForumReply(
   const chapter = forum.chapters[chapterIndex];
   if (!chapter || !body.trim()) return null;
 
-  const post: ForumPost = {
-    id: `fp-${Date.now()}`,
-    author_username: authorUsername,
-    body: body.trim(),
-    created_at: new Date().toISOString(),
-  };
+  const post = buildForumPost(
+    authorUsername,
+    body,
+    characterIdForAuthor(forum, authorUsername)
+  );
 
   chapter.posts.push(post);
   saveForumChanges(forum);
