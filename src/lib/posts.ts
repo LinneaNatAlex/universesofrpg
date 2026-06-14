@@ -1,3 +1,4 @@
+import { isPublicFeedPost, normalizeFreeCodeListing } from "@/lib/moderation";
 import { getCommentCount } from "@/lib/mock-comments";
 import { getVaultedCode } from "@/lib/post-code-vault";
 import {
@@ -44,9 +45,7 @@ export function canEditPost(post: FeedPost, username: string | null): boolean {
 }
 
 export function getFeedPosts(): FeedPost[] {
-  return getAllPosts()
-    .filter((p) => p.moderation_status === "approved")
-    .map(withCommentCount);
+  return getAllPosts().filter(isPublicFeedPost).map(withCommentCount);
 }
 
 export function getFreePosts(): FeedPost[] {
@@ -66,7 +65,8 @@ export function canViewFullContent(
 /** Paid code templates always lock source; free templates may opt in via is_code_locked. */
 export function requiresCodePurchase(post: FeedPost): boolean {
   if (post.type !== "code_template") return false;
-  return post.pricing !== "free" || post.is_code_locked;
+  const listing = normalizeFreeCodeListing(post);
+  return listing.pricing !== "free" || listing.is_code_locked;
 }
 
 function isAuthor(post: FeedPost, username: string | null): boolean {
@@ -90,18 +90,17 @@ export function canViewCodeSource(
   opts: PostViewerContext
 ): boolean {
   if (post.type !== "code_template") return false;
+  if (!opts.isLoggedIn) return false;
+
+  const listing = normalizeFreeCodeListing(post);
+  if (!requiresCodePurchase(listing)) {
+    return true;
+  }
 
   const vaulted = getVaultedCode(post.id);
   const hasInline =
     !!(post.html_code?.trim() || post.css_code?.trim() || post.js_code?.trim());
   if (!hasInline && !vaulted) return false;
-
-  if (!opts.isLoggedIn) return false;
-
-  // Free templates — full source for signed-in members (no purchase).
-  if (!requiresCodePurchase(post)) {
-    return true;
-  }
 
   if (post.moderation_status === "pending" && opts.isEditor) return true;
   if (!opts.username) return false;

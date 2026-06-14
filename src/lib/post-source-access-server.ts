@@ -1,3 +1,4 @@
+import { normalizeFreeCodeListing } from "@/lib/moderation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
 import { hasPlatformPurchase } from "@/lib/marketplace-platform-store";
@@ -7,8 +8,9 @@ import type { SessionUser } from "@/lib/api-session-auth";
 import type { FeedPost } from "@/types/database";
 
 function requiresCodePurchase(post: FeedPost): boolean {
-  if (post.type !== "code_template") return false;
-  return post.pricing !== "free" || post.is_code_locked;
+  const listing = normalizeFreeCodeListing(post);
+  if (listing.type !== "code_template") return false;
+  return listing.pricing !== "free" || listing.is_code_locked;
 }
 
 export async function canAccessPostSourceCode(
@@ -16,10 +18,11 @@ export async function canAccessPostSourceCode(
   buyerUsername: string,
   isEditor = false
 ): Promise<boolean> {
-  if (post.type !== "code_template") return false;
+  const listing = normalizeFreeCodeListing(post);
+  if (listing.type !== "code_template") return false;
 
-  if (!requiresCodePurchase(post)) return true;
-  if (post.moderation_status === "pending" && isEditor) return true;
+  if (!requiresCodePurchase(listing)) return true;
+  if (listing.moderation_status === "pending" && isEditor) return true;
   const authorUsername = migrateUsername(post.author.username);
   if (buyerUsername.toLowerCase() === authorUsername) {
     return true;

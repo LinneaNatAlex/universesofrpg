@@ -1,9 +1,11 @@
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
+import { normalizeFreeCodeListing } from "@/lib/moderation";
 import type { FeedPost } from "@/types/database";
 
 function requiresCodePurchase(post: FeedPost): boolean {
-  if (post.type !== "code_template") return false;
-  return post.pricing !== "free" || post.is_code_locked;
+  const listing = normalizeFreeCodeListing(post);
+  if (listing.type !== "code_template") return false;
+  return listing.pricing !== "free" || listing.is_code_locked;
 }
 
 /** Public demo bundle — safe to show before purchase (synced on the post record). */

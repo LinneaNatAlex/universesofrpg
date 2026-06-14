@@ -131,7 +131,7 @@ export function CodePlayground({
       invite_token: null,
       pricing,
       price_cents: pricing === "free" ? 0 : priceCents,
-      is_code_locked: pricing !== "free" ? true : codeLocked,
+      is_code_locked: pricing === "free" ? false : true,
       moderation_status: moderation,
       is_ai_generated: false,
       tags: ["profile", "code"],
@@ -139,11 +139,31 @@ export function CodePlayground({
     };
 
     let postId: string;
+    let pendingReview = false;
     try {
       if (editPostId) {
-        const { moderation_status: _ignored, ...editPayload } = payload;
-        updatePost(editPostId, editPayload);
+        const updated = updatePost(editPostId, {
+          type: "code_template",
+          title: title.trim(),
+          description: description.trim() || "Code template",
+          plot_synopsis: null,
+          content: null,
+          html_code: previewHtml,
+          css_code: css,
+          js_code: js,
+          bbcode: null,
+          preview_image_url: coverUrl.trim(),
+          book_cover_url: null,
+          invite_token: null,
+          pricing,
+          price_cents: pricing === "free" ? 0 : priceCents,
+          is_code_locked: pricing === "free" ? false : true,
+          is_ai_generated: false,
+          tags: ["profile", "code"],
+          style_tags: [],
+        });
         postId = editPostId;
+        pendingReview = updated.moderation_status === "pending";
       } else {
         const post = addPost({
           ...payload,
@@ -151,6 +171,7 @@ export function CodePlayground({
           author: identity.profile,
         });
         postId = post.id;
+        pendingReview = moderation === "pending";
       }
     } catch (err) {
       alert(
@@ -163,7 +184,7 @@ export function CodePlayground({
       return;
     }
 
-    await onPublished?.({ pending: moderation === "pending", postId });
+    await onPublished?.({ pending: pendingReview, postId });
   }
 
   const editorValue = tab === "html" ? html : tab === "css" ? css : js;

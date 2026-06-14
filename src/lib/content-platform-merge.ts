@@ -3,6 +3,7 @@ import type { DiscussionsPlatformState } from "@/app/api/content/discussions/rou
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { mergeRpgForumList } from "@/lib/forums-platform-merge";
+import { normalizeFreeCodeListing } from "@/lib/moderation";
 import { migrateFeedPost } from "@/lib/persona-rename";
 import type { Comment, DiscussionReply, DiscussionThread, FeedPost } from "@/types/database";
 
@@ -14,7 +15,7 @@ function itemRevisionTime(item: {
   return new Date(stamp).getTime();
 }
 
-function mergeById<
+function mergeRecordsById<
   T extends { id: string; created_at?: string; updated_at?: string },
 >(a: T[], b: T[]): T[] {
   const map = new Map<string, T>();
@@ -29,6 +30,38 @@ function mergeById<
       item.id,
       itemRevisionTime(item) >= itemRevisionTime(prev) ? item : prev
     );
+  }
+  return [...map.values()];
+}
+
+function pickMergedPost(local: FeedPost, remote: FeedPost): FeedPost {
+  const a = normalizeFreeCodeListing(local);
+  const b = normalizeFreeCodeListing(remote);
+  const localTime = itemRevisionTime(a);
+  const remoteTime = itemRevisionTime(b);
+  if (localTime > remoteTime) return migrateFeedPost(a);
+  if (remoteTime > localTime) return migrateFeedPost(b);
+  if (a.pricing === "free" && b.pricing !== "free") return migrateFeedPost(a);
+  if (b.pricing === "free" && a.pricing !== "free") return migrateFeedPost(b);
+  if (a.moderation_status === "pending" && b.moderation_status === "approved") {
+    return migrateFeedPost(a);
+  }
+  if (b.moderation_status === "pending" && a.moderation_status === "approved") {
+    return migrateFeedPost(b);
+  }
+  return migrateFeedPost(a);
+}
+
+function mergePostsById(a: FeedPost[], b: FeedPost[]): FeedPost[] {
+  const map = new Map<string, FeedPost>();
+  for (const item of a) map.set(item.id, item);
+  for (const item of b) {
+    const prev = map.get(item.id);
+    if (!prev) {
+      map.set(item.id, item);
+      continue;
+    }
+    map.set(item.id, pickMergedPost(prev, item));
   }
   return [...map.values()];
 }
@@ -53,9 +86,9 @@ export function mergePostsState(
   const deletedCustomSet = new Set(deletedCustomIds);
 
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? [])
+    custom: mergePostsById(local.custom ?? [], remote.custom ?? [])
       .filter((post) => !deletedCustomSet.has(post.id))
-      .map((post) => migrateFeedPost(post as FeedPost)) as FeedPost[],
+      .map((post) => migrateFeedPost(post)) as FeedPost[],
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []
@@ -92,7 +125,7 @@ export function mergeCommentsState(
   remote: CommentsPlatformState
 ): CommentsPlatformState {
   return {
-    custom: mergeById(local.custom ?? [], remote.custom ?? []) as Comment[],
+    custom: mergeRecordsById(local.custom ?? [], remote.custom ?? []) as Comment[],
     deletedMockIds: mergeStringLists(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []
@@ -128,7 +161,7 @@ export function mergeDiscussionsState(
 
   return {
     customThreads: [...threadMap.values()].filter((thread) => !deleted.has(thread.id)),
-    customReplies: mergeById(
+    customReplies: mergeRecordsById(
       local.customReplies ?? [],
       remote.customReplies ?? []
     ) as DiscussionReply[],

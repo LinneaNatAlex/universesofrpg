@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { CONTENT_SYNCED_EVENT, isContentSyncSettled } from "@/lib/content-sync";
+import { isPublicFeedPost } from "@/lib/moderation";
 import { getCommentCount, subscribeComments } from "@/lib/mock-comments";
 import { getAllPosts, subscribePosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
 function enrich(posts: FeedPost[]): FeedPost[] {
   return posts
-    .filter((p) => p.moderation_status === "approved")
+    .filter(isPublicFeedPost)
     .map((p) => ({ ...p, comment_count: getCommentCount(p.id) }));
 }
 

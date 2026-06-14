@@ -1,5 +1,6 @@
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import { migrateFeedPost } from "@/lib/persona-rename";
+import { normalizeFreeCodeListing } from "@/lib/moderation";
 import type { FeedPost } from "@/types/database";
 
 /** Keep platform sync under Netlify/Supabase body limits. */
@@ -18,7 +19,7 @@ function trimSyncField(value: string | null | undefined): string | null | undefi
 }
 
 function sanitizePostForSync(post: FeedPost): FeedPost {
-  const migrated = migrateFeedPost(post);
+  const migrated = normalizeFreeCodeListing(migrateFeedPost(post));
   return {
     ...migrated,
     description: trimSyncField(migrated.description) ?? migrated.description,

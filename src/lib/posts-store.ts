@@ -3,10 +3,17 @@ import { schedulePostsPlatformPush } from "@/lib/content-sync";
 import { MOCK_FEED } from "@/lib/mock-data";
 import { postHasCover } from "@/lib/post-cover";
 import {
+  getVaultedCode,
   removeVaultedCode,
   vaultPostCodeFromPost,
 } from "@/lib/post-code-vault";
 import { ensureTemplatePreviewFields } from "@/lib/post-template-preview";
+import {
+  codeLockOnPricingChange,
+  enforceListingRules,
+  moderationStatusOnPricingChange,
+  normalizeFreeCodeListing,
+} from "@/lib/moderation";
 import type { FeedPost, ModerationStatus } from "@/types/database";
 
 function isPaidCodeTemplate(post: Pick<FeedPost, "type" | "pricing">): boolean {
@@ -33,6 +40,57 @@ function stripPaidCodeForStorage(post: FeedPost): FeedPost {
     css_code: null,
     js_code: null,
   };
+}
+
+/** When a paid template becomes free, restore vaulted source onto the public post. */
+function restoreFreeCodeFromVault(post: FeedPost): FeedPost {
+  if (post.type !== "code_template" || post.pricing !== "free") return post;
+
+  const vaulted = getVaultedCode(post.id);
+  const html = post.html_code?.trim() || vaulted?.html_code?.trim();
+  const css = post.css_code?.trim() || vaulted?.css_code?.trim();
+  if (!html || !css) return post;
+
+  const restored = ensureTemplatePreviewFields({
+    ...post,
+    html_code: html,
+    css_code: css,
+    js_code: post.js_code?.trim() ? post.js_code : (vaulted?.js_code ?? null),
+  });
+
+  removeVaultedCode(post.id);
+  return restored;
+}
+
+function applyPricingChangePatches(
+  existing: FeedPost,
+  input: UpdatePostInput
+): Partial<FeedPost> {
+  if (input.pricing === undefined || input.pricing === existing.pricing) {
+    return {};
+  }
+
+  const patches: Partial<FeedPost> = {
+    moderation_status: moderationStatusOnPricingChange(
+      existing.moderation_status,
+      existing.pricing,
+      input.pricing
+    ),
+  };
+
+  if (existing.type === "code_template") {
+    patches.is_code_locked = codeLockOnPricingChange(
+      existing.pricing,
+      input.pricing,
+      existing.is_code_locked,
+      input.is_code_locked
+    );
+    if (input.pricing === "free") {
+      patches.price_cents = 0;
+    }
+  }
+
+  return patches;
 }
 
 const MOCK_POST_IDS = new Set(MOCK_FEED.map((p) => p.id));
@@ -111,7 +169,7 @@ function mergePosts() {
     ) {
       customNeedsPersist = true;
     }
-    map.set(stripped.id, applyLikeCount(stripped, likeCounts));
+    map.set(stripped.id, applyLikeCount(normalizeFreeCodeListing(stripped), likeCounts));
   }
 
   posts = sortPosts([...map.values()]);
@@ -289,9 +347,11 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
   if (idx === -1) throw new Error("Post not found.");
 
   const existing = posts[idx];
+  const pricingPatches = applyPricingChangePatches(existing, input);
   const merged: FeedPost = {
     ...existing,
     ...input,
+    ...pricingPatches,
     id: existing.id,
     created_at: existing.created_at,
     like_count: existing.like_count,
@@ -300,12 +360,16 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
     author: input.author ?? existing.author,
   };
 
-  if (merged.pricing !== "free" && !postHasCover(merged)) {
+  const withCode = normalizeFreeCodeListing(
+    restoreFreeCodeFromVault(enforceListingRules(merged, existing.pricing))
+  );
+
+  if (withCode.pricing !== "free" && !postHasCover(withCode)) {
     throw new Error("Paid listings require a cover image before they can be saved.");
   }
 
   const updated = stripPaidCodeForStorage({
-    ...merged,
+    ...withCode,
     updated_at: new Date().toISOString(),
   });
   posts[idx] = updated;

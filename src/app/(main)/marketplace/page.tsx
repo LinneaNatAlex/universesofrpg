@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MarketplaceCard } from "@/components/marketplace/MarketplaceCard";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
 import { Filter, ShoppingBag, Compass } from "lucide-react";
+import { isPublicFeedPost } from "@/lib/moderation";
 import { postHasCover } from "@/lib/post-cover";
 import type { FeedPost } from "@/types/database";
 
@@ -52,7 +53,7 @@ export default function MarketplacePage() {
 
   const { posts: allPosts } = useFeedPosts();
   const paidPosts = useMemo(
-    () => allPosts.filter((p) => isPaidListing(p) && postHasCover(p)),
+    () => allPosts.filter((p) => p.pricing !== "free" && isPublicFeedPost(p) && postHasCover(p)),
     [allPosts]
   );
   const freeCount = allPosts.length - paidPosts.length;

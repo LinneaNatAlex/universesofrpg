@@ -1,3 +1,4 @@
+import { isPublicFeedPost } from "@/lib/moderation";
 import type { FeedPost, PostType } from "@/types/database";
 
 export type SpotlightCategoryId = "book" | "comic" | "character" | "profile";
@@ -74,7 +75,7 @@ function pickTopInCategory(
 }
 
 export function getMonthlySpotlight(posts: FeedPost[]): SpotlightPick[] {
-  const approved = posts.filter((p) => p.moderation_status === "approved");
+  const approved = posts.filter(isPublicFeedPost);
   const usedIds = new Set<string>();
   const picks: SpotlightPick[] = [];
 

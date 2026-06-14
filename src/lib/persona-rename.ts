@@ -1,6 +1,7 @@
 import type { FriendRequestsPlatformState } from "@/app/api/content/friend-requests/route";
 import type { FriendsPlatformState } from "@/app/api/content/friends/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
+import { normalizeFreeCodeListing } from "@/lib/moderation";
 import {
   inferWritingCategoryFromTags,
   isWritingCategoryId,
@@ -68,7 +69,7 @@ export function migrateFeedPost(post: FeedPost): FeedPost {
         ? inferWritingCategoryFromTags(migrated.tags, migrated.type)
         : migrated.writing_category;
 
-  return {
+  return normalizeFreeCodeListing({
     ...migrated,
     writing_category: writingCategory,
     title: migrateEmbeddedText(migrated.title) ?? migrated.title,
@@ -85,7 +86,7 @@ export function migrateFeedPost(post: FeedPost): FeedPost {
       migrateEmbeddedText(migrated.preview_css_code) ?? migrated.preview_css_code,
     preview_js_code:
       migrateEmbeddedText(migrated.preview_js_code) ?? migrated.preview_js_code,
-  };
+  });
 }
 
 export function migrateRpgForum(forum: RpgForum): RpgForum {

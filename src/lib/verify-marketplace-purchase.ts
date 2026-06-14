@@ -1,6 +1,5 @@
 import { authFetchHeaders } from "@/lib/api-client-auth";
 import {
-  canViewCodeSource,
   requiresCodePurchase,
   type PostViewerContext,
 } from "@/lib/posts";
@@ -47,7 +46,7 @@ export async function verifySourceAccess(
   if (post.type !== "code_template") return false;
 
   if (!requiresCodePurchase(post)) {
-    return canViewCodeSource(post, viewer);
+    return viewer.isLoggedIn;
   }
 
   if (!viewer.isLoggedIn || !buyerUsername) return false;

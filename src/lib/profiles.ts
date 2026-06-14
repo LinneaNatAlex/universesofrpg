@@ -1,3 +1,4 @@
+import { isPublicFeedPost } from "@/lib/moderation";
 import { MOCK_FEED } from "@/lib/mock-data";
 import type { FeedPost, Profile } from "@/types/database";
 
@@ -7,8 +8,7 @@ export function getProfileByUsername(
   const normalized = username.toLowerCase();
   const creations = MOCK_FEED.filter(
     (p) =>
-      p.author.username.toLowerCase() === normalized &&
-      p.moderation_status === "approved"
+      p.author.username.toLowerCase() === normalized && isPublicFeedPost(p)
   );
 
   const profile =
