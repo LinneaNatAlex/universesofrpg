@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ export function useAuth() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,19 +24,18 @@ export function useAuth() {
 
     const supabase = createClient();
 
-    function applySession(nextUser: User | null) {
-      setUser(nextUser);
-      setLoading(false);
-    }
-
     void supabase.auth.getSession().then(({ data: { session } }) => {
-      applySession(session?.user ?? null);
+      setUser(session?.user ?? null);
+      initialLoadDone.current = true;
+      setLoading(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      applySession(session?.user ?? null);
+      if (!initialLoadDone.current) return;
+
+      setUser(session?.user ?? null);
 
       if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
         router.refresh();

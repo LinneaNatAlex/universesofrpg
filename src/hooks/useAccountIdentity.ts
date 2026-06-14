@@ -28,11 +28,13 @@ export function useAccountIdentity(): AccountIdentity | null {
 
   const base = useMemo((): Omit<AccountIdentity, "profile"> & { profile: Omit<Profile, "avatar_url"> } | null => {
     if (!isLoggedIn || !user) return null;
-    if (profileLoading) return null;
 
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
     const username = resolvePublicUsername(metadata, dbUsername);
-    if (!username) return null;
+    if (!username) {
+      if (profileLoading) return null;
+      return null;
+    }
 
     const displayName = resolvePublicDisplayName(username, metadata);
 

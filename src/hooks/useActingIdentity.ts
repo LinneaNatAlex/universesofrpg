@@ -33,9 +33,10 @@ export function useActingIdentity(): ActingIdentity | null {
     if (isAdmin && canSwitch && activePersona) {
       return activePersona.username.toLowerCase();
     }
-    if (profileLoading) return null;
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
-    return resolvePublicUsername(metadata, dbUsername);
+    const username = resolvePublicUsername(metadata, dbUsername);
+    if (!username && profileLoading) return null;
+    return username;
   }, [isLoggedIn, user, isAdmin, canSwitch, activePersona, dbUsername, profileLoading]);
 
   const avatarUrl = useProfileAvatar(actingUsername);

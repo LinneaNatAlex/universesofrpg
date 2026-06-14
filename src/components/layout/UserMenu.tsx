@@ -36,7 +36,7 @@ export function UserMenu() {
   const ref = useRef<HTMLDivElement>(null);
 
   const hasPublicProfile = Boolean(account?.username || identity?.username);
-  const showLoggedIn = isLoggedIn && hasPublicProfile;
+  const identityLoading = isLoggedIn && !hasPublicProfile;
 
   const profileHref =
     identity?.isActingAsPersona && identity.username
@@ -72,13 +72,16 @@ export function UserMenu() {
     router.refresh();
   }
 
-  if (loading) {
+  if (loading || identityLoading) {
     return (
-      <div className="h-9 w-9 border-2 border-ink bg-surface animate-pulse" aria-hidden />
+      <div
+        className="h-9 min-w-[5.5rem] border-2 border-ink bg-surface animate-pulse rounded-sm"
+        aria-hidden
+      />
     );
   }
 
-  if (!showLoggedIn) {
+  if (!isLoggedIn) {
     return (
       <div className="flex items-center gap-1.5 sm:gap-2">
         <Link
