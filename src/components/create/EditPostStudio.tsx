@@ -44,6 +44,7 @@ import { LoginCTA } from "@/components/auth/LoginCTA";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { CodePlaygroundInitialValues } from "@/components/editor/CodePlayground";
+import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import type { PricingType } from "@/types/database";
 import { ArrowLeft } from "lucide-react";
 
@@ -124,6 +125,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       coverUrl: latest.preview_image_url ?? "",
       musicUrl: latest.theme_music_url ?? extractThemeMusicUrl(rawHtml),
       codeLocked: latest.is_code_locked,
+      containsSexualContent: latest.contains_sexual_content ?? false,
     };
   }, [editable, sourceReady, remoteBundle]);
 
@@ -139,6 +141,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
   const [illImages, setIllImages] = useState<string[]>([]);
   const [illTags, setIllTags] = useState<string[]>(["illustration"]);
   const [illustrationLoaded, setIllustrationLoaded] = useState(false);
+  const [containsSexualContent, setContainsSexualContent] = useState(false);
 
   useEffect(() => {
     if (!editable) return;
@@ -153,6 +156,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       setIllImages(getIllustrationImages(editable));
       setIllTags(editable.tags.length > 0 ? editable.tags : ["illustration"]);
       setIllustrationLoaded(true);
+      setContainsSexualContent(editable.contains_sexual_content ?? false);
       return;
     }
 
@@ -164,6 +168,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
     setWritingTags(editable.tags.length > 0 ? editable.tags : ["writing"]);
     setWritingCategory(resolveWritingCategory(editable));
     setWritingLoaded(true);
+    setContainsSexualContent(editable.contains_sexual_content ?? false);
   }, [editable, writingLoaded, illustrationLoaded]);
 
   const categoryMeta = getWritingCategoryMeta(writingCategory);
@@ -233,6 +238,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         price_cents: pricing === "free" ? 0 : priceCents,
         tags: writingTags,
         writing_category: writingCategory,
+        contains_sexual_content: containsSexualContent,
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not save your writing.");
@@ -265,6 +271,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         pricing,
         price_cents: pricing === "free" ? 0 : priceCents,
         tags: illTags,
+        contains_sexual_content: containsSexualContent,
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not save your illustrations.");
@@ -307,6 +314,13 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
         onPriceCentsChange={setPriceCents}
       />
 
+      {!isCode && (
+        <ContentRatingDeclaration
+          containsSexualContent={containsSexualContent}
+          onContainsSexualContentChange={setContainsSexualContent}
+        />
+      )}
+
       {sourceError && isCode && (
         <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-yellow/50 border-2 border-ink">
           Could not load saved source from the server ({sourceError}). You can still edit from
@@ -322,6 +336,8 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
             priceCents={priceCents}
             editPostId={post.id}
             initialValues={codeInitialValues}
+            containsSexualContent={containsSexualContent}
+            onContainsSexualContentChange={setContainsSexualContent}
             onPublished={() => {
               const saved = getPostForEditing(post.id) ?? post;
               finishLiveSave(saved);

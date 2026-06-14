@@ -14,6 +14,11 @@ import { TopicFollowButton } from "@/components/forum/TopicFollowButton";
 import { TopicTagPicker } from "@/components/forum/TopicTagPicker";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { useFriends } from "@/hooks/useFriends";
+import { useContentViewer } from "@/hooks/useContentViewer";
+import { canViewRatedContent, hasSexualContent, isVisibleInPublicCatalog } from "@/lib/content-rating";
+import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
+import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
+import { MatureContentGate } from "@/components/content/MatureContentGate";
 import { isFriend } from "@/lib/friends-store";
 import {
   scheduleForumLiveSync,
@@ -53,6 +58,7 @@ function ForumMetaLine({ meta }: { meta: RpgForumMeta }) {
 
 export function ForumList() {
   const { isLoggedIn, loading } = useAuth();
+  const { ctx: viewerCtx } = useContentViewer();
   const forums = useForums();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -71,11 +77,12 @@ export function ForumList() {
   const filteredForums = useMemo(() => {
     return forums.filter((forum) => {
       if (!isForumVisibleInList(forum, identity?.username)) return false;
+      if (!isVisibleInPublicCatalog(forum, viewerCtx)) return false;
       if (activeCategory && forum.category !== activeCategory) return false;
       if (activeTag && !getForumTags(forum).includes(activeTag)) return false;
       return forumMatchesTopicSearch(forum, query);
     });
-  }, [forums, query, activeCategory, activeTag, identity?.username]);
+  }, [forums, query, activeCategory, activeTag, identity?.username, viewerCtx]);
 
   if (loading) return <div className="comic-panel p-8 text-center font-comic">Loading…</div>;
 
@@ -237,6 +244,7 @@ export function ForumList() {
                           Shop
                         </Badge>
                       )}
+                      <ContentRatingBadge item={forum} />
                       <Badge variant="tag" className="text-[10px]">
                         {forum.category}
                       </Badge>
@@ -294,6 +302,7 @@ export function NewForumForm() {
   const [firstPost, setFirstPost] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [containsSexualContent, setContainsSexualContent] = useState(false);
 
   const writerForums = useMemo(() => {
     if (!identity?.username) return [];
@@ -431,6 +440,7 @@ export function NewForumForm() {
         chapter_title: chapterTitle.trim() || "Part 1",
         chapter_meta: meta,
         opening_post: firstPost.trim(),
+        contains_sexual_content: containsSexualContent,
       });
     } catch (err) {
       setSubmitting(false);
@@ -632,6 +642,13 @@ export function NewForumForm() {
           />
         </div>
 
+        {mode === "new" && (
+          <ContentRatingDeclaration
+            containsSexualContent={containsSexualContent}
+            onContainsSexualContentChange={setContainsSexualContent}
+          />
+        )}
+
         {error && (
           <p className="text-sm text-comic-red bg-comic-red/10 border border-comic-red px-3 py-2">
             {error}
@@ -661,6 +678,7 @@ export function NewForumForm() {
 export function ForumDetail({ forumId }: { forumId: string }) {
   const { isLoggedIn, loading } = useAuth();
   const identity = useActingIdentity();
+  const { ctx: viewerCtx } = useContentViewer();
   const searchParams = useSearchParams();
   const forum = useForum(forumId);
   const [activeChapter, setActiveChapter] = useState(0);
@@ -735,6 +753,25 @@ export function ForumDetail({ forumId }: { forumId: string }) {
     );
   }
 
+  if (hasSexualContent(forum) && !canViewRatedContent(forum, viewerCtx)) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Link href="/forum" className="text-sm font-comic text-comic-red hover:underline">
+          ← Back to RPG topics
+        </Link>
+        <div className="space-y-2 text-center">
+          <h1 className="font-comic text-2xl text-ink">{forum.title}</h1>
+          <ContentRatingBadge item={forum} className="text-xs" />
+        </div>
+        <MatureContentGate
+          title={forum.title}
+          backHref="/forum"
+          backLabel="← Back to RPG topics"
+        />
+      </div>
+    );
+  }
+
   const chapter = forum.chapters[activeChapter];
   if (!chapter) {
     return <p className="font-comic text-center">This topic has no parts yet.</p>;
@@ -801,6 +838,7 @@ export function ForumDetail({ forumId }: { forumId: string }) {
                 Finished
               </Badge>
             )}
+            <ContentRatingBadge item={forum} />
             <Badge variant="tag" className="text-[10px]">
               {forum.category}
             </Badge>

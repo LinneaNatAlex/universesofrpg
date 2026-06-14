@@ -1,3 +1,7 @@
+import {
+  canViewRatedContent,
+  type ContentViewerContext,
+} from "@/lib/content-rating";
 import { isPublicFeedPost, normalizeFreeCodeListing } from "@/lib/moderation";
 import { getCommentCount } from "@/lib/mock-comments";
 import { getVaultedCode } from "@/lib/post-code-vault";
@@ -60,6 +64,17 @@ export function canViewFullContent(
   if (isLoggedIn) return true;
   if (inviteToken && postInviteToken && inviteToken === postInviteToken) return true;
   return false;
+}
+
+/** Login/invite plus PEGI age rules for sexual creations. */
+export function canViewPostFullContent(
+  post: FeedPost,
+  isLoggedIn: boolean,
+  inviteToken: string | null | undefined,
+  ratingCtx: ContentViewerContext
+): boolean {
+  if (!canViewFullContent(isLoggedIn, inviteToken, post.invite_token)) return false;
+  return canViewRatedContent(post, ratingCtx);
 }
 
 /** Paid code templates always lock source; free templates may opt in via is_code_locked. */

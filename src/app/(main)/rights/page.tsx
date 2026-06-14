@@ -185,6 +185,51 @@ export default function RightsPage() {
         </ul>
       </InfoSection>
 
+      <InfoSection title="Age & purchases">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            You must be at least <strong>13 years old</strong> to create an account and use
+            Universes of RPG.
+          </li>
+          <li>
+            If you are <strong>under 18</strong>, a parent or legal guardian must review these
+            terms with you when you sign up, and must approve each paid Shop purchase before
+            checkout.
+          </li>
+          <li>
+            By registering, you confirm that the age you provide is accurate and that you accept
+            these Rights &amp; Terms.
+          </li>
+          <li>
+            Paid purchases use Stripe. Minors should not complete checkout without guardian
+            approval. The platform may block checkout when age rules are not met.
+          </li>
+        </ul>
+      </InfoSection>
+
+      <InfoSection title="Sexual content (PEGI 18)">
+        <ul className="list-disc pl-5 space-y-2">
+          <li>
+            Creators must mark creations, RPG topics, and forum discussions that contain{" "}
+            <strong>sexual content</strong> (nudity, erotic themes, or explicit scenes) when
+            publishing.
+          </li>
+          <li>
+            Marked content is labelled <strong>PEGI 18</strong> and is only shown in full to
+            signed-in members aged <strong>18 or older</strong>, consistent with common age-rating
+            and marketplace rules.
+          </li>
+          <li>
+            Sexual content is hidden from public feeds and lists for guests and under-18 accounts.
+            Direct links show a restricted notice instead of the full work.
+          </li>
+          <li>
+            Illegal, non-consensual, or exploitative sexual content is prohibited and may be removed
+            without notice.
+          </li>
+        </ul>
+      </InfoSection>
+
       <InfoSection title="Platform & moderation">
         <p>
           Universes of RPG reserves the right to remove content, suspend accounts, or reject

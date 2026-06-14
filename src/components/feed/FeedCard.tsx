@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { PostCoverThumbnail } from "@/components/content/PostCoverThumbnail";
 import { formatPrice } from "@/lib/utils";
 import { requiresCodePurchase } from "@/lib/posts";
+import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
 import { getWritingCategoryLabel, isWritingPostType } from "@/lib/writing-categories";
 import type { FeedPost } from "@/types/database";
 
@@ -94,6 +95,7 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
               <Icon className="h-3 w-3 mr-1 inline" />
               {typeLabel}
             </Badge>
+            <ContentRatingBadge item={post} />
           </div>
         </div>
 

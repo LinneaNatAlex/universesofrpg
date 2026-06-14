@@ -14,6 +14,10 @@ import {
   moderationStatusOnPricingChange,
   normalizeFreeCodeListing,
 } from "@/lib/moderation";
+import {
+  applySexualContentTags,
+  resolveContentRating,
+} from "@/lib/content-rating";
 import type { FeedPost, ModerationStatus } from "@/types/database";
 
 function isPaidCodeTemplate(post: Pick<FeedPost, "type" | "pricing">): boolean {
@@ -304,6 +308,34 @@ export type NewPostInput = Omit<
   "id" | "created_at" | "like_count" | "comment_count"
 >;
 
+function applyPostRatingFields(
+  existing: FeedPost,
+  input: UpdatePostInput
+): Pick<FeedPost, "contains_sexual_content" | "content_rating" | "tags"> | Record<string, never> {
+  if (input.contains_sexual_content === undefined && input.content_rating === undefined) {
+    return {};
+  }
+  const contains = input.contains_sexual_content ?? existing.contains_sexual_content ?? false;
+  const tags = input.tags ?? existing.tags;
+  return {
+    contains_sexual_content: contains,
+    content_rating: resolveContentRating(contains, input.content_rating ?? existing.content_rating),
+    tags: applySexualContentTags(tags, contains),
+  };
+}
+
+function ratingFieldsForNewPost(input: NewPostInput): Pick<
+  FeedPost,
+  "contains_sexual_content" | "content_rating" | "tags"
+> {
+  const contains = input.contains_sexual_content ?? false;
+  return {
+    contains_sexual_content: contains,
+    content_rating: resolveContentRating(contains, input.content_rating),
+    tags: applySexualContentTags(input.tags ?? [], contains),
+  };
+}
+
 export function addPost(input: NewPostInput): FeedPost {
   ensureLoaded();
   if (input.pricing !== "free" && !postHasCover(input)) {
@@ -313,6 +345,7 @@ export function addPost(input: NewPostInput): FeedPost {
   const id = `post-${Date.now()}`;
   const post: FeedPost = stripPaidCodeForStorage({
     ...input,
+    ...ratingFieldsForNewPost(input),
     id,
     created_at: now,
     updated_at: now,
@@ -343,6 +376,7 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
     ...existing,
     ...input,
     ...pricingPatches,
+    ...applyPostRatingFields(existing, input),
     id: existing.id,
     created_at: existing.created_at,
     like_count: existing.like_count,

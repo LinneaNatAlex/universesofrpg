@@ -15,6 +15,8 @@ import {
   getDiscussionTags,
 } from "@/lib/discussion-tags";
 import { collectDiscussionTags } from "@/lib/discussions-store";
+import { isVisibleInPublicCatalog } from "@/lib/content-rating";
+import { useContentViewer } from "@/hooks/useContentViewer";
 import { cn } from "@/lib/utils";
 
 const DISCUSSIONS_PAGE_SIZE = 15;
@@ -28,6 +30,7 @@ function formatWhen(iso: string) {
 
 export function DiscussionBoard() {
   const { isLoggedIn } = useAuth();
+  const { ctx: viewerCtx } = useContentViewer();
   const threads = useDiscussions();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -42,13 +45,14 @@ export function DiscussionBoard() {
 
   const filtered = useMemo(() => {
     return threads
+      .filter((t) => isVisibleInPublicCatalog(t, viewerCtx))
       .filter((t) => {
         if (activeCategory && t.category !== activeCategory) return false;
         if (activeTag && !getDiscussionTags(t).includes(activeTag)) return false;
         return discussionMatchesSearch(t, query);
       })
       .sort((a, b) => discussionPopularityScore(b) - discussionPopularityScore(a));
-  }, [threads, query, activeCategory, activeTag]);
+  }, [threads, query, activeCategory, activeTag, viewerCtx]);
 
   const popular = filtered.slice(0, 3);
   const totalPages = Math.max(1, Math.ceil(filtered.length / DISCUSSIONS_PAGE_SIZE));

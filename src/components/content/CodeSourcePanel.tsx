@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useEditor } from "@/hooks/useEditor";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { ParentalPurchaseConsent } from "@/components/marketplace/ParentalPurchaseConsent";
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import { requiresCodePurchase } from "@/lib/posts";
 import { stripThemeMusic } from "@/lib/template-preview";
@@ -31,7 +32,8 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const [tab, setTab] = useState<Tab>("html");
   const [unlocked, setUnlocked] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
-  const { buy, busy, error: buyError } = useMarketplaceBuy();
+  const { buy, busy, error: buyError, isMinor, missingAge } = useMarketplaceBuy();
+  const [parentalConsent, setParentalConsent] = useState(false);
 
   const needsPurchase = requiresCodePurchase(post);
   const viewer = useMemo(
@@ -76,12 +78,15 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
       window.location.href = "/login";
       return;
     }
-    const result = await buy({
-      post_id: post.id,
-      title: post.title,
-      price_cents: post.price_cents,
-      seller_username: post.author.username,
-    });
+    const result = await buy(
+      {
+        post_id: post.id,
+        title: post.title,
+        price_cents: post.price_cents,
+        seller_username: post.author.username,
+      },
+      parentalConsent
+    );
     if (result === "unlocked") {
       setJustPurchased(true);
       void refreshAccess();
@@ -118,10 +123,28 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
                 Sign in to buy
               </Link>
             ) : (
-              <Button variant="comic" disabled={busy} onClick={() => void handlePurchase()}>
-                <ShoppingBag className="h-4 w-4 mr-1.5" />
-                {busy ? "Opening checkout…" : `Buy for ${formatPrice(post.price_cents)}`}
-              </Button>
+              <div className="w-full max-w-md mx-auto space-y-3">
+                {isMinor && (
+                  <ParentalPurchaseConsent
+                    checked={parentalConsent}
+                    onChange={setParentalConsent}
+                  />
+                )}
+                {missingAge && (
+                  <p className="text-xs text-ink-muted">
+                    Purchases require age on your account. Re-register with your age or contact
+                    support.
+                  </p>
+                )}
+                <Button
+                  variant="comic"
+                  disabled={busy || (isMinor && !parentalConsent)}
+                  onClick={() => void handlePurchase()}
+                >
+                  <ShoppingBag className="h-4 w-4 mr-1.5" />
+                  {busy ? "Opening checkout…" : `Buy for ${formatPrice(post.price_cents)}`}
+                </Button>
+              </div>
             )}
             {buyError && (
               <p className="text-xs text-comic-red w-full font-comic">{buyError}</p>

@@ -10,7 +10,8 @@ export interface MarketplaceCheckoutItem {
 
 export async function startMarketplaceCheckout(
   item: MarketplaceCheckoutItem,
-  buyingAsUsername?: string | null
+  buyingAsUsername?: string | null,
+  parentalConsentAcknowledged = false
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/stripe/marketplace-checkout", {
@@ -20,6 +21,7 @@ export async function startMarketplaceCheckout(
       body: JSON.stringify({
         ...item,
         buying_as_username: buyingAsUsername ?? undefined,
+        parental_consent_acknowledged: parentalConsentAcknowledged,
       }),
     });
 

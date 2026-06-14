@@ -15,6 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { CommentAuthorRow } from "@/components/comments/CommentAuthorRow";
+import { useContentViewer } from "@/hooks/useContentViewer";
+import { canViewRatedContent, hasSexualContent } from "@/lib/content-rating";
+import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
+import { MatureContentGate } from "@/components/content/MatureContentGate";
 
 function formatWhen(iso: string) {
   return new Intl.DateTimeFormat("en", {
@@ -29,6 +33,7 @@ function formatWhen(iso: string) {
 export function DiscussionThreadView({ id }: { id: string }) {
   const { isLoggedIn, loading } = useAuth();
   const identity = useActingIdentity();
+  const { ctx: viewerCtx } = useContentViewer();
   const thread = useDiscussion(id);
   const replies = useDiscussionReplies(id);
   const [draft, setDraft] = useState("");
@@ -72,6 +77,28 @@ export function DiscussionThreadView({ id }: { id: string }) {
     setDraft("");
   }
 
+  if (hasSexualContent(thread) && !canViewRatedContent(thread, viewerCtx)) {
+    return (
+      <div className="space-y-6 max-w-3xl mx-auto w-full">
+        <Link
+          href="/discussions"
+          className="inline-flex items-center gap-1 text-sm font-comic text-ink-muted hover:text-comic-red"
+        >
+          <ArrowLeft className="h-4 w-4" /> Forum discussions
+        </Link>
+        <div className="text-center space-y-2">
+          <h1 className="font-comic text-2xl text-ink">{thread.title}</h1>
+          <ContentRatingBadge item={thread} />
+        </div>
+        <MatureContentGate
+          title={thread.title}
+          backHref="/discussions"
+          backLabel="← Back to forum discussions"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto w-full">
       <Link
@@ -84,6 +111,7 @@ export function DiscussionThreadView({ id }: { id: string }) {
       <article className="comic-panel p-5 space-y-4">
         <div className="flex flex-wrap gap-2">
           <Badge variant="comic">{thread.category}</Badge>
+          <ContentRatingBadge item={thread} />
           {thread.tags.map((tag) => (
             <Badge key={tag} variant="tag">
               #{tag}

@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react";
 import { CONTENT_SYNCED_EVENT, isContentSyncSettled } from "@/lib/content-sync";
 import { isPublicFeedPost } from "@/lib/moderation";
+import { isVisibleInPublicCatalog, type ContentViewerContext } from "@/lib/content-rating";
+import { useContentViewer } from "@/hooks/useContentViewer";
 import { getCommentCount, subscribeComments } from "@/lib/mock-comments";
 import { getAllPosts, subscribePosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
-function enrich(posts: FeedPost[]): FeedPost[] {
+function enrich(posts: FeedPost[], viewerCtx: ContentViewerContext): FeedPost[] {
   return posts
     .filter(isPublicFeedPost)
+    .filter((p) => isVisibleInPublicCatalog(p, viewerCtx))
     .map((p) => ({ ...p, comment_count: getCommentCount(p.id) }));
 }
 
@@ -20,12 +23,13 @@ function sortByNewest(posts: FeedPost[]): FeedPost[] {
 }
 
 export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolean } {
+  const { ctx, loading: viewerLoading } = useContentViewer();
   const [ready, setReady] = useState(() => isContentSyncSettled());
   const [posts, setPosts] = useState<FeedPost[]>([]);
 
   useEffect(() => {
     const refresh = () => {
-      const enriched = sortByNewest(enrich(getAllPosts()));
+      const enriched = sortByNewest(enrich(getAllPosts(), ctx));
       setPosts(limit !== undefined ? enriched.slice(0, limit) : enriched);
     };
 
@@ -51,7 +55,7 @@ export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolea
       unsubComments();
       window.clearTimeout(timeout);
     };
-  }, [limit]);
+  }, [limit, ctx]);
 
-  return { posts, ready };
+  return { posts, ready: ready && !viewerLoading };
 }

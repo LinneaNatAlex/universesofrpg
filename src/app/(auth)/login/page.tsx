@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { safeRedirectPath } from "@/lib/post-access";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -99,6 +100,10 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
+
+        <div className="mt-6">
+          <SocialAuthButtons mode="login" redirectTo={redirectTo} disabled={loading} />
+        </div>
 
         <p className="mt-6 text-center text-sm text-muted">
           New adventurer?{" "}

@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { isAdminUser } from "@/lib/admin";
 import { getPersonaByUsername } from "@/lib/personas";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { User } from "@supabase/supabase-js";
 
 export interface SessionUser {
   id: string;
@@ -72,6 +73,41 @@ export async function getSessionUserFromRequest(
     email: user.email ?? null,
     username: usernameFromUser(user),
   };
+}
+
+/** Full Supabase user (includes metadata) for age / policy checks. */
+export async function getSupabaseUserFromRequest(
+  request?: Request
+): Promise<User | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) return user;
+  } catch {
+    // Fall through to bearer token.
+  }
+
+  if (!request) return null;
+
+  const token = request.headers
+    .get("authorization")
+    ?.match(/^Bearer\s+(.+)$/i)?.[1]
+    ?.trim();
+  if (!token) return null;
+
+  const service = createServiceClient();
+  if (!service) return null;
+
+  const {
+    data: { user },
+    error,
+  } = await service.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
 }
 
 export async function requireSessionUser(request?: Request) {

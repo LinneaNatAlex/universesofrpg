@@ -12,6 +12,10 @@ import {
 } from "@/lib/notifications-store";
 import { getForumFollowerUsernames } from "@/lib/topic-follows-store";
 import { normalizeTopicCategory, normalizeTopicTagList } from "@/lib/topic-tags";
+import {
+  applySexualContentTags,
+  resolveContentRating,
+} from "@/lib/content-rating";
 import type { ForumChapter, ForumPost, RpgForum, RpgForumMeta } from "@/types/database";
 
 const STORAGE_KEY = "uorpg-forums-state";
@@ -51,6 +55,8 @@ function normalizePartTitle(number: number, title: string | undefined): string {
 }
 
 function normalizeForum(forum: RpgForum): RpgForum {
+  const contains = forum.contains_sexual_content ?? false;
+  const tags = forum.tags?.length ? normalizeTopicTagList(forum.tags) : ["rpg"];
   return {
     ...forum,
     plot_synopsis: forum.plot_synopsis ?? null,
@@ -58,7 +64,9 @@ function normalizeForum(forum: RpgForum): RpgForum {
     category: forum.category
       ? normalizeTopicCategory(forum.category)
       : "fantasy",
-    tags: forum.tags?.length ? normalizeTopicTagList(forum.tags) : ["rpg"],
+    tags: applySexualContentTags(tags, contains),
+    contains_sexual_content: contains,
+    content_rating: resolveContentRating(contains, forum.content_rating),
     is_private: forum.is_private ?? false,
     is_locked: forum.is_locked ?? false,
     locked_at: forum.locked_at ?? null,
@@ -201,6 +209,8 @@ export interface NewForumInput {
   chapter_title: string;
   chapter_meta: RpgForumMeta;
   opening_post: string;
+  contains_sexual_content?: boolean;
+  content_rating?: RpgForum["content_rating"];
 }
 
 export function createForum(input: NewForumInput): RpgForum {
@@ -233,6 +243,7 @@ export function createForum(input: NewForumInput): RpgForum {
     posts: openingPosts,
   };
 
+  const contains = input.contains_sexual_content ?? false;
   const forum: RpgForum = normalizeForum({
     id: `f-${Date.now()}`,
     title: input.title.trim(),
@@ -241,6 +252,8 @@ export function createForum(input: NewForumInput): RpgForum {
     creator_username: input.creator_username,
     category: normalizeTopicCategory(input.category),
     tags: normalizeTopicTagList(input.tags),
+    contains_sexual_content: contains,
+    content_rating: resolveContentRating(contains, input.content_rating),
     members,
     is_private: input.is_private,
     is_locked: false,
@@ -472,6 +485,8 @@ export function publishForumToShop(
     is_ai_generated: false,
     tags: [...forum.tags, "rpg-topic"],
     style_tags: [forum.category],
+    contains_sexual_content: forum.contains_sexual_content,
+    content_rating: forum.content_rating,
     author: {
       id: authorId,
       username: actorUsername.toLowerCase(),

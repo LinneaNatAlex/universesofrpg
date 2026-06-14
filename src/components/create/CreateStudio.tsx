@@ -38,6 +38,7 @@ import {
   normalizeIllustrationImages,
 } from "@/lib/illustrations";
 import { Code2, ImageIcon, PenLine } from "lucide-react";
+import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 
 const CodePlayground = dynamic(
   () => import("@/components/editor/CodePlayground").then((m) => m.CodePlayground),
@@ -63,6 +64,7 @@ export function CreateStudio() {
   const [illTags, setIllTags] = useState<string[]>(["illustration"]);
   const [pricing, setPricing] = useState<PricingType>("free");
   const [priceCents, setPriceCents] = useState(499);
+  const [containsSexualContent, setContainsSexualContent] = useState(false);
   const [publishNote, setPublishNote] = useState<string | null>(null);
 
   function finishLivePublish(postId: string) {
@@ -138,6 +140,7 @@ export function CreateStudio() {
       tags: writingTags,
       style_tags: [],
       writing_category: writingCategory,
+      contains_sexual_content: containsSexualContent,
     });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not publish your writing.");
@@ -197,6 +200,7 @@ export function CreateStudio() {
         is_ai_generated: false,
         tags: illTags,
         style_tags: [],
+        contains_sexual_content: containsSexualContent,
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Could not publish your illustrations.");
@@ -257,6 +261,13 @@ export function CreateStudio() {
         onPriceCentsChange={setPriceCents}
       />
 
+      {mode !== "code" && (
+        <ContentRatingDeclaration
+          containsSexualContent={containsSexualContent}
+          onContainsSexualContentChange={setContainsSexualContent}
+        />
+      )}
+
       {publishNote && (
         <p className="comic-panel px-4 py-3 text-sm text-ink bg-comic-yellow/50 border-2 border-ink">
           {publishNote}
@@ -268,6 +279,8 @@ export function CreateStudio() {
           loggedIn
           pricing={pricing}
           priceCents={priceCents}
+          containsSexualContent={containsSexualContent}
+          onContainsSexualContentChange={setContainsSexualContent}
           onPublished={({ pending, postId }) => {
             if (pending) {
               setPublishNote(

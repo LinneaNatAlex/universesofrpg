@@ -9,6 +9,10 @@ import {
   normalizeDiscussionCategory,
   normalizeDiscussionTagList,
 } from "@/lib/discussion-tags";
+import {
+  applySexualContentTags,
+  resolveContentRating,
+} from "@/lib/content-rating";
 import type { DiscussionReply, DiscussionThread } from "@/types/database";
 
 const STORAGE_KEY = "uorpg-discussions-state";
@@ -283,11 +287,14 @@ export interface NewDiscussionInput {
   author_display_name: string;
   category: string;
   tags: string[];
+  contains_sexual_content?: boolean;
+  content_rating?: DiscussionThread["content_rating"];
 }
 
 export function createDiscussionThread(input: NewDiscussionInput): DiscussionThread {
   ensureLoaded();
   const now = new Date().toISOString();
+  const contains = input.contains_sexual_content ?? false;
   const thread: DiscussionThread = {
     id: `d-${Date.now()}`,
     title: input.title.trim(),
@@ -295,7 +302,9 @@ export function createDiscussionThread(input: NewDiscussionInput): DiscussionThr
     author_username: input.author_username.toLowerCase(),
     author_display_name: input.author_display_name,
     category: normalizeDiscussionCategory(input.category),
-    tags: normalizeDiscussionTagList(input.tags),
+    tags: applySexualContentTags(normalizeDiscussionTagList(input.tags), contains),
+    contains_sexual_content: contains,
+    content_rating: resolveContentRating(contains, input.content_rating),
     reply_count: 0,
     views: 0,
     created_at: now,

@@ -166,6 +166,8 @@ export interface Report {
 
 export type PersonaPageMode = "code" | "text";
 
+export type ContentRating = "everyone" | "peg12" | "peg16" | "peg18";
+
 /** Custom RPG persona landing tab on a creator profile */
 export interface PersonaProfilePage {
   username: string;
@@ -211,6 +213,9 @@ export interface Post {
   illustration_images?: string[];
   /** Optional ambient track for code templates — not part of sold source. */
   theme_music_url?: string | null;
+  /** Creator-declared sexual content — PEGI 18, adults only. */
+  contains_sexual_content?: boolean;
+  content_rating?: ContentRating;
   like_count: number;
   comment_count: number;
   created_at: string;
@@ -247,6 +252,8 @@ export interface DiscussionThread {
   views: number;
   created_at: string;
   last_activity_at: string;
+  contains_sexual_content?: boolean;
+  content_rating?: ContentRating;
 }
 
 export interface DiscussionReply {
@@ -298,5 +305,7 @@ export interface RpgForum {
   /** Paid Shop listing id when published after lock */
   shop_post_id: string | null;
   shop_price_cents: number | null;
+  contains_sexual_content?: boolean;
+  content_rating?: ContentRating;
   created_at: string;
 }

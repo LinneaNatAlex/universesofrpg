@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { ParentalPurchaseConsent } from "@/components/marketplace/ParentalPurchaseConsent";
 import { formatPrice } from "@/lib/utils";
 import type { RpgForum } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -14,17 +16,21 @@ interface TopicShopGateProps {
 
 export function TopicShopGate({ forum, username, onPurchased }: TopicShopGateProps) {
   const price = forum.shop_price_cents ?? 0;
-  const { buy, busy, error } = useMarketplaceBuy();
+  const { buy, busy, error, isMinor, missingAge } = useMarketplaceBuy();
+  const [parentalConsent, setParentalConsent] = useState(false);
 
   async function handlePurchase() {
     if (!forum.shop_post_id || price < 100) return;
 
-    const result = await buy({
-      post_id: forum.shop_post_id,
-      title: forum.title,
-      price_cents: price,
-      seller_username: forum.creator_username,
-    });
+    const result = await buy(
+      {
+        post_id: forum.shop_post_id,
+        title: forum.title,
+        price_cents: price,
+        seller_username: forum.creator_username,
+      },
+      parentalConsent
+    );
     if (result === "unlocked") onPurchased();
   }
 
@@ -41,11 +47,23 @@ export function TopicShopGate({ forum, username, onPurchased }: TopicShopGatePro
         <p className="font-comic text-2xl text-comic-red">{formatPrice(price)}</p>
       )}
       <div className="flex flex-wrap justify-center gap-2">
+        {isMinor && (
+          <ParentalPurchaseConsent
+            checked={parentalConsent}
+            onChange={setParentalConsent}
+            className="w-full max-w-md mx-auto text-left"
+          />
+        )}
+        {missingAge && (
+          <p className="text-xs text-ink-muted w-full max-w-md mx-auto">
+            Purchases require age on your account. Re-register with your age or contact support.
+          </p>
+        )}
         <Button
           type="button"
           variant="comic"
           size="sm"
-          disabled={busy || !forum.shop_post_id}
+          disabled={busy || !forum.shop_post_id || (isMinor && !parentalConsent)}
           onClick={() => void handlePurchase()}
         >
           {busy ? "Opening checkout…" : "Buy now"}

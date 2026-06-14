@@ -10,5 +10,9 @@ export function formatAuthError(message: string): string {
     return "An account with this email already exists. Try signing in instead.";
   }
 
+  if (lower.includes("provider is not enabled")) {
+    return "This sign-in provider is not enabled yet. Ask the site admin to turn on Google/Facebook in Supabase → Authentication → Providers.";
+  }
+
   return message;
 }

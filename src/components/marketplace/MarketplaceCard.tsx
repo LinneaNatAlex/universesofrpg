@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   ShoppingBag,
   Code2,
@@ -17,6 +18,7 @@ import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useMarketplaceBuy } from "@/hooks/useMarketplaceBuy";
+import { ParentalPurchaseConsent } from "@/components/marketplace/ParentalPurchaseConsent";
 import { PostDetailLink } from "@/components/content/PostDetailLink";
 import { postDetailHref } from "@/lib/post-access";
 import { PurchaseCount } from "@/components/marketplace/PurchaseCount";
@@ -48,7 +50,8 @@ interface MarketplaceCardProps {
 export function MarketplaceCard({ post }: MarketplaceCardProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
-  const { buy, busy, error } = useMarketplaceBuy();
+  const { buy, busy, error, isMinor, missingAge } = useMarketplaceBuy();
+  const [parentalConsent, setParentalConsent] = useState(false);
   const writingLabel = getWritingCategoryLabel(post);
   const typeLabel = writingLabel ?? TYPE_LABELS[post.type];
   const Icon = isWritingPostType(post.type) ? PenLine : TYPE_ICONS[post.type];
@@ -60,12 +63,15 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
     }
     if (!identity?.username) return;
 
-    const result = await buy({
-      post_id: post.id,
-      title: post.title,
-      price_cents: post.price_cents,
-      seller_username: post.author.username,
-    });
+    const result = await buy(
+      {
+        post_id: post.id,
+        title: post.title,
+        price_cents: post.price_cents,
+        seller_username: post.author.username,
+      },
+      parentalConsent
+    );
 
     if (result === "unlocked" && post.type === "code_template") {
       window.location.href = `/post/${post.id}`;
@@ -122,13 +128,25 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         {error && (
           <p className="mt-2 text-xs text-comic-red font-comic leading-snug">{error}</p>
         )}
+        {missingAge && isLoggedIn && (
+          <p className="mt-2 text-xs text-ink-muted leading-snug">
+            Purchases require age on your account. Re-register with your age or contact support.
+          </p>
+        )}
+        {isMinor && isLoggedIn && (
+          <ParentalPurchaseConsent
+            checked={parentalConsent}
+            onChange={setParentalConsent}
+            className="mt-2"
+          />
+        )}
 
         <div className="mt-3 flex gap-2">
           <Button
             variant="comic"
             size="sm"
             className="flex-1"
-            disabled={busy}
+            disabled={busy || (isMinor && !parentalConsent)}
             onClick={() => void handlePurchase()}
           >
             <ShoppingBag className="h-3.5 w-3.5 mr-1" />

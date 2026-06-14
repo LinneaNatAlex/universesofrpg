@@ -20,6 +20,10 @@ import {
   requiresCodePurchase,
 } from "@/lib/posts";
 import { moderationStatusLabel } from "@/lib/moderation";
+import { canViewRatedContent, hasSexualContent } from "@/lib/content-rating";
+import { MatureContentGate } from "@/components/content/MatureContentGate";
+import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
+import { useContentViewer } from "@/hooks/useContentViewer";
 import { CodeSourcePanel } from "@/components/content/CodeSourcePanel";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { BookBackCover } from "@/components/content/BookBackCover";
@@ -62,7 +66,10 @@ export function PostView({ post: rawPost }: PostViewProps) {
     inviteToken: invite,
     isEditor,
   };
-  const fullAccess = canViewFullContent(isLoggedIn, invite, rawPost.invite_token);
+  const { ctx: ratingCtx } = useContentViewer();
+  const ratingAllowed = canViewRatedContent(rawPost, ratingCtx);
+  const loginAllowed = canViewFullContent(isLoggedIn, invite, rawPost.invite_token);
+  const fullAccess = loginAllowed && ratingAllowed;
   const codeIsFree = rawPost.type === "code_template" && !requiresCodePurchase(rawPost);
   const showCodeSection = canViewCodePreview(rawPost);
   const canViewSource = canViewCodeSource(rawPost, viewer);
@@ -102,6 +109,28 @@ export function PostView({ post: rawPost }: PostViewProps) {
     refresh();
     return subscribeMessages(refresh);
   }, [rawPost.id, rawPost.moderation_status]);
+
+  if (hasSexualContent(rawPost) && !ratingAllowed) {
+    return (
+      <article className="space-y-6 mx-auto max-w-3xl">
+        <header className="space-y-2 text-center">
+          <Link
+            href={`/profile/${rawPost.author.username}`}
+            className="text-sm font-comic text-comic-red hover:underline"
+          >
+            @{rawPost.author.username}
+          </Link>
+          <h1 className="font-comic text-2xl sm:text-3xl text-ink leading-tight">
+            {rawPost.title}
+          </h1>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <ContentRatingBadge item={rawPost} />
+          </div>
+        </header>
+        <MatureContentGate title={rawPost.title} backHref="/" backLabel="← Back to feed" />
+      </article>
+    );
+  }
 
   return (
     <article
@@ -145,6 +174,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
           ) : (
             <Badge variant="paid">Paid</Badge>
           )}
+          <ContentRatingBadge item={rawPost} />
           {isLoggedIn && identity && (
             <ReportDialog
               targetType="post"

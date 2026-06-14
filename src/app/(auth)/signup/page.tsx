@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth-error-messages";
 import { authCallbackUrl } from "@/lib/site-url";
+import {
+  ADULT_PURCHASE_AGE,
+  isMinorForPurchases,
+  isValidSignupAge,
+  MIN_ACCOUNT_AGE,
+  TERMS_VERSION,
+} from "@/lib/account-age";
+import { normalizeAuthUsername } from "@/lib/auth-profile";
+import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
+import type { OAuthSignupDraft } from "@/lib/oauth-signup-draft";
 import { Sparkles } from "lucide-react";
 
 export default function SignupPage() {
@@ -14,9 +24,51 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [age, setAge] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [minorPurchaseAck, setMinorPurchaseAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const ageNumber = age.trim() ? Number(age) : NaN;
+  const showMinorPurchaseAck =
+    Number.isFinite(ageNumber) && isMinorForPurchases(Math.floor(ageNumber));
+
+  function buildSignupDraft(): OAuthSignupDraft | null {
+    const cleanUsername = normalizeAuthUsername(username);
+    if (cleanUsername.length < 3) {
+      setError("Username must be at least 3 characters (a-z, 0-9, _)");
+      return null;
+    }
+
+    const signupAge = Math.floor(ageNumber);
+    if (!isValidSignupAge(signupAge)) {
+      setError(
+        `You must be at least ${MIN_ACCOUNT_AGE} years old to join Universes of RPG.`
+      );
+      return null;
+    }
+
+    if (!acceptedTerms) {
+      setError("Read and accept the Rights & Terms before creating an account.");
+      return null;
+    }
+
+    if (showMinorPurchaseAck && !minorPurchaseAck) {
+      setError(
+        `If you are under ${ADULT_PURCHASE_AGE}, confirm that a parent or guardian has reviewed the terms and will approve any Shop purchases.`
+      );
+      return null;
+    }
+
+    setError(null);
+    return {
+      username: cleanUsername,
+      age: signupAge,
+      minorPurchaseAck: showMinorPurchaseAck ? minorPurchaseAck : false,
+    };
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,9 +76,32 @@ export default function SignupPage() {
     setMessage(null);
     setLoading(true);
 
-    const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const cleanUsername = normalizeAuthUsername(username);
     if (cleanUsername.length < 3) {
       setError("Username must be at least 3 characters (a-z, 0-9, _)");
+      setLoading(false);
+      return;
+    }
+
+    const signupAge = Math.floor(ageNumber);
+    if (!isValidSignupAge(signupAge)) {
+      setError(
+        `You must be at least ${MIN_ACCOUNT_AGE} years old to join Universes of RPG.`
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("Read and accept the Rights & Terms before creating an account.");
+      setLoading(false);
+      return;
+    }
+
+    if (showMinorPurchaseAck && !minorPurchaseAck) {
+      setError(
+        `If you are under ${ADULT_PURCHASE_AGE}, confirm that a parent or guardian has reviewed the terms and will approve any Shop purchases.`
+      );
       setLoading(false);
       return;
     }
@@ -40,6 +115,12 @@ export default function SignupPage() {
           data: {
             username: cleanUsername,
             display_name: cleanUsername,
+            age: signupAge,
+            terms_accepted_at: new Date().toISOString(),
+            terms_version: TERMS_VERSION,
+            minor_purchase_rules_acknowledged: showMinorPurchaseAck
+              ? minorPurchaseAck
+              : false,
           },
           emailRedirectTo: authCallbackUrl(window.location.origin),
         },
@@ -66,67 +147,131 @@ export default function SignupPage() {
 
   return (
     <div className="comic-card w-full max-w-md p-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Sparkles className="h-5 w-5 text-comic-red" />
-          <span className="font-comic text-xl">Join free</span>
+      <div className="flex items-center gap-2 mb-6">
+        <Sparkles className="h-5 w-5 text-comic-red" />
+        <span className="font-comic text-xl">Join free</span>
+      </div>
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label className="block text-sm text-muted mb-1.5">Username</label>
+          <input
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+            placeholder="chaz_copper"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-muted mb-1.5">Age</label>
+          <input
+            type="number"
+            required
+            min={MIN_ACCOUNT_AGE}
+            max={120}
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+            placeholder={`${MIN_ACCOUNT_AGE}+`}
+          />
+          <p className="text-xs text-muted mt-1">
+            You must be at least {MIN_ACCOUNT_AGE} to use Universes of RPG.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm text-muted mb-1.5">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-muted mb-1.5">Password</label>
+          <input
+            type="password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+          />
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block text-sm text-muted mb-1.5">Username</label>
+        <div className="space-y-3 rounded-lg border border-border bg-background/60 px-3 py-3">
+          <label className="flex items-start gap-2 text-sm text-ink leading-snug cursor-pointer">
             <input
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-              placeholder="chaz_copper"
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-comic-red"
             />
-          </div>
-          <div>
-            <label className="block text-sm text-muted mb-1.5">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-muted mb-1.5">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-            />
-          </div>
+            <span>
+              I have read and agree to the{" "}
+              <Link href="/rights" className="text-comic-red font-comic hover:underline">
+                Rights &amp; Terms
+              </Link>
+              , including age rules, creator responsibilities, and how content may be used on the
+              platform.
+            </span>
+          </label>
 
-          {error && (
-            <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
-              {error}
-            </p>
+          {showMinorPurchaseAck && (
+            <label className="flex items-start gap-2 text-sm text-ink leading-snug cursor-pointer border-t border-dashed border-border pt-3">
+              <input
+                type="checkbox"
+                checked={minorPurchaseAck}
+                onChange={(e) => setMinorPurchaseAck(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-comic-red"
+              />
+              <span>
+                I am under {ADULT_PURCHASE_AGE}. A parent or legal guardian has reviewed these
+                terms with me and will approve any paid Shop purchases I make on this site.
+              </span>
+            </label>
           )}
-          {message && (
-            <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-              {message}
-            </p>
-          )}
+        </div>
 
-          <Button type="submit" variant="comic" className="w-full" disabled={loading}>
-            {loading ? "Creating…" : "Create account"}
-          </Button>
-        </form>
+        {error && (
+          <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+        {message && (
+          <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+            {message}
+          </p>
+        )}
 
-        <p className="mt-6 text-center text-sm text-muted">
-          Already have an account?{" "}
-          <Link href="/login" className="text-comic-red font-comic hover:underline">
-            Sign in
-          </Link>
-        </p>
+        <Button
+          type="submit"
+          variant="comic"
+          className="w-full"
+          disabled={loading || !acceptedTerms}
+        >
+          {loading ? "Creating…" : "Create account"}
+        </Button>
+      </form>
+
+      <div className="mt-6">
+        <SocialAuthButtons
+          mode="signup"
+          disabled={loading}
+          buildSignupDraft={buildSignupDraft}
+          onSignupValidationError={setError}
+        />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        Already have an account?{" "}
+        <Link href="/login" className="text-comic-red font-comic hover:underline">
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { resolveBuyerUsername } from "@/lib/api-session-auth";
+import {
+  getSupabaseUserFromRequest,
+  resolveBuyerUsername,
+} from "@/lib/api-session-auth";
+import {
+  parseUserAge,
+  validateMarketplacePurchaseAge,
+} from "@/lib/account-age";
 import {
   calculatePlatformFeeCents,
   getMarketplaceCurrency,
@@ -24,6 +31,7 @@ export async function POST(request: Request) {
     price_cents?: number;
     seller_username?: string;
     buying_as_username?: string;
+    parental_consent_acknowledged?: boolean;
   };
   try {
     body = await request.json();
@@ -58,6 +66,14 @@ export async function POST(request: Request) {
   const buyerUsername = buyerAuth.buyerUsername;
   if (buyerUsername === sellerUsername) {
     return NextResponse.json({ error: "You cannot buy your own listing." }, { status: 400 });
+  }
+
+  const authUser = await getSupabaseUserFromRequest(request);
+  const buyerAge = parseUserAge(authUser?.user_metadata);
+  const parentalConsent = body.parental_consent_acknowledged === true;
+  const ageCheck = validateMarketplacePurchaseAge(buyerAge, parentalConsent);
+  if (!ageCheck.ok) {
+    return NextResponse.json({ error: ageCheck.error }, { status: 403 });
   }
 
   const sellerConnect = await getConnectAccount(sellerUsername);

@@ -10,6 +10,7 @@ import { CoverImageField } from "@/components/create/CoverImageField";
 import { isValidCoverSource } from "@/lib/post-cover";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import type { PricingType } from "@/types/database";
 import { Eye, Code2, Lock } from "lucide-react";
 
@@ -50,6 +51,7 @@ export interface CodePlaygroundInitialValues {
   coverUrl: string;
   musicUrl?: string;
   codeLocked?: boolean;
+  containsSexualContent?: boolean;
 }
 
 interface CodePlaygroundProps {
@@ -58,6 +60,8 @@ interface CodePlaygroundProps {
   priceCents?: number;
   editPostId?: string;
   initialValues?: CodePlaygroundInitialValues;
+  containsSexualContent?: boolean;
+  onContainsSexualContentChange?: (value: boolean) => void;
   onPublished?: (
     result: { pending: boolean; postId: string }
   ) => void | Promise<void>;
@@ -69,6 +73,8 @@ export function CodePlayground({
   priceCents = 499,
   editPostId,
   initialValues,
+  containsSexualContent: containsSexualProp,
+  onContainsSexualContentChange,
   onPublished,
 }: CodePlaygroundProps) {
   const identity = useActingIdentity();
@@ -83,6 +89,10 @@ export function CodePlayground({
   const [description, setDescription] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [containsSexualLocal, setContainsSexualLocal] = useState(false);
+  const containsSexualContent = containsSexualProp ?? containsSexualLocal;
+  const setContainsSexualContent =
+    onContainsSexualContentChange ?? setContainsSexualLocal;
 
   useEffect(() => {
     if (!initialValues) return;
@@ -94,7 +104,10 @@ export function CodePlayground({
     setCoverUrl(initialValues.coverUrl);
     setMusicUrl(initialValues.musicUrl ?? "");
     setCodeLocked(initialValues.codeLocked ?? false);
-  }, [initialValues]);
+    if (initialValues.containsSexualContent !== undefined) {
+      setContainsSexualContent(initialValues.containsSexualContent);
+    }
+  }, [initialValues, setContainsSexualContent]);
 
   async function handlePublish() {
     if (!title.trim()) {
@@ -134,6 +147,7 @@ export function CodePlayground({
       tags: ["profile", "code"],
       style_tags: [] as string[],
       theme_music_url: musicUrl.trim() || null,
+      contains_sexual_content: containsSexualContent,
     };
 
     let postId: string;
@@ -160,6 +174,7 @@ export function CodePlayground({
           tags: ["profile", "code"],
           style_tags: [],
           theme_music_url: musicUrl.trim() || null,
+          contains_sexual_content: containsSexualContent,
         });
         postId = editPostId;
         pendingReview = updated.moderation_status === "pending";
@@ -266,6 +281,10 @@ export function CodePlayground({
               <code className="font-mono">&lt;audio&gt;</code> in your HTML.
             </p>
           </div>
+          <ContentRatingDeclaration
+            containsSexualContent={containsSexualContent}
+            onContainsSexualContentChange={setContainsSexualContent}
+          />
         </Card>
       )}
 

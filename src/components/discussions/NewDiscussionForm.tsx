@@ -14,6 +14,7 @@ import {
   MAX_DISCUSSION_TAGS,
   normalizeDiscussionTagList,
 } from "@/lib/discussion-tags";
+import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import { createDiscussionThread } from "@/lib/discussions-store";
 import {
   scheduleDiscussionLiveSync,
@@ -30,6 +31,7 @@ export function NewDiscussionForm() {
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [containsSexualContent, setContainsSexualContent] = useState(false);
 
   if (loading) {
     return (
@@ -65,7 +67,7 @@ export function NewDiscussionForm() {
     }
     if (!identity) return;
 
-    setSubmitting(false);
+    setSubmitting(true);
     const thread = createDiscussionThread({
       title: title.trim(),
       body: body.trim(),
@@ -73,6 +75,7 @@ export function NewDiscussionForm() {
       author_display_name: identity.displayName,
       category,
       tags,
+      contains_sexual_content: containsSexualContent,
     });
 
     scheduleDiscussionLiveSync(() => {
@@ -180,6 +183,11 @@ export function NewDiscussionForm() {
               ))}
           </div>
         </div>
+
+        <ContentRatingDeclaration
+          containsSexualContent={containsSexualContent}
+          onContainsSexualContentChange={setContainsSexualContent}
+        />
 
         {error && (
           <p className="text-sm text-comic-red bg-comic-red/10 border border-comic-red px-3 py-2">
