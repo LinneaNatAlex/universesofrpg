@@ -114,9 +114,16 @@ export function SocialAuthButtons({
         </p>
       )}
 
-      {mode === "signup" && (
+      {mode === "signup" && !signupReady && (
         <p className="text-[11px] text-muted leading-snug text-center">
-          Fill in username, birth date, and accept the terms above before continuing with Google.
+          Complete <strong>username</strong>, <strong>birth date</strong>, and{" "}
+          <strong>terms</strong> above to unlock Google sign-up.
+        </p>
+      )}
+
+      {mode === "signup" && signupReady && (
+        <p className="text-[11px] text-muted leading-snug text-center">
+          Email and password below are optional — you can register with Google only.
         </p>
       )}
     </div>

@@ -38,11 +38,15 @@ export default function SignupPage() {
   const showMinorPurchaseAck =
     signupAge != null && isMinorForPurchases(signupAge);
   const cleanUsernamePreview = normalizeAuthUsername(username);
-  const googleSignupReady =
+  const sharedSignupReady =
     cleanUsernamePreview.length >= 3 &&
-    Boolean(birthDate.trim()) &&
+    isValidSignupBirthDate(birthDate.trim()) &&
     acceptedTerms &&
     (!showMinorPurchaseAck || minorPurchaseAck);
+  const emailSignupReady =
+    sharedSignupReady &&
+    email.trim().length > 0 &&
+    password.length >= 6;
 
   function validateBirthDate(): string | null {
     const value = birthDate.trim();
@@ -55,7 +59,10 @@ export default function SignupPage() {
     return value;
   }
 
-  function buildSignupDraft(): OAuthSignupDraft | null {
+  function validateSharedSignupFields(): {
+    cleanUsername: string;
+    birthDate: string;
+  } | null {
     const cleanUsername = normalizeAuthUsername(username);
     if (cleanUsername.length < 3) {
       setError("Username must be at least 3 characters (a-z, 0-9, _)");
@@ -78,9 +85,16 @@ export default function SignupPage() {
     }
 
     setError(null);
+    return { cleanUsername, birthDate: date };
+  }
+
+  function buildSignupDraft(): OAuthSignupDraft | null {
+    const fields = validateSharedSignupFields();
+    if (!fields) return null;
+
     return {
-      username: cleanUsername,
-      birthDate: date,
+      username: fields.cleanUsername,
+      birthDate: fields.birthDate,
       minorPurchaseAck: showMinorPurchaseAck ? minorPurchaseAck : false,
     };
   }
@@ -89,45 +103,32 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    const fields = validateSharedSignupFields();
+    if (!fields) return;
+
+    if (!email.trim()) {
+      setError("Enter an email to create an account with password — or use Continue with Google above.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters — or leave email/password empty and use Google.");
+      return;
+    }
+
     setLoading(true);
-
-    const cleanUsername = normalizeAuthUsername(username);
-    if (cleanUsername.length < 3) {
-      setError("Username must be at least 3 characters (a-z, 0-9, _)");
-      setLoading(false);
-      return;
-    }
-
-    const date = validateBirthDate();
-    if (!date) {
-      setLoading(false);
-      return;
-    }
-
-    if (!acceptedTerms) {
-      setError("Read and accept the Rights & Terms before creating an account.");
-      setLoading(false);
-      return;
-    }
-
-    if (showMinorPurchaseAck && !minorPurchaseAck) {
-      setError(
-        `If you are under ${ADULT_PURCHASE_AGE}, confirm that a parent or guardian has reviewed the terms and will approve any Shop purchases.`
-      );
-      setLoading(false);
-      return;
-    }
 
     try {
       const supabase = createClient();
       const { data, error: authError } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
-            username: cleanUsername,
-            display_name: cleanUsername,
-            birth_date: date,
+            username: fields.cleanUsername,
+            display_name: fields.cleanUsername,
+            birth_date: fields.birthDate,
             terms_accepted_at: new Date().toISOString(),
             terms_version: TERMS_VERSION,
             minor_purchase_rules_acknowledged: showMinorPurchaseAck
@@ -160,32 +161,39 @@ export default function SignupPage() {
 
   return (
     <div className="comic-card w-full max-w-md p-8">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-2">
         <Sparkles className="h-5 w-5 text-comic-red" />
         <span className="font-comic text-xl">Join free</span>
       </div>
+      <p className="text-xs text-muted mb-6 leading-snug">
+        Everyone picks a <strong>public username</strong> and <strong>birth date</strong> first.
+        Email and password are only if you skip Google.
+      </p>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="block text-sm text-muted mb-1.5">Public username</label>
+          <label className="block text-sm text-muted mb-1.5">
+            Public username <span className="text-comic-red">*</span>
+          </label>
           <input
             type="text"
-            required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
             placeholder="chaz_copper"
+            autoComplete="username"
           />
           <p className="text-xs text-muted mt-1">
-            This is your public name on the site — not your Google name or email. Required before
-            &quot;Continue with Google&quot;.
+            What others see on your profile — not your Google name or email.
           </p>
         </div>
+
         <div>
-          <label className="block text-sm text-muted mb-1.5">Birth date (fødselsdato)</label>
+          <label className="block text-sm text-muted mb-1.5">
+            Birth date (fødselsdato) <span className="text-comic-red">*</span>
+          </label>
           <input
             type="date"
-            required
             min={minSignupBirthDate()}
             max={maxSignupBirthDate()}
             value={birthDate}
@@ -193,30 +201,9 @@ export default function SignupPage() {
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
           />
           <p className="text-xs text-muted mt-1">
-            Pick your real date of birth from the calendar — you cannot just type &quot;13&quot; or
-            any age number. Used only for age rules; never shown on your profile.
+            Pick your real date from the calendar. Used only for age rules — never shown on your
+            profile.
           </p>
-        </div>
-        <div>
-          <label className="block text-sm text-muted mb-1.5">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-muted mb-1.5">Password</label>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
-          />
         </div>
 
         <div className="space-y-3 rounded-lg border border-border bg-background/60 px-3 py-3">
@@ -233,7 +220,7 @@ export default function SignupPage() {
                 Rights &amp; Terms
               </Link>
               , including age rules, creator responsibilities, and how content may be used on the
-              platform.
+              platform. <span className="text-comic-red">*</span>
             </span>
           </label>
 
@@ -247,7 +234,8 @@ export default function SignupPage() {
               />
               <span>
                 I am under {ADULT_PURCHASE_AGE}. A parent or legal guardian has reviewed these
-                terms with me and will approve any paid Shop purchases I make on this site.
+                terms with me and will approve any paid Shop purchases I make on this site.{" "}
+                <span className="text-comic-red">*</span>
               </span>
             </label>
           )}
@@ -264,25 +252,54 @@ export default function SignupPage() {
           </p>
         )}
 
-        <Button
-          type="submit"
-          variant="comic"
-          className="w-full"
-          disabled={loading || !acceptedTerms}
-        >
-          {loading ? "Creating…" : "Create account"}
-        </Button>
-      </form>
-
-      <div className="mt-6">
         <SocialAuthButtons
           mode="signup"
           disabled={loading}
-          signupReady={googleSignupReady}
+          signupReady={sharedSignupReady}
           buildSignupDraft={buildSignupDraft}
           onSignupValidationError={setError}
         />
-      </div>
+
+        <div className="rounded-lg border border-dashed border-border bg-background/40 px-3 py-3 space-y-3">
+          <p className="text-xs font-comic text-ink">Or sign up with email</p>
+          <p className="text-[11px] text-muted leading-snug -mt-1">
+            Optional — leave empty if you use Google. Only fill these in for a password login.
+          </p>
+
+          <div>
+            <label className="block text-sm text-muted mb-1.5">Email (optional)</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-muted mb-1.5">Password (optional)</label>
+            <input
+              type="password"
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-violet-500/50"
+              placeholder="At least 6 characters"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            variant="comic"
+            className="w-full"
+            disabled={loading || !emailSignupReady}
+          >
+            {loading ? "Creating…" : "Create account with email"}
+          </Button>
+        </div>
+      </form>
 
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{" "}
