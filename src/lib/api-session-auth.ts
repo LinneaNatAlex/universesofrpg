@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { isAdminUser } from "@/lib/admin";
 import { getPersonaByUsername } from "@/lib/personas";
+import { legacyBuyerUsernameAliases } from "@/lib/persona-rename";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { User } from "@supabase/supabase-js";
 
@@ -187,6 +188,45 @@ export async function resolveSellerUsername(
   };
 }
 
+async function buyerUsernameAliasesForUser(user: SessionUser): Promise<string[]> {
+  const aliases = new Set<string>([user.username.toLowerCase()]);
+  for (const leg of legacyBuyerUsernameAliases(user.username)) {
+    aliases.add(leg);
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (typeof profile?.username === "string" && profile.username.length >= 3) {
+      const profileUsername = profile.username.toLowerCase();
+      aliases.add(profileUsername);
+      for (const leg of legacyBuyerUsernameAliases(profileUsername)) {
+        aliases.add(leg);
+      }
+    }
+
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    const meta = authUser?.user_metadata?.username;
+    if (typeof meta === "string" && meta.trim().length >= 3) {
+      const metaUsername = meta.trim().toLowerCase();
+      aliases.add(metaUsername);
+      for (const leg of legacyBuyerUsernameAliases(metaUsername)) {
+        aliases.add(leg);
+      }
+    }
+  } catch {
+    // offline or auth — session username only
+  }
+
+  return [...aliases];
+}
+
 /**
  * Resolve which buyer username marketplace purchases apply to.
  * Admins may buy as a demo persona; regular users always use their account username.
@@ -215,6 +255,14 @@ export async function resolveBuyerUsername(
     return { ok: true, user: auth.user, buyerUsername: acting };
   }
 
-  // Client may send a stale profile username; purchases always use the session account.
-  return { ok: true, user: auth.user, buyerUsername: auth.user.username };
+  const allowed = await buyerUsernameAliasesForUser(auth.user);
+  if (allowed.includes(acting)) {
+    return { ok: true, user: auth.user, buyerUsername: acting };
+  }
+
+  return {
+    ok: false,
+    status: 403,
+    error: "You can only purchase as your own account or an admin demo persona.",
+  };
 }

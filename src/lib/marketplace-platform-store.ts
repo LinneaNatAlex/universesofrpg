@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { legacyBuyerUsernameAliases, migrateUsername } from "@/lib/persona-rename";
+import { migrateUsername } from "@/lib/persona-rename";
 import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
 
 export interface ConnectAccountRecord {
@@ -216,16 +216,15 @@ export async function hasPlatformPurchase(
   buyerUsername: string,
   postId: string
 ): Promise<boolean> {
-  const aliases = legacyBuyerUsernameAliases(buyerUsername);
+  const buyer = userKey(buyerUsername);
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
     const { data, error } = await supabase
       .from("marketplace_purchases")
       .select("post_id")
-      .in("buyer_username", aliases)
+      .eq("buyer_username", buyer)
       .eq("post_id", postId)
-      .limit(1)
       .maybeSingle();
     if (error) {
       console.error("[marketplace-platform] purchase lookup failed", error);
@@ -235,23 +234,21 @@ export async function hasPlatformPurchase(
   }
 
   return readFileState().purchases.some(
-    (p) =>
-      p.post_id === postId &&
-      aliases.includes(migrateUsername(p.buyer_username))
+    (p) => userKey(p.buyer_username) === buyer && p.post_id === postId
   );
 }
 
 export async function listPlatformPurchasesForBuyer(
   buyerUsername: string
 ): Promise<PlatformPurchase[]> {
-  const aliases = legacyBuyerUsernameAliases(buyerUsername);
+  const buyer = userKey(buyerUsername);
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
     const { data, error } = await supabase
       .from("marketplace_purchases")
       .select("*")
-      .in("buyer_username", aliases)
+      .eq("buyer_username", buyer)
       .order("purchased_at", { ascending: false });
     if (error) {
       console.error("[marketplace-platform] list purchases failed", error);
@@ -269,9 +266,7 @@ export async function listPlatformPurchasesForBuyer(
     }));
   }
 
-  return readFileState().purchases.filter((p) =>
-    aliases.includes(migrateUsername(p.buyer_username))
-  );
+  return readFileState().purchases.filter((p) => userKey(p.buyer_username) === buyer);
 }
 
 export async function countPlatformPurchasesForPost(postId: string): Promise<number> {
