@@ -32,6 +32,16 @@ export function migrateUsername(username: string): string {
   return LEGACY_PERSONAS[key]?.username ?? key;
 }
 
+/** Usernames that may appear on historical purchase rows for this account. */
+export function legacyBuyerUsernameAliases(username: string): string[] {
+  const key = username.toLowerCase().trim();
+  const aliases = new Set<string>([key]);
+  for (const [legacy, current] of Object.entries(LEGACY_PERSONAS)) {
+    if (current.username === key) aliases.add(legacy);
+  }
+  return [...aliases];
+}
+
 export function migrateDisplayName(username: string, displayName: string): string {
   const legacy = LEGACY_PERSONAS[username.toLowerCase().trim()];
   if (legacy) return legacy.display_name;

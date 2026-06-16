@@ -20,14 +20,14 @@ async function confirmServerPurchase(
       headers,
       cache: "no-store",
     });
-    if (!res.ok) return false;
+    if (!res.ok) return hasPurchased(buyerUsername, postId);
 
     const data = (await res.json()) as { purchased?: boolean };
     if (data.purchased) {
       recordPurchase(buyerUsername, postId);
       return true;
     }
-    return false;
+    return hasPurchased(buyerUsername, postId);
   } catch {
     return hasPurchased(buyerUsername, postId);
   }
@@ -52,6 +52,10 @@ export async function verifySourceAccess(
   if (!viewer.isLoggedIn || !buyerUsername) return false;
   if (isAuthor(post, buyerUsername)) return true;
   if (post.moderation_status === "pending" && viewer.isEditor) return true;
+
+  if (hasPurchased(buyerUsername, post.id)) {
+    return true;
+  }
 
   return confirmServerPurchase(buyerUsername, post.id);
 }

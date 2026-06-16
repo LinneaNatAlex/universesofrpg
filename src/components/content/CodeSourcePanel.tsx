@@ -13,7 +13,7 @@ import { ParentalPurchaseConsent } from "@/components/marketplace/ParentalPurcha
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import { requiresCodePurchase } from "@/lib/posts";
 import { stripThemeMusic } from "@/lib/template-preview";
-import { subscribePurchases } from "@/lib/purchases-store";
+import { hydratePurchasesFromServer, subscribePurchases } from "@/lib/purchases-store";
 import { verifySourceAccess } from "@/lib/verify-marketplace-purchase";
 import type { FeedPost } from "@/types/database";
 
@@ -52,6 +52,9 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   );
 
   const refreshAccess = useCallback(async () => {
+    if (buyerUsername) {
+      await hydratePurchasesFromServer(buyerUsername);
+    }
     const next = await verifySourceAccess(post, viewer, buyerUsername);
     setUnlocked(next);
     if (!next) setJustPurchased(false);

@@ -215,9 +215,6 @@ export async function resolveBuyerUsername(
     return { ok: true, user: auth.user, buyerUsername: acting };
   }
 
-  return {
-    ok: false,
-    status: 403,
-    error: "You can only purchase as your own account or an admin demo persona.",
-  };
+  // Client may send a stale profile username; purchases always use the session account.
+  return { ok: true, user: auth.user, buyerUsername: auth.user.username };
 }
