@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { getProfileAvatarUrl, setProfileAvatarUrl } from "@/lib/profile-avatars-store";
+import {
+  fetchProfileUsernameCached,
+  readCachedProfileUsername,
+} from "@/lib/profile-username-cache";
 
 export interface ProfileDbRecord {
   username: string | null;
@@ -12,8 +14,9 @@ export interface ProfileDbRecord {
 
 /** Username from public.profiles for the signed-in user. */
 export function useProfileDbUsername(userId: string | undefined, enabled: boolean): ProfileDbRecord {
-  const [username, setUsername] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const cached = readCachedProfileUsername(enabled ? userId : undefined);
+  const [username, setUsername] = useState<string | null>(cached.username);
+  const [loading, setLoading] = useState(cached.loading);
 
   useEffect(() => {
     if (!enabled || !userId || !isSupabaseConfigured()) {
@@ -22,38 +25,21 @@ export function useProfileDbUsername(userId: string | undefined, enabled: boolea
       return;
     }
 
+    const snapshot = readCachedProfileUsername(userId);
+    if (snapshot.username !== null) {
+      setUsername(snapshot.username);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
 
-    void (async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        if (error || !data?.username) {
-          setUsername(null);
-          return;
-        }
-
-        const resolved = data.username.toLowerCase();
-        setUsername(resolved);
-
-        const remote = data.avatar_url?.trim() || null;
-        if (remote && !getProfileAvatarUrl(resolved)) {
-          setProfileAvatarUrl(resolved, remote);
-        }
-      } catch {
-        if (!cancelled) setUsername(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    void fetchProfileUsernameCached(userId).then((resolved) => {
+      if (cancelled) return;
+      setUsername(resolved);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;

@@ -1,5 +1,5 @@
-import { ForumListLoader } from "@/components/forum/ForumListLoader";
+import { ForumList } from "@/components/forum/ForumList";
 
 export default function ForumPage() {
-  return <ForumListLoader />;
+  return <ForumList />;
 }

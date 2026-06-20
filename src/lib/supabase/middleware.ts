@@ -2,7 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
 
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => {
+    const name = cookie.name;
+    return name.includes("-auth-token") || name.endsWith("-auth-token.0");
+  });
+}
+
 export async function updateSession(request: NextRequest) {
+  if (!hasSupabaseAuthCookie(request)) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
   const url = getSupabaseUrl();
   const key = getSupabaseKey();
@@ -29,6 +40,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  // Cookie read + refresh — avoids a network round-trip to Supabase Auth on every tab click.
+  await supabase.auth.getSession();
   return supabaseResponse;
 }

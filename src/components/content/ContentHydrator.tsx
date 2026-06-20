@@ -59,14 +59,10 @@ export function ContentHydrator() {
     let cancelled = false;
 
     void (async () => {
-      const [remotePosts, remoteForums, remoteComments, remoteDiscussions, remoteHomepageChat] =
-        await Promise.all([
-          fetchPostsPlatformState(),
-          fetchForumsPlatformState(),
-          fetchCommentsPlatformState(),
-          fetchDiscussionsPlatformState(),
-          fetchHomepageChatPlatformState(),
-        ]);
+      const [remotePosts, remoteForums] = await Promise.all([
+        fetchPostsPlatformState(),
+        fetchForumsPlatformState(),
+      ]);
 
       if (cancelled) return;
 
@@ -79,6 +75,16 @@ export function ContentHydrator() {
         const local = buildForumsPersistState();
         applyForumsPersistState(mergeForumsState(local, remoteForums));
       }
+
+      notifyContentReady();
+
+      const [remoteComments, remoteDiscussions, remoteHomepageChat] = await Promise.all([
+        fetchCommentsPlatformState(),
+        fetchDiscussionsPlatformState(),
+        fetchHomepageChatPlatformState(),
+      ]);
+
+      if (cancelled) return;
 
       if (remoteComments) {
         const local = buildCommentsPersistState();

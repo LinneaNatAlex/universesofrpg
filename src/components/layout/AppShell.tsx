@@ -23,6 +23,7 @@ import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { FriendsHydrator } from "@/components/social/FriendsHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
+import { NavPrefetch } from "@/components/layout/NavPrefetch";
 
 type NavItem = {
   href: string;
@@ -180,6 +181,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PersonaProvider>
       <SessionGuard />
+      <NavPrefetch />
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
         <ContentHydrator />
