@@ -14,6 +14,7 @@ import { useCommentCount } from "@/hooks/useCommentCount";
 import { useMonthlySpotlight } from "@/hooks/useMonthlySpotlight";
 import { requiresCodePurchase } from "@/lib/posts";
 import { formatSpotlightMonth, type SpotlightPick } from "@/lib/featured";
+import { cn } from "@/lib/utils";
 import type { FeedPost } from "@/types/database";
 
 const ROTATE_MS = 6000;
@@ -27,7 +28,7 @@ function SpotlightVisual({ post }: { post: FeedPost }) {
   return (
     <PostCoverThumbnail
       post={post}
-      size="lg"
+      size="feed"
       coverOnly={coverOnly}
       className="mx-auto md:mx-0 shrink-0"
     />
@@ -41,10 +42,10 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   return (
-    <div className="flex flex-col md:flex-row gap-5 md:gap-8 items-center md:items-start px-4 sm:px-8 md:px-14 py-5 md:py-6">
+    <div className="flex flex-col md:flex-row gap-5 md:gap-7 items-center md:items-start px-4 sm:px-8 md:px-10 py-5 md:py-6">
       <SpotlightVisual post={post} />
 
-      <div className="flex-1 min-w-0 text-center md:text-left">
+      <div className="flex-1 min-w-0 w-full text-center md:text-left">
         <Badge variant="comic" className="mb-2">
           {category.label}
         </Badge>
@@ -68,40 +69,48 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
           </Link>
         </p>
 
-        <p className="text-sm text-ink-muted italic mt-3 line-clamp-3 max-w-lg">
-          {synopsis}
-        </p>
+        {synopsis ? (
+          <p className="text-sm text-ink-muted italic mt-3 line-clamp-3 max-w-lg mx-auto md:mx-0">
+            {synopsis}
+          </p>
+        ) : null}
 
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4 text-sm font-comic text-ink-muted">
-          <LikeButton postId={post.id} initialCount={post.like_count} />
-          <span className="flex items-center gap-1">
-            <MessageCircle className="h-4 w-4" />
-            {commentCount}
-          </span>
-          {post.pricing !== "free" && <PurchaseCount postId={post.id} />}
-          {post.pricing !== "free" ? (
-            <Badge variant="paid" className="text-[10px]">
-              Premium · sign up to preview
-            </Badge>
-          ) : (
-            <Badge variant="free" className="text-[10px]">
-              Free · sign up to read
-            </Badge>
-          )}
+        <div className="mt-5 pt-4 border-t-2 border-dashed border-ink/30 max-w-lg mx-auto md:mx-0">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm font-comic text-ink-muted">
+            <LikeButton postId={post.id} initialCount={post.like_count} />
+            <span className="flex items-center gap-1">
+              <MessageCircle className="h-4 w-4" />
+              {commentCount}
+            </span>
+            {post.pricing !== "free" && <PurchaseCount postId={post.id} />}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-2">
+            {post.pricing !== "free" ? (
+              <Badge variant="paid" className="text-[10px]">
+                Premium · sign up to preview
+              </Badge>
+            ) : (
+              <Badge variant="free" className="text-[10px]">
+                Free · sign up to read
+              </Badge>
+            )}
+            <PostDetailLink post={post}>
+              <Button variant="comic" size="sm">
+                <Eye className="h-4 w-4 mr-1.5" />
+                {post.type === "code_template" && !isLoggedIn
+                  ? "Sign in to view"
+                  : "View this pick"}
+              </Button>
+            </PostDetailLink>
+          </div>
         </div>
-
-        <PostDetailLink post={post} className="inline-block mt-5">
-          <Button variant="comic" size="sm">
-            <Eye className="h-4 w-4 mr-1.5" />
-            {post.type === "code_template" && !isLoggedIn ? "Sign in to view" : "View this pick"}
-          </Button>
-        </PostDetailLink>
       </div>
     </div>
   );
 }
 
-export function MonthlySpotlight() {
+export function MonthlySpotlight({ className }: { className?: string }) {
   const picks = useMonthlySpotlight();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -129,7 +138,7 @@ export function MonthlySpotlight() {
 
   return (
     <section
-      className="comic-card overflow-hidden"
+      className={cn("comic-card overflow-hidden", className)}
       aria-label={`Monthly spotlight, ${monthLabel}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

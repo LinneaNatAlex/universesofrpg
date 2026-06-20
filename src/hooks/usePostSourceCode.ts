@@ -3,15 +3,20 @@
 import { useEffect, useState } from "react";
 import { fetchPostSourceCode } from "@/lib/post-source-code-client";
 import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
+import { subscribePurchases } from "@/lib/purchases-store";
 
 export function usePostSourceCode(
   postId: string,
   enabled: boolean,
-  actingUsername?: string | null
+  actingUsername?: string | null,
+  serverOnly = false
 ) {
   const [bundle, setBundle] = useState<PostCodeBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [purchaseTick, setPurchaseTick] = useState(0);
+
+  useEffect(() => subscribePurchases(() => setPurchaseTick((n) => n + 1)), []);
 
   useEffect(() => {
     if (!enabled) {
@@ -21,7 +26,7 @@ export function usePostSourceCode(
       return;
     }
 
-    const local = getVaultedCode(postId);
+    const local = serverOnly ? null : getVaultedCode(postId);
     if (local) {
       setBundle(local);
     }
@@ -43,7 +48,7 @@ export function usePostSourceCode(
     return () => {
       cancelled = true;
     };
-  }, [postId, enabled, actingUsername]);
+  }, [postId, enabled, actingUsername, serverOnly, purchaseTick]);
 
   return { bundle, loading, error };
 }

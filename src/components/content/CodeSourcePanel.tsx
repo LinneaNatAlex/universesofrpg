@@ -13,7 +13,12 @@ import { ParentalPurchaseConsent } from "@/components/marketplace/ParentalPurcha
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import { requiresCodePurchase } from "@/lib/posts";
 import { stripThemeMusic } from "@/lib/template-preview";
-import { hydratePurchasesFromServer, subscribePurchases } from "@/lib/purchases-store";
+import {
+  hydratePurchasesFromServer,
+  PURCHASE_CONFIRMED_EVENT,
+  type PurchaseConfirmedDetail,
+  subscribePurchases,
+} from "@/lib/purchases-store";
 import { verifySourceAccess } from "@/lib/verify-marketplace-purchase";
 import type { FeedPost } from "@/types/database";
 
@@ -48,7 +53,8 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { bundle, loading, error: sourceError } = usePostSourceCode(
     post.id,
     unlocked,
-    buyerUsername
+    buyerUsername,
+    needsPurchase
   );
 
   const refreshAccess = useCallback(async () => {
@@ -67,6 +73,20 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
     });
     return unsub;
   }, [refreshAccess]);
+
+  useEffect(() => {
+    function onPurchaseConfirmed(event: Event) {
+      const detail = (event as CustomEvent<PurchaseConfirmedDetail>).detail;
+      if (!detail || !buyerUsername) return;
+      if (detail.postId !== post.id) return;
+      if (detail.username.toLowerCase() !== buyerUsername.toLowerCase()) return;
+      setUnlocked(true);
+      setJustPurchased(true);
+      void refreshAccess();
+    }
+    window.addEventListener(PURCHASE_CONFIRMED_EVENT, onPurchaseConfirmed);
+    return () => window.removeEventListener(PURCHASE_CONFIRMED_EVENT, onPurchaseConfirmed);
+  }, [post.id, buyerUsername, refreshAccess]);
 
   useEffect(() => {
     function onPageShow(event: PageTransitionEvent) {

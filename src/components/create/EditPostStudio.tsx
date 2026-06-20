@@ -124,6 +124,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       js,
       coverUrl: latest.preview_image_url ?? "",
       musicUrl: latest.theme_music_url ?? extractThemeMusicUrl(rawHtml),
+      templateReadme: latest.template_readme ?? "",
       codeLocked: latest.is_code_locked,
       containsSexualContent: latest.contains_sexual_content ?? false,
     };

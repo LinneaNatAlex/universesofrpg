@@ -1,6 +1,7 @@
+import { hasSexualContent, type RatableContentFields } from "@/lib/content-rating";
 import { normalizeTag } from "@/lib/post-tags";
 
-export const TOPIC_CATEGORIES = [
+export const TOPIC_GENRE_CATEGORIES = [
   "fantasy",
   "horror",
   "sci-fi",
@@ -13,7 +14,30 @@ export const TOPIC_CATEGORIES = [
   "sandbox",
 ] as const;
 
+export const MATURE_TOPIC_CATEGORY = "mature-rp" as const;
+
+export const TOPIC_CATEGORIES = [
+  ...TOPIC_GENRE_CATEGORIES,
+  MATURE_TOPIC_CATEGORY,
+] as const;
+
 export type TopicCategory = (typeof TOPIC_CATEGORIES)[number];
+
+export function topicCategoryLabel(category: string): string {
+  if (category === MATURE_TOPIC_CATEGORY) return "Mature RP (18+)";
+  return category;
+}
+
+export function isMatureTopicCategory(category: string): boolean {
+  return category === MATURE_TOPIC_CATEGORY;
+}
+
+export function getTopicCategoriesForBrowse(canAccessMature: boolean): TopicCategory[] {
+  if (canAccessMature) {
+    return [...TOPIC_GENRE_CATEGORIES, MATURE_TOPIC_CATEGORY];
+  }
+  return [...TOPIC_GENRE_CATEGORIES];
+}
 
 export const TOPIC_TAG_SUGGESTIONS = [
   "rpg",
@@ -63,6 +87,16 @@ export function normalizeTopicCategory(raw: string): TopicCategory {
   return TOPIC_CATEGORIES.includes(key as TopicCategory)
     ? (key as TopicCategory)
     : "sandbox";
+}
+
+export function forumMatchesTopicCategory(
+  forum: RatableContentFields & { category: string },
+  categoryFilter: string
+): boolean {
+  if (isMatureTopicCategory(categoryFilter)) {
+    return isMatureTopicCategory(forum.category) || hasSexualContent(forum);
+  }
+  return forum.category === categoryFilter && !hasSexualContent(forum);
 }
 
 export function getForumTags(forum: {

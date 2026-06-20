@@ -94,8 +94,12 @@ export default function FaqPage() {
         Still stuck? Read{" "}
         <Link href="/rights" className="font-comic text-comic-red hover:underline">
           Rights &amp; terms
-        </Link>{" "}
-        or visit{" "}
+        </Link>
+        ,{" "}
+        <Link href="/disclaimer" className="font-comic text-comic-red hover:underline">
+          Disclaimer
+        </Link>
+        , or visit{" "}
         <Link href="/about" className="font-comic text-comic-red hover:underline">
           About
         </Link>

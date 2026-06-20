@@ -31,9 +31,7 @@ function hasCachedPosts(): boolean {
 
 export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolean } {
   const { ctx } = useContentViewer();
-  const [ready, setReady] = useState(
-    () => hasCachedPosts() || isContentSyncSettled()
-  );
+  const [ready, setReady] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>([]);
 
   useEffect(() => {

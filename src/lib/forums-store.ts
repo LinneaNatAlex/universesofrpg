@@ -11,7 +11,12 @@ import {
   addTopicReplyNotification,
 } from "@/lib/notifications-store";
 import { getForumFollowerUsernames } from "@/lib/topic-follows-store";
-import { normalizeTopicCategory, normalizeTopicTagList } from "@/lib/topic-tags";
+import {
+  isMatureTopicCategory,
+  MATURE_TOPIC_CATEGORY,
+  normalizeTopicCategory,
+  normalizeTopicTagList,
+} from "@/lib/topic-tags";
 import {
   applySexualContentTags,
   resolveContentRating,
@@ -57,13 +62,19 @@ function normalizePartTitle(number: number, title: string | undefined): string {
 function normalizeForum(forum: RpgForum): RpgForum {
   const contains = forum.contains_sexual_content ?? false;
   const tags = forum.tags?.length ? normalizeTopicTagList(forum.tags) : ["rpg"];
+  let category = forum.category
+    ? normalizeTopicCategory(forum.category)
+    : "fantasy";
+  if (contains) {
+    category = MATURE_TOPIC_CATEGORY;
+  } else if (isMatureTopicCategory(category)) {
+    category = "sandbox";
+  }
   return {
     ...forum,
     plot_synopsis: forum.plot_synopsis ?? null,
     creator_username: forum.creator_username ?? forum.members[0] ?? "unknown",
-    category: forum.category
-      ? normalizeTopicCategory(forum.category)
-      : "fantasy",
+    category,
     tags: applySexualContentTags(tags, contains),
     contains_sexual_content: contains,
     content_rating: resolveContentRating(contains, forum.content_rating),
@@ -344,13 +355,21 @@ export function createForum(input: NewForumInput): RpgForum {
   };
 
   const contains = input.contains_sexual_content ?? false;
+  let category = normalizeTopicCategory(input.category);
+  if (contains) {
+    category = MATURE_TOPIC_CATEGORY;
+  } else if (isMatureTopicCategory(category)) {
+    throw new Error(
+      "The Mature RP category is for topics with declared sexual content (PEGI 18)."
+    );
+  }
   const forum: RpgForum = normalizeForum({
     id: `f-${Date.now()}`,
     title: input.title.trim(),
     plot_synopsis: input.plot_synopsis?.trim() || null,
     book_cover_url: input.book_cover_url?.trim() || null,
     creator_username: input.creator_username,
-    category: normalizeTopicCategory(input.category),
+    category,
     tags: normalizeTopicTagList(input.tags),
     contains_sexual_content: contains,
     content_rating: resolveContentRating(contains, input.content_rating),

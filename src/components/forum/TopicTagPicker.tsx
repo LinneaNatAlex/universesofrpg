@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import {
+  getTopicCategoriesForBrowse,
+  isMatureTopicCategory,
   MAX_TOPIC_TAGS,
-  TOPIC_CATEGORIES,
   TOPIC_TAG_SUGGESTIONS,
   sanitizeTopicTag,
+  topicCategoryLabel,
 } from "@/lib/topic-tags";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
@@ -15,6 +17,7 @@ interface TopicTagPickerProps {
   tags: string[];
   onCategoryChange: (category: string) => void;
   onTagsChange: (tags: string[]) => void;
+  canAccessMature?: boolean;
   className?: string;
 }
 
@@ -23,9 +26,11 @@ export function TopicTagPicker({
   tags,
   onCategoryChange,
   onTagsChange,
+  canAccessMature = false,
   className,
 }: TopicTagPickerProps) {
   const [customInput, setCustomInput] = useState("");
+  const categories = getTopicCategoriesForBrowse(canAccessMature);
 
   function addTag(raw: string) {
     const tag = sanitizeTopicTag(raw);
@@ -49,12 +54,18 @@ export function TopicTagPicker({
           onChange={(e) => onCategoryChange(e.target.value)}
           className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm"
         >
-          {TOPIC_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <option key={cat} value={cat}>
-              {cat}
+              {topicCategoryLabel(cat)}
             </option>
           ))}
         </select>
+        {isMatureTopicCategory(category) && (
+          <p className="text-xs text-ink-muted mt-1">
+            Mature RP is PEGI 18 — only visible to members aged 18+ based on your registered
+            birth date.
+          </p>
+        )}
       </div>
 
       <div>

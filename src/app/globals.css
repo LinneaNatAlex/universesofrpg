@@ -50,6 +50,10 @@ body {
   letter-spacing: 0.04em;
 }
 
+.font-body {
+  font-family: var(--font-body), Georgia, serif;
+}
+
 /* Retro comic panels */
 .comic-card {
   background: var(--surface);

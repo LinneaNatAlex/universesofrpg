@@ -157,16 +157,6 @@ async function fetchPurchasedLibrary(
       posts: FeedPost[];
     }>);
 
-    const localIds = [
-      ...new Set([
-        ...getPurchasedPostIds(username),
-        ...(legacyUsername ? getPurchasedPostIds(legacyUsername) : []),
-      ]),
-    ];
-    for (const id of localIds) {
-      if (!merged.postIds.includes(id)) merged.postIds.push(id);
-    }
-
     syncPurchasedPostIds(username, merged.postIds);
 
     return {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
@@ -35,10 +36,17 @@ function FeedListSkeleton({ count = 4 }: { count?: number }) {
 
 export function FeedList({ limit = HOME_FEED_LIMIT }: FeedListProps) {
   const { posts, ready } = useFeedPosts(limit);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const showPosts = mounted && ready;
 
   return (
     <div className="space-y-4">
-      {!ready ? (
+      {!showPosts ? (
         <FeedListSkeleton count={Math.min(limit, 4)} />
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
@@ -47,12 +55,12 @@ export function FeedList({ limit = HOME_FEED_LIMIT }: FeedListProps) {
           ))}
         </div>
       )}
-      {ready && posts.length === 0 && (
+      {showPosts && posts.length === 0 && (
         <p className="text-center font-comic text-ink-muted py-8 comic-panel">
           No published posts yet.
         </p>
       )}
-      {ready && posts.length > 0 && (
+      {showPosts && posts.length > 0 && (
         <p className="text-center text-sm text-ink-muted">
           {posts.length >= limit
             ? `Showing the ${limit} most recent posts.`

@@ -7,6 +7,7 @@ export type PlatformContentKey =
   | "forums"
   | "comments"
   | "discussions"
+  | "homepage_chat"
   | "friend_requests"
   | "friends";
 

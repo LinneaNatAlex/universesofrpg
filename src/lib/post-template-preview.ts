@@ -47,8 +47,11 @@ export function getTemplatePreviewBundleForViewer(
   if (publicBundle) return publicBundle;
 
   if (fullSourceAllowed) {
-    const vaulted = getVaultedCode(post.id);
-    if (vaulted) return vaulted;
+    const listing = normalizeFreeCodeListing(post);
+    if (!requiresCodePurchase(listing)) {
+      const vaulted = getVaultedCode(post.id);
+      if (vaulted) return vaulted;
+    }
 
     const html = post.html_code?.trim();
     const css = post.css_code?.trim();

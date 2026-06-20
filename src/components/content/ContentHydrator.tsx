@@ -6,17 +6,23 @@ import {
   fetchCommentsPlatformState,
   fetchDiscussionsPlatformState,
   fetchForumsPlatformState,
+  fetchHomepageChatPlatformState,
   fetchPostsPlatformState,
   markContentSyncSettled,
   mergeCommentsState,
   mergeDiscussionsState,
   mergeForumsState,
+  mergeHomepageChatState,
   mergePostsState,
 } from "@/lib/content-sync";
 import {
   applyCommentsPersistState,
   buildCommentsPersistState,
 } from "@/lib/mock-comments";
+import {
+  applyHomepageChatPersistState,
+  buildHomepageChatPersistState,
+} from "@/lib/homepage-chat-store";
 import {
   applyDiscussionsPersistState,
   buildDiscussionsPersistState,
@@ -53,12 +59,13 @@ export function ContentHydrator() {
     let cancelled = false;
 
     void (async () => {
-      const [remotePosts, remoteForums, remoteComments, remoteDiscussions] =
+      const [remotePosts, remoteForums, remoteComments, remoteDiscussions, remoteHomepageChat] =
         await Promise.all([
           fetchPostsPlatformState(),
           fetchForumsPlatformState(),
           fetchCommentsPlatformState(),
           fetchDiscussionsPlatformState(),
+          fetchHomepageChatPlatformState(),
         ]);
 
       if (cancelled) return;
@@ -81,6 +88,11 @@ export function ContentHydrator() {
       if (remoteDiscussions) {
         const local = buildDiscussionsPersistState();
         applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
+      }
+
+      if (remoteHomepageChat) {
+        const local = buildHomepageChatPersistState();
+        applyHomepageChatPersistState(mergeHomepageChatState(local, remoteHomepageChat));
       }
 
       notifyContentReady();

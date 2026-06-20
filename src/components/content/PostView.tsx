@@ -14,17 +14,18 @@ import { useEditor } from "@/hooks/useEditor";
 import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import {
   canViewCodePreview,
-  canViewCodeSource,
   canViewFullContent,
   getCodeTemplatePreviewBundle,
   requiresCodePurchase,
 } from "@/lib/posts";
+import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
 import { moderationStatusLabel } from "@/lib/moderation";
 import { canViewRatedContent, hasSexualContent } from "@/lib/content-rating";
 import { MatureContentGate } from "@/components/content/MatureContentGate";
 import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
 import { useContentViewer } from "@/hooks/useContentViewer";
 import { CodeSourcePanel } from "@/components/content/CodeSourcePanel";
+import { TemplateReadmeBox } from "@/components/content/TemplateReadmeBox";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { BookBackCover } from "@/components/content/BookBackCover";
 import { AssetTeaserPreview } from "@/components/content/AssetTeaserPreview";
@@ -71,15 +72,22 @@ export function PostView({ post: rawPost }: PostViewProps) {
   const loginAllowed = canViewFullContent(isLoggedIn, invite, rawPost.invite_token);
   const fullAccess = loginAllowed && ratingAllowed;
   const codeIsFree = rawPost.type === "code_template" && !requiresCodePurchase(rawPost);
+  const paidCodeTemplate = rawPost.type === "code_template" && requiresCodePurchase(rawPost);
   const showCodeSection = canViewCodePreview(rawPost);
-  const canViewSource = canViewCodeSource(rawPost, viewer);
+  const isAuthor =
+    identity?.username.toLowerCase() === rawPost.author.username.toLowerCase();
   const { bundle: purchasedSource } = usePostSourceCode(
     rawPost.id,
-    canViewSource && requiresCodePurchase(rawPost),
-    identity?.username ?? null
+    paidCodeTemplate
+      ? isLoggedIn && Boolean(identity?.username)
+      : false,
+    identity?.username ?? null,
+    paidCodeTemplate
   );
-  const previewBundle =
-    purchasedSource ?? getCodeTemplatePreviewBundle(rawPost, viewer);
+  const previewBundle = paidCodeTemplate
+    ? purchasedSource ?? getPublicTemplatePreviewBundle(rawPost)
+    : getCodeTemplatePreviewBundle(rawPost, viewer);
+  const hasPaidSource = Boolean(purchasedSource);
   const showLiveCodePreview = previewBundle !== null;
   const synopsis = rawPost.plot_synopsis ?? rawPost.description ?? "";
   const writingLabel = getWritingCategoryLabel(rawPost);
@@ -93,9 +101,6 @@ export function PostView({ post: rawPost }: PostViewProps) {
     rawPost.pricing === "free"
       ? "This work is free — join to unlock the full content."
       : "Sign in to preview. Purchase is required for premium downloads.";
-
-  const isAuthor =
-    identity?.username.toLowerCase() === rawPost.author.username.toLowerCase();
 
   useEffect(() => {
     if (rawPost.moderation_status !== "pending") {
@@ -192,6 +197,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
       {/* Code templates — cover teaser until purchase; live preview + source after unlock */}
       {showCodeSection && (
         <section className="space-y-4">
+          <TemplateReadmeBox post={rawPost} />
           <div>
             <p className="font-comic text-sm text-ink mb-2">
               {showLiveCodePreview ? "Live template preview" : "Template preview"}
@@ -207,7 +213,7 @@ export function PostView({ post: rawPost }: PostViewProps) {
                 )}
                 mode="full"
                 height={240}
-                sourceLocked={requiresCodePurchase(rawPost) && !canViewSource}
+                sourceLocked={paidCodeTemplate && !hasPaidSource && !isAuthor}
                 defaultViewport="desktop"
               />
             ) : rawPost.preview_image_url ? (

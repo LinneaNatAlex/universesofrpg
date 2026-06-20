@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { InfoPageShell, InfoSection } from "@/components/info/InfoPageShell";
 
 export default function RightsPage() {
@@ -268,8 +269,13 @@ export default function RightsPage() {
         <p>
           Universes of RPG is provided as-is during active development. Features, pricing, and
           these terms may change. Continued use after updates constitutes acceptance of revised
-          terms. This document is not legal advice — consult a lawyer for commercial or
-          high-stakes publishing decisions.
+          terms. For a full statement on user responsibility, roleplay safety, and limitation of
+          liability, see{" "}
+          <Link href="/disclaimer" className="text-comic-red font-comic hover:underline">
+            Disclaimer &amp; Responsibility
+          </Link>
+          . This document is not legal advice — consult a lawyer for commercial or high-stakes
+          publishing decisions.
         </p>
       </InfoSection>
     </InfoPageShell>

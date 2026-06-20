@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   FileText,
   MessageSquare,
+  MessagesSquare,
   Flag,
   UserCheck,
   Shield,
@@ -28,6 +29,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon; match?: "prefix" }
   { href: "/admin/editors", label: "Editors", icon: UserCheck, match: "prefix" },
   { href: "/admin/verification", label: "Verified", icon: Shield, match: "prefix" },
   { href: "/admin/comments", label: "Comments", icon: MessageSquare, match: "prefix" },
+  { href: "/admin/homepage-chat", label: "Realm chat", icon: MessagesSquare, match: "prefix" },
   { href: "/admin/reports", label: "Reports", icon: Flag, match: "prefix" },
 ];
 

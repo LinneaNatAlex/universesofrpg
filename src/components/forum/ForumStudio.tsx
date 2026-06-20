@@ -15,7 +15,7 @@ import { TopicTagPicker } from "@/components/forum/TopicTagPicker";
 import { LoginCTA } from "@/components/auth/LoginCTA";
 import { useFriends } from "@/hooks/useFriends";
 import { useContentViewer } from "@/hooks/useContentViewer";
-import { canViewRatedContent, hasSexualContent, isVisibleInPublicCatalog } from "@/lib/content-rating";
+import { canViewRatedContent, canAccessMatureCatalog, hasSexualContent, isVisibleInPublicCatalog } from "@/lib/content-rating";
 import { ContentRatingBadge } from "@/components/content/ContentRatingBadge";
 import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import { MatureContentGate } from "@/components/content/MatureContentGate";
@@ -45,9 +45,13 @@ import { subscribePurchases } from "@/lib/purchases-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  forumMatchesTopicCategory,
   forumMatchesTopicSearch,
   getForumTags,
-  TOPIC_CATEGORIES,
+  getTopicCategoriesForBrowse,
+  isMatureTopicCategory,
+  MATURE_TOPIC_CATEGORY,
+  topicCategoryLabel,
 } from "@/lib/topic-tags";
 import type { RpgForumMeta } from "@/types/database";
 import { Plus, Search, Users } from "lucide-react";
@@ -67,29 +71,37 @@ export function ForumList() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
+  const canAccessMature = canAccessMatureCatalog(viewerCtx);
+  const browseCategories = getTopicCategoriesForBrowse(canAccessMature);
+
   const browseTags = useMemo(() => {
     const tags = new Set<string>();
     for (const forum of forums) {
+      if (!isVisibleInPublicCatalog(forum, viewerCtx)) continue;
       getForumTags(forum).forEach((t) => tags.add(t));
     }
     return [...tags].sort();
-  }, [forums]);
+  }, [forums, viewerCtx]);
 
   const identity = useActingIdentity();
+
+  useEffect(() => {
+    if (activeCategory && isMatureTopicCategory(activeCategory) && !canAccessMature) {
+      setActiveCategory(null);
+    }
+  }, [activeCategory, canAccessMature]);
 
   const filteredForums = useMemo(() => {
     return forums.filter((forum) => {
       if (!isForumVisibleInList(forum, identity?.username)) return false;
       if (!isVisibleInPublicCatalog(forum, viewerCtx)) return false;
-      if (activeCategory && forum.category !== activeCategory) return false;
+      if (activeCategory && !forumMatchesTopicCategory(forum, activeCategory)) return false;
       if (activeTag && !getForumTags(forum).includes(activeTag)) return false;
       return forumMatchesTopicSearch(forum, query);
     });
   }, [forums, query, activeCategory, activeTag, identity?.username, viewerCtx]);
 
-  if (loading) return <div className="comic-panel p-8 text-center font-comic">Loading…</div>;
-
-  if (!isLoggedIn) {
+  if (!loading && !isLoggedIn) {
     return (
       <div className="max-w-lg mx-auto space-y-4">
         <h1 className="font-comic text-3xl text-ink text-center">RPG (Topics)</h1>
@@ -141,7 +153,7 @@ export function ForumList() {
           >
             All
           </button>
-          {TOPIC_CATEGORIES.map((cat) => (
+          {browseCategories.map((cat) => (
             <button
               key={cat}
               type="button"
@@ -149,10 +161,16 @@ export function ForumList() {
                 setActiveCategory((current) => (current === cat ? null : cat))
               }
               className={`font-comic text-xs px-3 py-1 border-2 border-ink ${
-                activeCategory === cat ? "bg-comic-yellow" : "bg-surface hover:bg-comic-yellow/50"
+                activeCategory === cat
+                  ? isMatureTopicCategory(cat)
+                    ? "bg-comic-red text-white"
+                    : "bg-comic-yellow"
+                  : isMatureTopicCategory(cat)
+                    ? "bg-surface hover:bg-comic-red/20 border-comic-red"
+                    : "bg-surface hover:bg-comic-yellow/50"
               }`}
             >
-              {cat}
+              {topicCategoryLabel(cat)}
             </button>
           ))}
         </div>
@@ -249,7 +267,7 @@ export function ForumList() {
                       )}
                       <ContentRatingBadge item={forum} />
                       <Badge variant="tag" className="text-[10px]">
-                        {forum.category}
+                        {topicCategoryLabel(forum.category)}
                       </Badge>
                       {tags
                         .filter((t) => t !== forum.category)
@@ -278,6 +296,8 @@ type TopicCreateMode = "new" | "continue";
 
 export function NewForumForm() {
   const { isLoggedIn, loading } = useAuth();
+  const { ctx: viewerCtx } = useContentViewer();
+  const canAccessMature = canAccessMatureCatalog(viewerCtx);
   const identity = useActingIdentity();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -309,6 +329,24 @@ export function NewForumForm() {
   const [submitting, setSubmitting] = useState(false);
   const [containsSexualContent, setContainsSexualContent] = useState(false);
 
+  function handleContainsSexualContentChange(value: boolean) {
+    setContainsSexualContent(value);
+    if (value) {
+      setCategory(MATURE_TOPIC_CATEGORY);
+    } else if (isMatureTopicCategory(category)) {
+      setCategory("fantasy");
+    }
+  }
+
+  function handleCategoryChange(nextCategory: string) {
+    setCategory(nextCategory);
+    if (isMatureTopicCategory(nextCategory)) {
+      setContainsSexualContent(true);
+    } else if (containsSexualContent) {
+      setContainsSexualContent(false);
+    }
+  }
+
   const writerForums = useMemo(() => {
     if (!identity?.username) return [];
     return allForums.filter((forum) => isForumMember(forum, identity.username));
@@ -333,8 +371,7 @@ export function NewForumForm() {
     }
   }, [mode, selectedForum, nextChapterNumber, startNewPart]);
 
-  if (loading) return null;
-  if (!isLoggedIn) {
+  if (!loading && !isLoggedIn) {
     return <LoginCTA message="You must be logged in to start an RPG topic." />;
   }
 
@@ -431,6 +468,16 @@ export function NewForumForm() {
     if (!title.trim()) {
       setSubmitting(false);
       setError("Give your RPG topic a title.");
+      return;
+    }
+    if (containsSexualContent && !canAccessMature) {
+      setSubmitting(false);
+      setError("You must be 18 or older to create topics with sexual content.");
+      return;
+    }
+    if (isMatureTopicCategory(category) && !containsSexualContent) {
+      setSubmitting(false);
+      setError("The Mature RP category requires declaring sexual content (PEGI 18).");
       return;
     }
     const validInvites = selectedFriends.filter((username) =>
@@ -609,8 +656,9 @@ export function NewForumForm() {
             <TopicTagPicker
               category={category}
               tags={topicTags}
-              onCategoryChange={setCategory}
+              onCategoryChange={handleCategoryChange}
               onTagsChange={setTopicTags}
+              canAccessMature={canAccessMature}
             />
             <FriendInvitePicker
               friends={friends}
@@ -683,10 +731,17 @@ export function NewForumForm() {
         </div>
 
         {mode === "new" && (
-          <ContentRatingDeclaration
-            containsSexualContent={containsSexualContent}
-            onContainsSexualContentChange={setContainsSexualContent}
-          />
+          canAccessMature ? (
+            <ContentRatingDeclaration
+              containsSexualContent={containsSexualContent}
+              onContainsSexualContentChange={handleContainsSexualContentChange}
+            />
+          ) : (
+            <p className="text-xs text-ink-muted border-2 border-dashed border-ink px-3 py-2 rounded-lg">
+              Mature RP topics (PEGI 18) are available to members aged 18+ based on the birth
+              date on your account.
+            </p>
+          )
         )}
 
         {error && (
@@ -740,8 +795,15 @@ export function ForumDetail({ forumId }: { forumId: string }) {
     if (index >= 0) setActiveChapter(index);
   }, [forum, searchParams]);
 
-  if (loading) return null;
-  if (!isLoggedIn) return <LoginCTA message="Log in to read RPG topics." />;
+  if (!loading && !isLoggedIn) return <LoginCTA message="Log in to read RPG topics." />;
+  if (!forum && loading) {
+    return (
+      <div className="space-y-4 animate-pulse" aria-busy>
+        <div className="h-8 w-48 bg-ink/10 rounded" />
+        <div className="comic-card h-64 bg-ink/5" />
+      </div>
+    );
+  }
   if (!forum) {
     return (
       <div className="comic-panel p-8 text-center space-y-3">

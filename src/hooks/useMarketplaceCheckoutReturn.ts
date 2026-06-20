@@ -96,12 +96,13 @@ export function useMarketplaceCheckoutReturn(
           throw new Error(data.error ?? "Could not confirm purchase.");
         }
 
-        if (data.buyer_username && data.post_id) {
-          recordPurchase(data.buyer_username, data.post_id);
-        } else if (pending) {
-          const buyerFromMeta = data.buyer_username;
-          if (buyerFromMeta) {
-            recordPurchase(buyerFromMeta, pending.post_id);
+        const postId = data.post_id ?? pending?.post_id;
+        const buyers = new Set<string>();
+        if (data.buyer_username) buyers.add(data.buyer_username.toLowerCase());
+        if (identity?.username) buyers.add(identity.username.toLowerCase());
+        if (postId) {
+          for (const buyer of buyers) {
+            recordPurchase(buyer, postId);
           }
         }
 

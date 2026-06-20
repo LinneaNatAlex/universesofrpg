@@ -25,6 +25,7 @@ export function sanitizePostForSync(post: FeedPost): FeedPost {
     description: trimSyncField(migrated.description) ?? migrated.description,
     content: trimSyncField(migrated.content) ?? migrated.content,
     plot_synopsis: trimSyncField(migrated.plot_synopsis) ?? migrated.plot_synopsis,
+    template_readme: trimSyncField(migrated.template_readme) ?? migrated.template_readme,
     preview_image_url: trimSyncField(migrated.preview_image_url) ?? migrated.preview_image_url,
     book_cover_url: trimSyncField(migrated.book_cover_url) ?? migrated.book_cover_url,
     preview_html_code: trimSyncField(migrated.preview_html_code) ?? migrated.preview_html_code,

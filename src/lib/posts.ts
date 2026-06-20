@@ -9,7 +9,6 @@ import {
   getPublicTemplatePreviewBundle,
   getTemplatePreviewBundleForViewer,
 } from "@/lib/post-template-preview";
-import { hasPurchased } from "@/lib/purchases-store";
 import { getPostFromStore, getAllPosts } from "@/lib/posts-store";
 import type { FeedPost } from "@/types/database";
 
@@ -112,15 +111,11 @@ export function canViewCodeSource(
     return true;
   }
 
-  const vaulted = getVaultedCode(post.id);
-  const hasInline =
-    !!(post.html_code?.trim() || post.css_code?.trim() || post.js_code?.trim());
-  if (!hasInline && !vaulted) return false;
-
   if (post.moderation_status === "pending" && opts.isEditor) return true;
   if (!opts.username) return false;
   if (isAuthor(post, opts.username)) return true;
-  return hasPurchased(opts.username, post.id);
+  // Buyers unlock paid source via server-confirmed purchase (see CodeSourcePanel).
+  return false;
 }
 
 /** Live iframe preview — public demo bundle or unlocked full source. */

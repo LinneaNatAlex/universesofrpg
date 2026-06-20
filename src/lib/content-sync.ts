@@ -2,6 +2,7 @@
 
 import { writeJson } from "@/lib/browser-storage";
 import type { CommentsPlatformState } from "@/app/api/content/comments/route";
+import type { HomepageChatPlatformState } from "@/app/api/content/homepage-chat/route";
 import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
@@ -12,6 +13,7 @@ export {
   mergeCommentsState,
   mergeDiscussionsState,
   mergeForumsState,
+  mergeHomepageChatState,
   mergePostsState,
 } from "@/lib/content-platform-merge";
 
@@ -19,6 +21,7 @@ const POSTS_KEY = "uorpg-posts-state";
 const FORUMS_KEY = "uorpg-forums-state";
 const COMMENTS_KEY = "uorpg-comments-state";
 const DISCUSSIONS_KEY = "uorpg-discussions-state";
+const HOMEPAGE_CHAT_KEY = "uorpg-homepage-chat-state";
 
 export const CONTENT_SYNCED_EVENT = "uorpg-content-synced";
 
@@ -33,7 +36,12 @@ export function markContentSyncSettled(): void {
   contentSyncSettled = true;
 }
 
-export type ContentSyncTarget = "posts" | "forums" | "comments" | "discussions";
+export type ContentSyncTarget =
+  | "posts"
+  | "forums"
+  | "comments"
+  | "discussions"
+  | "homepage-chat";
 
 type PushOptions = {
   retries?: number;
@@ -43,6 +51,7 @@ let postsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let forumsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let commentsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let discussionsPushTimer: ReturnType<typeof setTimeout> | null = null;
+let homepageChatPushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushChain: Promise<void> = Promise.resolve();
 
 async function fetchWithAuthRetry(
@@ -75,7 +84,8 @@ type PlatformState =
   | PostsPlatformState
   | ForumsPlatformState
   | CommentsPlatformState
-  | DiscussionsPlatformState;
+  | DiscussionsPlatformState
+  | HomepageChatPlatformState;
 
 async function pushPlatformState(
   target: ContentSyncTarget,
@@ -176,6 +186,16 @@ export async function fetchDiscussionsPlatformState(): Promise<DiscussionsPlatfo
   }
 }
 
+export async function fetchHomepageChatPlatformState(): Promise<HomepageChatPlatformState | null> {
+  try {
+    const res = await fetch("/api/content/homepage-chat", { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as HomepageChatPlatformState;
+  } catch {
+    return null;
+  }
+}
+
 export function pushPostsPlatformState(
   state: PostsPlatformState,
   options?: PushOptions
@@ -224,6 +244,18 @@ export function pushDiscussionsPlatformState(
   });
 }
 
+export function pushHomepageChatPlatformState(
+  state: HomepageChatPlatformState,
+  options?: PushOptions
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    pushChain = pushChain.then(async () => {
+      const ok = await pushPlatformState("homepage-chat", state, options);
+      resolve(ok);
+    });
+  });
+}
+
 /** Debounced live save after rapid local edits (likes, moderation, etc.). */
 export function schedulePostsPlatformPush(state: PostsPlatformState): void {
   if (typeof window === "undefined") return;
@@ -261,6 +293,15 @@ export function scheduleDiscussionsPlatformPush(state: DiscussionsPlatformState)
   }, 400);
 }
 
+export function scheduleHomepageChatPlatformPush(state: HomepageChatPlatformState): void {
+  if (typeof window === "undefined") return;
+  if (homepageChatPushTimer) clearTimeout(homepageChatPushTimer);
+  homepageChatPushTimer = setTimeout(() => {
+    homepageChatPushTimer = null;
+    void pushHomepageChatPlatformState(state);
+  }, 400);
+}
+
 export function saveMergedPostsState(state: PostsPlatformState): void {
   writeJson(POSTS_KEY, state);
 }
@@ -275,4 +316,8 @@ export function saveMergedCommentsState(state: CommentsPlatformState): void {
 
 export function saveMergedDiscussionsState(state: DiscussionsPlatformState): void {
   writeJson(DISCUSSIONS_KEY, state);
+}
+
+export function saveMergedHomepageChatState(state: HomepageChatPlatformState): void {
+  writeJson(HOMEPAGE_CHAT_KEY, state);
 }

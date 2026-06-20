@@ -1,11 +1,12 @@
 import type { CommentsPlatformState } from "@/app/api/content/comments/route";
+import type { HomepageChatPlatformState } from "@/app/api/content/homepage-chat/route";
 import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { mergeRpgForumList } from "@/lib/forums-platform-merge";
 import { normalizeFreeCodeListing } from "@/lib/moderation";
 import { migrateFeedPost } from "@/lib/persona-rename";
-import type { Comment, DiscussionReply, DiscussionThread, FeedPost } from "@/types/database";
+import type { Comment, DiscussionReply, DiscussionThread, FeedPost, HomepageChatMessage } from "@/types/database";
 
 function itemRevisionTime(item: {
   created_at?: string;
@@ -130,6 +131,30 @@ export function mergeCommentsState(
       local.deletedMockIds ?? [],
       remote.deletedMockIds ?? []
     ),
+  };
+}
+
+export function mergeHomepageChatState(
+  local: HomepageChatPlatformState,
+  remote: HomepageChatPlatformState
+): HomepageChatPlatformState {
+  const deletedIds = mergeStringLists(local.deletedIds ?? [], remote.deletedIds ?? []);
+  const deletedSet = new Set(deletedIds);
+  const messages = (
+    mergeRecordsById(local.messages ?? [], remote.messages ?? []) as HomepageChatMessage[]
+  )
+    .filter((message) => !deletedSet.has(message.id))
+    .sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+  return {
+    messages,
+    deletedIds,
+    nameColors: {
+      ...(remote.nameColors ?? {}),
+      ...(local.nameColors ?? {}),
+    },
   };
 }
 

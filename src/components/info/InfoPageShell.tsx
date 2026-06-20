@@ -28,6 +28,10 @@ export function InfoPageShell({ title, subtitle, children }: InfoPageShellProps)
         <Link href="/rights" className="hover:text-comic-red">
           Rights
         </Link>
+        <span>·</span>
+        <Link href="/disclaimer" className="hover:text-comic-red">
+          Disclaimer
+        </Link>
         <span className="hidden sm:inline">·</span>
         <Link href="/" className="hover:text-comic-red hidden sm:inline">
           ← Back to feed

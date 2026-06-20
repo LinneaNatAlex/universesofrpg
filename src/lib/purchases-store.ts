@@ -2,6 +2,12 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 export const PURCHASES_UPDATED_EVENT = "uorpg-purchases-updated";
+export const PURCHASE_CONFIRMED_EVENT = "uorpg-purchase-confirmed";
+
+export interface PurchaseConfirmedDetail {
+  username: string;
+  postId: string;
+}
 
 const purchasedByUser = new Map<string, Set<string>>();
 const hydrationStarted = new Set<string>();
@@ -65,12 +71,19 @@ export function syncPurchasedPostIds(username: string, postIds: string[]): void 
 }
 
 export function recordPurchase(username: string, postId: string): void {
-  const set = getPurchasedSet(username);
+  const key = username.toLowerCase();
+  const set = getPurchasedSet(key);
+  if (set.has(postId)) return;
   set.add(postId);
-  persist(username);
+  persist(key);
   notify();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(PURCHASES_UPDATED_EVENT));
+    window.dispatchEvent(
+      new CustomEvent<PurchaseConfirmedDetail>(PURCHASE_CONFIRMED_EVENT, {
+        detail: { username: key, postId },
+      })
+    );
   }
 }
 

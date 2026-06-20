@@ -213,6 +213,8 @@ export interface Post {
   illustration_images?: string[];
   /** Optional ambient track for code templates — not part of sold source. */
   theme_music_url?: string | null;
+  /** Optional creator-written guide for buyers — not part of sold source code. */
+  template_readme?: string | null;
   /** Creator-declared sexual content — PEGI 18, adults only. */
   contains_sexual_content?: boolean;
   content_rating?: ContentRating;
@@ -240,6 +242,17 @@ export interface Comment {
   /** When set, this comment is a reply to another comment on the same post */
   parent_comment_id: string | null;
   created_at: string;
+}
+
+/** Public live chat message on the home page (realm lobby). */
+export interface HomepageChatMessage {
+  id: string;
+  author_username: string;
+  author_display_name: string;
+  body: string;
+  created_at: string;
+  /** Set when the author was a platform admin at send time. */
+  author_is_admin?: boolean;
 }
 
 export interface DiscussionThread {

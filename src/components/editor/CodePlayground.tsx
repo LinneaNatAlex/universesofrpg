@@ -6,6 +6,7 @@ import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { addPost, updatePost } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
 import { LayoutPreview } from "@/components/content/LayoutPreview";
+import { TemplateReadmeBox } from "@/components/content/TemplateReadmeBox";
 import { CoverImageField } from "@/components/create/CoverImageField";
 import { isValidCoverSource } from "@/lib/post-cover";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ export interface CodePlaygroundInitialValues {
   js: string;
   coverUrl: string;
   musicUrl?: string;
+  templateReadme?: string;
   codeLocked?: boolean;
   containsSexualContent?: boolean;
 }
@@ -92,6 +94,7 @@ export function CodePlayground({
   const [description, setDescription] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [templateReadme, setTemplateReadme] = useState("");
   const [containsSexualLocal, setContainsSexualLocal] = useState(false);
   const containsSexualContent = containsSexualProp ?? containsSexualLocal;
   const setContainsSexualContent =
@@ -106,6 +109,8 @@ export function CodePlayground({
     setJs(initialValues.js || DEFAULT_JS);
     setCoverUrl(initialValues.coverUrl ?? "");
     setMusicUrl(initialValues.musicUrl ?? "");
+    const readme = initialValues.templateReadme?.trim() ?? "";
+    setTemplateReadme(readme);
     setCodeLocked(initialValues.codeLocked ?? false);
     if (initialValues.containsSexualContent !== undefined) {
       setContainsSexualContent(initialValues.containsSexualContent);
@@ -150,6 +155,7 @@ export function CodePlayground({
       tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
       style_tags: [] as string[],
       theme_music_url: musicUrl.trim() || null,
+      template_readme: templateReadme.trim() || null,
       contains_sexual_content: containsSexualContent,
       show_on_feed: !saveToCharacterCreations,
     };
@@ -178,6 +184,7 @@ export function CodePlayground({
           tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
           style_tags: [],
           theme_music_url: musicUrl.trim() || null,
+          template_readme: templateReadme.trim() || null,
           contains_sexual_content: containsSexualContent,
           show_on_feed: !saveToCharacterCreations,
         });
@@ -336,6 +343,40 @@ export function CodePlayground({
           />
         )}
       </div>
+
+      {loggedIn && (
+        <div className="comic-panel p-4 sm:p-5 space-y-3">
+          <div>
+            <h3 className="font-comic text-base text-ink">Usage guide for buyers (README)</h3>
+            <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+              Write instructions here for people who buy or use your template — where to change
+              names, stats, colors, etc. This is <strong>not</strong> part of the HTML/CSS/JS code;
+              it appears as its own box on the template page.
+            </p>
+          </div>
+          <textarea
+            value={templateReadme}
+            onChange={(e) => setTemplateReadme(e.target.value)}
+            rows={6}
+            className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm leading-relaxed"
+            placeholder={
+              "Optional — leave empty to hide.\n\n" +
+              "Example:\n" +
+              "• Change the character name in the <h1> tag\n" +
+              "• Edit stats in the .stats section\n" +
+              "• Theme colors are in CSS under .hero"
+            }
+          />
+          {templateReadme.trim() && (
+            <div className="space-y-2">
+              <p className="text-xs font-comic text-ink-muted">Preview — how buyers will see it:</p>
+              <TemplateReadmeBox
+                post={{ type: "code_template", template_readme: templateReadme.trim() }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

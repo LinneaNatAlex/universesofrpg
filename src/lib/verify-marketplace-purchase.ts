@@ -3,7 +3,7 @@ import {
   requiresCodePurchase,
   type PostViewerContext,
 } from "@/lib/posts";
-import { hasPurchased, recordPurchase } from "@/lib/purchases-store";
+import { hasPurchased, recordPurchase, revokePurchase } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
 async function confirmServerPurchase(
@@ -20,14 +20,18 @@ async function confirmServerPurchase(
       headers,
       cache: "no-store",
     });
-    if (!res.ok) return hasPurchased(buyerUsername, postId);
+    if (!res.ok) {
+      // Offline / auth hiccup — keep last known local state for this user only.
+      return hasPurchased(buyerUsername, postId);
+    }
 
     const data = (await res.json()) as { purchased?: boolean };
     if (data.purchased) {
       recordPurchase(buyerUsername, postId);
       return true;
     }
-    return hasPurchased(buyerUsername, postId);
+    revokePurchase(buyerUsername, postId);
+    return false;
   } catch {
     return hasPurchased(buyerUsername, postId);
   }
@@ -52,10 +56,6 @@ export async function verifySourceAccess(
   if (!viewer.isLoggedIn || !buyerUsername) return false;
   if (isAuthor(post, buyerUsername)) return true;
   if (post.moderation_status === "pending" && viewer.isEditor) return true;
-
-  if (hasPurchased(buyerUsername, post.id)) {
-    return true;
-  }
 
   return confirmServerPurchase(buyerUsername, post.id);
 }

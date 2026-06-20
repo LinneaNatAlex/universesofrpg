@@ -78,6 +78,13 @@ export function isPostAuthor(
   return isAuthorUsername(post.author.username, viewerUsername);
 }
 
+/** Browse/create mature RPG topics — same age gate as sexual content. */
+export function canAccessMatureCatalog(ctx: ContentViewerContext): boolean {
+  if (ctx.isEditor) return true;
+  if (!ctx.isLoggedIn || ctx.userAge == null) return false;
+  return ctx.userAge >= PEGI_SEXUAL_MIN_AGE;
+}
+
 /** Catalog surfaces (feed, explore, shop cards, discussion list). */
 export function isVisibleInPublicCatalog(
   item: RatableContentFields & { author_username?: string; author?: { username: string } },

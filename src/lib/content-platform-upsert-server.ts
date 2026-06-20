@@ -1,8 +1,10 @@
 import type { CommentsPlatformState } from "@/app/api/content/comments/route";
+import type { HomepageChatPlatformState } from "@/app/api/content/homepage-chat/route";
 import type { DiscussionsPlatformState } from "@/app/api/content/discussions/route";
 import type { PostsPlatformState } from "@/app/api/content/posts/route";
 import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { sanitizeCommentsPlatformState } from "@/lib/comments-platform-sanitize";
+import { sanitizeHomepageChatPlatformState } from "@/lib/homepage-chat-platform-sanitize";
 import {
   sanitizePostForSync,
   sanitizePostsPlatformState,
@@ -13,6 +15,7 @@ import {
   mergeCommentsState,
   mergeDiscussionsState,
   mergeForumsState,
+  mergeHomepageChatState,
   mergePostsState,
 } from "@/lib/content-platform-merge";
 import { sanitizeForumsPlatformState } from "@/lib/forums-platform-sanitize";
@@ -38,6 +41,12 @@ const FORUMS_EMPTY: ForumsPlatformState = {
 const COMMENTS_EMPTY: CommentsPlatformState = {
   custom: [],
   deletedMockIds: [],
+};
+
+const HOMEPAGE_CHAT_EMPTY: HomepageChatPlatformState = {
+  messages: [],
+  deletedIds: [],
+  nameColors: {},
 };
 
 const DISCUSSIONS_EMPTY: DiscussionsPlatformState = {
@@ -68,6 +77,17 @@ function normalizeCommentsState(body: CommentsPlatformState): CommentsPlatformSt
   return sanitizeCommentsPlatformState({
     custom: Array.isArray(body.custom) ? body.custom : [],
     deletedMockIds: Array.isArray(body.deletedMockIds) ? body.deletedMockIds : [],
+  });
+}
+
+function normalizeHomepageChatState(
+  body: HomepageChatPlatformState
+): HomepageChatPlatformState {
+  return sanitizeHomepageChatPlatformState({
+    messages: Array.isArray(body.messages) ? body.messages : [],
+    deletedIds: Array.isArray(body.deletedIds) ? body.deletedIds : [],
+    nameColors:
+      body.nameColors && typeof body.nameColors === "object" ? body.nameColors : {},
   });
 }
 
@@ -136,6 +156,21 @@ export async function upsertCommentsPlatformState(
   const result = await setPlatformContent("comments", merged);
   if (!result.ok) return result;
   return { ok: true, count: merged.custom.length };
+}
+
+export async function upsertHomepageChatPlatformState(
+  incoming: HomepageChatPlatformState
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const existing = await getPlatformContent("homepage_chat", HOMEPAGE_CHAT_EMPTY);
+  const merged = normalizeHomepageChatState(
+    mergeHomepageChatState(
+      normalizeHomepageChatState(incoming),
+      normalizeHomepageChatState(existing)
+    )
+  );
+  const result = await setPlatformContent("homepage_chat", merged);
+  if (!result.ok) return result;
+  return { ok: true, count: merged.messages.length };
 }
 
 export async function upsertDiscussionsPlatformState(
