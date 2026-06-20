@@ -65,11 +65,11 @@ export default function MarketplacePage() {
 
   return (
     <div className="space-y-6">
-      <section className="comic-hero p-6">
+      <section className="comic-hero p-4 sm:p-6">
         <div className="flex items-start gap-3">
-          <ShoppingBag className="h-8 w-8 shrink-0 opacity-90" />
-          <div>
-            <h1 className="font-comic text-3xl">RPG Shop</h1>
+          <ShoppingBag className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 opacity-90" />
+          <div className="min-w-0">
+            <h1 className="font-comic text-2xl sm:text-3xl">RPG Shop</h1>
             <p className="text-sm opacity-90 mt-1 max-w-lg">
               Premium RPG content — character packs, themes, story arcs, and asset bundles.
               Every listing needs a cover image. Free works live in Explore, not here.
@@ -89,8 +89,8 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      <div className="comic-panel px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <span className="text-ink-muted">
+      <div className="comic-panel px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 sm:gap-3 text-sm">
+        <span className="text-ink-muted text-xs sm:text-sm">
           Looking to browse free works?{" "}
           <Link href="/explore" className="font-comic text-comic-red hover:underline inline-flex items-center gap-1">
             <Compass className="h-3.5 w-3.5" />
@@ -100,7 +100,7 @@ export default function MarketplacePage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortId)}
-          className="border-2 border-ink bg-surface font-comic text-xs px-2 py-1"
+          className="border-2 border-ink bg-surface font-comic text-xs px-2 py-1 w-full sm:w-auto"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.id} value={o.id}>

@@ -11,11 +11,11 @@ const FOOTER_LINKS = [
 export function SiteFooter() {
   return (
     <footer className="border-t-4 border-ink bg-comic-yellow mt-auto">
-      <div className="mx-auto max-w-6xl px-4 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="font-comic text-sm text-ink">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-3 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+        <p className="font-comic text-xs sm:text-sm text-ink text-center sm:text-left hidden sm:block">
           © {new Date().getFullYear()} Universes of RPG
         </p>
-        <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-comic">
+        <nav className="flex flex-wrap justify-center sm:justify-end gap-x-3 gap-y-1 text-[11px] sm:text-sm font-comic pb-1 md:pb-0">
           {FOOTER_LINKS.map(({ href, label }) => (
             <Link key={href} href={href} className="text-ink hover:text-comic-red transition-colors">
               {label}

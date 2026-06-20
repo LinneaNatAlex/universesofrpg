@@ -39,6 +39,11 @@ body {
   background-image: radial-gradient(circle, #1a1a2e08 1px, transparent 1px);
   background-size: 12px 12px;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 .safe-area-pb {
@@ -62,9 +67,11 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.comic-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .comic-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 var(--ink);
+  }
 }
 
 .comic-card-inner {

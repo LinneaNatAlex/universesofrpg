@@ -124,7 +124,7 @@ export function HomepageChat({ className }: { className?: string }) {
   }
 
   return (
-    <section className={cn("comic-card overflow-hidden flex flex-col h-full", className)}>
+    <section className={cn("comic-card overflow-hidden flex flex-col h-full min-h-0", className)}>
       <div className="comic-panel-header px-3 py-2 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <MessageCircle className="h-4 w-4 shrink-0" />
@@ -144,7 +144,7 @@ export function HomepageChat({ className }: { className?: string }) {
       <div
         ref={listRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-2.5 space-y-1.5 bg-surface min-h-0 font-body normal-case"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2.5 space-y-1.5 bg-surface min-h-0 font-body normal-case"
       >
         {messages.length === 0 ? (
           <p className="text-center text-xs text-ink-muted italic py-3 px-1 leading-relaxed">

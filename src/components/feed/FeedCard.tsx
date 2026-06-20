@@ -61,9 +61,9 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
 
   return (
     <article className="comic-card group">
-      <div className="comic-card-inner p-4 md:p-5">
+      <div className="comic-card-inner p-3 sm:p-4 md:p-5">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 flex-wrap border-b-2 border-ink border-dashed pb-3 mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b-2 border-ink border-dashed pb-3 mb-4">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <UserAvatar
               username={post.author.username}
@@ -81,7 +81,7 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
               <p className="text-xs text-ink-muted truncate">@{post.author.username}</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 ml-auto">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-auto sm:justify-end">
             {editHref && (
               <Link
                 href={editHref}
@@ -101,7 +101,7 @@ export function FeedCard({ post, editHref }: FeedCardProps) {
 
         {/* Title */}
         <PostDetailLink post={post} className="block group/title">
-          <h3 className="font-comic text-xl text-ink group-hover/title:text-comic-red transition-colors">
+          <h3 className="font-comic text-lg sm:text-xl text-ink group-hover/title:text-comic-red transition-colors">
             {post.title}
           </h3>
         </PostDetailLink>

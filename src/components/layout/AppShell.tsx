@@ -81,15 +81,21 @@ function NavLink({
       className={cn(
         "flex items-center font-comic border-2 border-ink transition-all",
         compact
-          ? "flex-1 flex-col justify-center gap-0.5 min-w-0 px-1 py-1.5 text-[10px] leading-none"
+          ? "flex-1 flex-col justify-center gap-0 min-w-0 px-0.5 py-2 leading-none"
           : "gap-1.5 px-3 py-1.5 text-sm",
         active
           ? "bg-comic-red text-white shadow-[2px_2px_0_#1a1a2e]"
           : "bg-surface text-ink hover:bg-comic-yellow shadow-[2px_2px_0_#1a1a2e] hover:shadow-[1px_1px_0_#1a1a2e] hover:translate-x-0.5 hover:translate-y-0.5"
       )}
     >
-      <Icon className={cn("shrink-0", compact ? "h-5 w-5" : "h-4 w-4")} />
-      <span className={compact ? "truncate w-full text-center max-w-full" : "whitespace-nowrap"}>
+      <Icon className={cn("shrink-0", compact ? "h-5 w-5 sm:h-5 sm:w-5" : "h-4 w-4")} />
+      <span
+        className={
+          compact
+            ? "sr-only"
+            : "whitespace-nowrap"
+        }
+      >
         {displayLabel}
       </span>
     </Link>
@@ -147,7 +153,7 @@ function AppShellNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 border-t-4 border-ink bg-comic-yellow z-40 safe-area-pb">
-      <div className="flex items-stretch gap-0.5 px-1 pt-1.5">
+      <div className="flex items-stretch gap-0 px-0.5 pt-1 max-w-lg mx-auto">
         {mobileNav.map((item) => (
           <NavLink
             key={item.href}
@@ -180,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <FriendsHydrator />
         <PurchasesHydrator />
         <VerificationCheckoutReturn />
-        <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 pb-24 md:pb-8">
+        <main className="flex-1 mx-auto w-full max-w-6xl px-3 sm:px-4 py-5 sm:py-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
           {children}
         </main>
         <SiteFooter />

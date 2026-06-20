@@ -114,16 +114,16 @@ export function ForumList() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="font-comic text-3xl text-ink">RPG (Topics)</h1>
-          <p className="text-sm text-ink-muted">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-comic text-2xl sm:text-3xl text-ink">RPG (Topics)</h1>
+          <p className="text-sm text-ink-muted mt-1">
             Browse play-by-post RPG topics — follow any story for reply alerts.
           </p>
         </div>
-        <Link href="/forum/new">
-          <Button variant="comic">
+        <Link href="/forum/new" className="shrink-0 self-start">
+          <Button variant="comic" className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-1" />
             New topic
           </Button>

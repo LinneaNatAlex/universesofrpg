@@ -59,7 +59,7 @@ export default function ExplorePage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="font-comic text-3xl text-ink">Explore</h1>
+        <h1 className="font-comic text-2xl sm:text-3xl text-ink">Explore</h1>
         <p className="text-sm text-ink-muted mt-1 max-w-xl">
           Every <strong>free</strong> creation lives here. Browse and search at no cost — but you
           still need an account to read full chapters, view images, and download assets.
@@ -136,14 +136,14 @@ export default function ExplorePage() {
       </section>
 
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-comic text-lg text-ink">
+        <div className="flex flex-col gap-1 mb-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-comic text-base sm:text-lg text-ink">
             {freePosts.length} free {freePosts.length === 1 ? "work" : "works"}
             {activeTag && (
               <span className="text-sm text-ink-muted font-normal"> · #{activeTag}</span>
             )}
           </h2>
-          <span className="text-xs font-comic text-ink-muted">Teasers · sign up to read more</span>
+          <span className="text-xs font-comic text-ink-muted shrink-0">Teasers · sign up to read more</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {freePosts.map((post) => (

@@ -42,7 +42,7 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
   const synopsis = post.plot_synopsis ?? post.description ?? "";
 
   return (
-    <div className="flex flex-col md:flex-row gap-5 md:gap-7 items-center md:items-start px-4 sm:px-8 md:px-10 py-5 md:py-6">
+    <div className="flex flex-col md:flex-row gap-4 sm:gap-5 md:gap-7 items-center md:items-start px-3 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6">
       <SpotlightVisual post={post} />
 
       <div className="flex-1 min-w-0 w-full text-center md:text-left">
@@ -54,7 +54,7 @@ function SpotlightSlide({ pick }: { pick: SpotlightPick }) {
         </p>
 
         <PostDetailLink post={post} className="block group mt-2">
-          <h3 className="font-comic text-2xl md:text-3xl text-ink group-hover:text-comic-red leading-tight">
+          <h3 className="font-comic text-xl sm:text-2xl md:text-3xl text-ink group-hover:text-comic-red leading-tight">
             {post.title}
           </h3>
         </PostDetailLink>
@@ -164,31 +164,31 @@ export function MonthlySpotlight({ className }: { className?: string }) {
             <button
               type="button"
               onClick={() => goTo(index - 1)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 border-2 border-ink bg-comic-yellow hover:bg-comic-red hover:text-white transition-colors flex items-center justify-center"
+              className="absolute left-1 sm:left-3 top-1/2 -translate-y-1/2 z-10 h-7 w-7 sm:h-8 sm:w-8 border-2 border-ink bg-comic-yellow hover:bg-comic-red hover:text-white transition-colors flex items-center justify-center"
               aria-label="Previous pick"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             <button
               type="button"
               onClick={() => goTo(index + 1)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 border-2 border-ink bg-comic-yellow hover:bg-comic-red hover:text-white transition-colors flex items-center justify-center"
+              className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 z-10 h-7 w-7 sm:h-8 sm:w-8 border-2 border-ink bg-comic-yellow hover:bg-comic-red hover:text-white transition-colors flex items-center justify-center"
               aria-label="Next pick"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </>
         )}
       </div>
 
       {count > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-3 border-t-2 border-ink border-dashed bg-surface">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-t-2 border-ink border-dashed bg-surface">
           {picks.map((pick, i) => (
             <button
               key={pick.category.id}
               type="button"
               onClick={() => setIndex(i)}
-              className={`font-comic text-xs px-3 py-1 border-2 border-ink transition-colors ${
+              className={`font-comic text-[10px] sm:text-xs px-2 sm:px-3 py-1 border-2 border-ink transition-colors ${
                 i === index
                   ? "bg-comic-red text-white"
                   : "bg-surface hover:bg-comic-yellow"

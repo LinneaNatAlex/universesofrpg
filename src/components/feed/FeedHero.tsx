@@ -9,19 +9,19 @@ export function FeedHero() {
   const { isLoggedIn, loading } = useAuth();
 
   return (
-    <section className="comic-hero p-6 md:p-8">
-      <span className="comic-burst text-sm mb-4 inline-block">RPG Social Hub</span>
-      <h1 className="font-comic text-3xl md:text-5xl leading-tight mt-3">
+    <section className="comic-hero p-4 sm:p-6 md:p-8">
+      <span className="comic-burst text-xs sm:text-sm mb-3 sm:mb-4 inline-block">RPG Social Hub</span>
+      <h1 className="font-comic text-2xl sm:text-3xl md:text-5xl leading-tight mt-2 sm:mt-3">
         BUILD WORLDS.
         <br />
         <span className="text-comic-yellow">SHARE STORIES.</span>
       </h1>
-      <p className="mt-4 text-sm md:text-base opacity-90 max-w-lg leading-relaxed">
+      <p className="mt-3 sm:mt-4 text-sm md:text-base opacity-90 max-w-lg leading-relaxed">
         {isLoggedIn
           ? "Welcome back — create, explore, and join the realm."
           : "Browse teasers from creators — like the back of a comic book. Free and premium posts appear here; sign up to unlock full content."}
       </p>
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
         {loading ? (
           <div className="h-10 w-36 rounded border-2 border-white/30 bg-white/10 animate-pulse" />
         ) : isLoggedIn ? (
