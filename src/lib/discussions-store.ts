@@ -5,7 +5,7 @@ import {
   scheduleDiscussionsPlatformPush,
 } from "@/lib/content-sync";
 import {
-  discussionPopularityScore,
+  discussionActivityTime,
   normalizeDiscussionCategory,
   normalizeDiscussionTagList,
 } from "@/lib/discussion-tags";
@@ -181,7 +181,7 @@ function mergeData() {
   }
 
   threads = [...threadMap.values()].sort(
-    (a, b) => discussionPopularityScore(b) - discussionPopularityScore(a)
+    (a, b) => discussionActivityTime(b) - discussionActivityTime(a)
   );
 
   const replyMap = new Map<string, DiscussionReply>();
@@ -255,7 +255,7 @@ export function subscribeDiscussions(listener: Listener): () => void {
 export function getAllDiscussionThreads(): DiscussionThread[] {
   ensureLoaded();
   return [...threads].sort(
-    (a, b) => discussionPopularityScore(b) - discussionPopularityScore(a)
+    (a, b) => discussionActivityTime(b) - discussionActivityTime(a)
   );
 }
 
@@ -268,7 +268,7 @@ export function getDiscussionReplies(threadId: string): DiscussionReply[] {
   ensureLoaded();
   return replies
     .filter((r) => r.thread_id === threadId)
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export function recordDiscussionView(threadId: string): void {
@@ -356,4 +356,61 @@ export function collectDiscussionTags(threadList: DiscussionThread[]): string[] 
     }
   }
   return out.sort();
+}
+
+export interface UserDiscussionParticipation {
+  thread: DiscussionThread;
+  last_participated_at: string;
+  is_author: boolean;
+  user_reply_count: number;
+}
+
+export function getUserDiscussionParticipation(
+  username: string
+): UserDiscussionParticipation[] {
+  ensureLoaded();
+  const key = username.toLowerCase();
+  const byThread = new Map<string, UserDiscussionParticipation>();
+
+  for (const thread of threads) {
+    if (thread.author_username.toLowerCase() === key) {
+      byThread.set(thread.id, {
+        thread,
+        last_participated_at: thread.created_at,
+        is_author: true,
+        user_reply_count: 0,
+      });
+    }
+  }
+
+  for (const reply of replies) {
+    if (reply.author_username.toLowerCase() !== key) continue;
+    const thread = threads.find((entry) => entry.id === reply.thread_id);
+    if (!thread) continue;
+
+    const existing = byThread.get(thread.id);
+    if (!existing) {
+      byThread.set(thread.id, {
+        thread,
+        last_participated_at: reply.created_at,
+        is_author: false,
+        user_reply_count: 1,
+      });
+      continue;
+    }
+
+    existing.user_reply_count += 1;
+    if (
+      new Date(reply.created_at).getTime() >
+      new Date(existing.last_participated_at).getTime()
+    ) {
+      existing.last_participated_at = reply.created_at;
+    }
+  }
+
+  return [...byThread.values()].sort(
+    (a, b) =>
+      new Date(b.last_participated_at).getTime() -
+      new Date(a.last_participated_at).getTime()
+  );
 }

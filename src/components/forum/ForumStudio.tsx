@@ -784,6 +784,7 @@ export function ForumDetail({ forumId }: { forumId: string }) {
         username={identity?.username ?? null}
         characters={forum.characters ?? []}
         jumpToLastOnNewPost={canWrite}
+        canEditOwnPosts={!forum.is_locked}
       />
 
       {canWrite ? (

@@ -2,6 +2,7 @@ import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { isFriend } from "@/lib/friends-store";
 import { readJson, writeJson } from "@/lib/browser-storage";
 import { pushForumsPlatformState, scheduleForumsPlatformPush } from "@/lib/content-sync";
+import { mergeRpgForumList } from "@/lib/forums-platform-merge";
 import { findUserByUsername } from "@/lib/discover-users";
 import { MOCK_FORUMS } from "@/lib/mock-data";
 import { getPersonaByUsername } from "@/lib/personas";
@@ -118,6 +119,15 @@ function mergeForums() {
   forums = sortForums([...map.values()]);
 }
 
+/** Force a reload from localStorage — used after background platform sync. */
+export function reloadForumsFromStorage(): void {
+  if (typeof window === "undefined") return;
+  storageLoaded = false;
+  forums = [...MOCK_FORUMS];
+  ensureLoaded();
+  notify();
+}
+
 function ensureLoaded() {
   if (typeof window === "undefined") return;
   if (storageLoaded) return;
@@ -129,8 +139,10 @@ export function buildForumsPersistState(): ForumsState {
   ensureLoaded();
   const existing = loadState();
   const currentIds = new Set(forums.map((f) => f.id));
+  const fromDisk = existing.custom ?? [];
+  const fromMemory = forums.filter((f) => !MOCK_FORUM_IDS.has(f.id));
   return {
-    custom: forums.filter((f) => !MOCK_FORUM_IDS.has(f.id)),
+    custom: mergeRpgForumList(fromDisk, fromMemory),
     deletedMockIds: MOCK_FORUMS.filter((f) => !currentIds.has(f.id)).map((f) => f.id),
     deletedCustomIds: existing.deletedCustomIds ?? [],
   };
@@ -215,6 +227,45 @@ export function isForumMember(forum: RpgForum, username: string): boolean {
 export function getForumsForMember(username: string): RpgForum[] {
   ensureLoaded();
   return forums.filter((forum) => isForumMember(forum, username));
+}
+
+export interface UserForumParticipation {
+  forum: RpgForum;
+  post_count: number;
+  last_post_at: string;
+}
+
+export function getUserForumParticipation(username: string): UserForumParticipation[] {
+  ensureLoaded();
+  const key = username.toLowerCase();
+  const result: UserForumParticipation[] = [];
+
+  for (const forum of forums) {
+    if (!isForumMember(forum, username)) continue;
+
+    let postCount = 0;
+    let lastPostAt: string | null = null;
+    for (const chapter of forum.chapters) {
+      for (const post of chapter.posts) {
+        if (post.author_username.toLowerCase() !== key) continue;
+        postCount += 1;
+        const ts = post.updated_at ?? post.created_at;
+        if (!lastPostAt || new Date(ts).getTime() > new Date(lastPostAt).getTime()) {
+          lastPostAt = ts;
+        }
+      }
+    }
+
+    result.push({
+      forum,
+      post_count: postCount,
+      last_post_at: lastPostAt ?? forum.created_at,
+    });
+  }
+
+  return result.sort(
+    (a, b) => new Date(b.last_post_at).getTime() - new Date(a.last_post_at).getTime()
+  );
 }
 
 function characterIdForAuthor(forum: RpgForum, authorUsername: string): string | null {
@@ -498,6 +549,35 @@ function saveForumChanges(forum: RpgForum) {
   } else {
     persist();
   }
+}
+
+export function updateForumPost(
+  forumId: string,
+  chapterIndex: number,
+  postId: string,
+  authorUsername: string,
+  body: string
+): ForumPost | null {
+  ensureLoaded();
+  const forum = forums.find((f) => f.id === forumId);
+  if (!forum || forum.is_locked) return null;
+
+  const chapter = forum.chapters[chapterIndex];
+  if (!chapter) return null;
+
+  const trimmed = body.trim();
+  if (!trimmed) return null;
+
+  const post = chapter.posts.find((p) => p.id === postId);
+  if (!post) return null;
+  if (post.author_username.toLowerCase() !== authorUsername.toLowerCase()) return null;
+
+  post.body = trimmed;
+  post.updated_at = new Date().toISOString();
+  saveForumChanges(forum);
+  notify();
+  void syncForumsToServer();
+  return post;
 }
 
 export function deleteForumPost(

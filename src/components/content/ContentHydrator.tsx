@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import {
   CONTENT_SYNCED_EVENT,
+  markForumsHydrationComplete,
   fetchCommentsPlatformState,
   fetchDiscussionsPlatformState,
   fetchForumsPlatformState,
@@ -59,49 +60,55 @@ export function ContentHydrator() {
     let cancelled = false;
 
     void (async () => {
-      const [remotePosts, remoteForums] = await Promise.all([
-        fetchPostsPlatformState(),
-        fetchForumsPlatformState(),
-      ]);
+      try {
+        const [remotePosts, remoteForums] = await Promise.all([
+          fetchPostsPlatformState(),
+          fetchForumsPlatformState(),
+        ]);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (remotePosts) {
-        const local = buildPostsPersistState();
-        applyPostsPersistState(mergePostsState(local, remotePosts));
+        if (remotePosts) {
+          const local = buildPostsPersistState();
+          applyPostsPersistState(mergePostsState(local, remotePosts));
+        }
+
+        if (remoteForums) {
+          const local = buildForumsPersistState();
+          applyForumsPersistState(mergeForumsState(local, remoteForums));
+        }
+
+        notifyContentReady();
+
+        const [remoteComments, remoteDiscussions, remoteHomepageChat] = await Promise.all([
+          fetchCommentsPlatformState(),
+          fetchDiscussionsPlatformState(),
+          fetchHomepageChatPlatformState(),
+        ]);
+
+        if (cancelled) return;
+
+        if (remoteComments) {
+          const local = buildCommentsPersistState();
+          applyCommentsPersistState(mergeCommentsState(local, remoteComments));
+        }
+
+        if (remoteDiscussions) {
+          const local = buildDiscussionsPersistState();
+          applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
+        }
+
+        if (remoteHomepageChat) {
+          const local = buildHomepageChatPersistState();
+          applyHomepageChatPersistState(mergeHomepageChatState(local, remoteHomepageChat));
+        }
+
+        notifyContentReady();
+      } finally {
+        if (!cancelled) {
+          markForumsHydrationComplete();
+        }
       }
-
-      if (remoteForums) {
-        const local = buildForumsPersistState();
-        applyForumsPersistState(mergeForumsState(local, remoteForums));
-      }
-
-      notifyContentReady();
-
-      const [remoteComments, remoteDiscussions, remoteHomepageChat] = await Promise.all([
-        fetchCommentsPlatformState(),
-        fetchDiscussionsPlatformState(),
-        fetchHomepageChatPlatformState(),
-      ]);
-
-      if (cancelled) return;
-
-      if (remoteComments) {
-        const local = buildCommentsPersistState();
-        applyCommentsPersistState(mergeCommentsState(local, remoteComments));
-      }
-
-      if (remoteDiscussions) {
-        const local = buildDiscussionsPersistState();
-        applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
-      }
-
-      if (remoteHomepageChat) {
-        const local = buildHomepageChatPersistState();
-        applyHomepageChatPersistState(mergeHomepageChatState(local, remoteHomepageChat));
-      }
-
-      notifyContentReady();
     })();
 
     return () => {

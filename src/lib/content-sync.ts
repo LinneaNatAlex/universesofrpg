@@ -49,6 +49,16 @@ type PushOptions = {
 
 let postsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let forumsPushTimer: ReturnType<typeof setTimeout> | null = null;
+/** Avoid pushing an empty local snapshot before the first server pull finishes. */
+let forumsHydrationComplete = false;
+
+export function markForumsHydrationComplete(): void {
+  forumsHydrationComplete = true;
+}
+
+export function areForumsHydrationComplete(): boolean {
+  return forumsHydrationComplete;
+}
 let commentsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let discussionsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let homepageChatPushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -268,6 +278,7 @@ export function schedulePostsPlatformPush(state: PostsPlatformState): void {
 
 export function scheduleForumsPlatformPush(state: ForumsPlatformState): void {
   if (typeof window === "undefined") return;
+  if (!forumsHydrationComplete) return;
   if (forumsPushTimer) clearTimeout(forumsPushTimer);
   forumsPushTimer = setTimeout(() => {
     forumsPushTimer = null;

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllForums, getForumById, subscribeForums } from "@/lib/forums-store";
+import { CONTENT_SYNCED_EVENT } from "@/lib/content-sync";
+import {
+  getAllForums,
+  getForumById,
+  reloadForumsFromStorage,
+  subscribeForums,
+} from "@/lib/forums-store";
 import type { RpgForum } from "@/types/database";
 
 export function useForums(): RpgForum[] {
@@ -9,8 +15,19 @@ export function useForums(): RpgForum[] {
 
   useEffect(() => {
     const refresh = () => setForums(getAllForums());
+
+    const onSynced = () => {
+      reloadForumsFromStorage();
+      refresh();
+    };
+
     refresh();
-    return subscribeForums(refresh);
+    const unsub = subscribeForums(refresh);
+    window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    return () => {
+      unsub();
+      window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    };
   }, []);
 
   return forums;
@@ -21,8 +38,19 @@ export function useForum(forumId: string): RpgForum | undefined {
 
   useEffect(() => {
     const refresh = () => setForum(getForumById(forumId));
+
+    const onSynced = () => {
+      reloadForumsFromStorage();
+      refresh();
+    };
+
     refresh();
-    return subscribeForums(refresh);
+    const unsub = subscribeForums(refresh);
+    window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    return () => {
+      unsub();
+      window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    };
   }, [forumId]);
 
   return forum;

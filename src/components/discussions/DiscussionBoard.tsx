@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DISCUSSION_CATEGORIES,
+  discussionActivityTime,
   discussionMatchesSearch,
   discussionPopularityScore,
   getDiscussionTags,
@@ -51,10 +52,15 @@ export function DiscussionBoard() {
         if (activeTag && !getDiscussionTags(t).includes(activeTag)) return false;
         return discussionMatchesSearch(t, query);
       })
-      .sort((a, b) => discussionPopularityScore(b) - discussionPopularityScore(a));
+      .sort((a, b) => discussionActivityTime(b) - discussionActivityTime(a));
   }, [threads, query, activeCategory, activeTag, viewerCtx]);
 
-  const popular = filtered.slice(0, 3);
+  const popular = useMemo(() => {
+    return threads
+      .filter((t) => isVisibleInPublicCatalog(t, viewerCtx))
+      .sort((a, b) => discussionPopularityScore(b) - discussionPopularityScore(a))
+      .slice(0, 3);
+  }, [threads, viewerCtx]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / DISCUSSIONS_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * DISCUSSIONS_PAGE_SIZE;

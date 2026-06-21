@@ -99,3 +99,7 @@ export function discussionMatchesSearch(
 export function discussionPopularityScore(thread: DiscussionThread): number {
   return thread.reply_count * 3 + thread.views;
 }
+
+export function discussionActivityTime(thread: DiscussionThread): number {
+  return new Date(thread.last_activity_at ?? thread.created_at).getTime();
+}

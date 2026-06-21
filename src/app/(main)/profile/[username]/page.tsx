@@ -20,6 +20,7 @@ import {
 import { ProfilePurchasesTab } from "@/components/profile/ProfilePurchasesTab";
 import { ProfileFriendsTab } from "@/components/profile/ProfileFriendsTab";
 import { ProfileFollowingTab } from "@/components/profile/ProfileFollowingTab";
+import { ProfileParticipationTab } from "@/components/profile/ProfileParticipationTab";
 import { ProfileTabNav, type ProfileTabItem } from "@/components/profile/ProfileTabNav";
 import { usePurchasedPosts } from "@/hooks/usePurchasedPosts";
 import { ProfileFollowerCount } from "@/components/profile/ProfileFollowerCount";
@@ -35,15 +36,17 @@ import { useFriends } from "@/hooks/useFriends";
 import { useFollowedTopics } from "@/hooks/useFollowedTopics";
 import { useFollowedCreators } from "@/hooks/useFollowedCreators";
 import { useProfilePrivacy } from "@/hooks/useProfilePrivacy";
+import { useProfileParticipation } from "@/hooks/useProfileParticipation";
 import { usePersona } from "@/contexts/PersonaContext";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database";
-import { Shield, User, FolderOpen, Users, BookOpen, ShoppingBag, UserCircle2 } from "lucide-react";
+import { Shield, User, FolderOpen, Users, BookOpen, ShoppingBag, UserCircle2, MessageSquare } from "lucide-react";
 
 type ProfileTab =
   | "persona"
   | "creations"
   | "characters"
+  | "participating"
   | "purchases"
   | "friends"
   | "following";
@@ -159,6 +162,8 @@ export default function ProfilePage() {
   const { ready: privacyReady, showFriendsList } = useProfilePrivacy(username);
   const showFriendsTab =
     isOwnProfile || isOwnAccountProfile || (privacyReady && showFriendsList);
+  const { forumItems, discussionItems, totalCount: participationCount } =
+    useProfileParticipation(username, identity?.username ?? null);
 
   useEffect(() => {
     if (tab === "friends" && !showFriendsTab) {
@@ -200,10 +205,17 @@ export default function ProfilePage() {
     },
     {
       id: "characters",
-      label: "Character Creations",
+      label: "Characters",
       shortLabel: "Chars",
       icon: UserCircle2,
       count: characterCreations.length,
+    },
+    {
+      id: "participating",
+      label: "Activity",
+      shortLabel: "Active",
+      icon: MessageSquare,
+      count: participationCount,
     },
     ...(showPurchasesTab
       ? [
@@ -324,6 +336,13 @@ export default function ProfilePage() {
           characters={characterCreations}
           showPendingNote={isOwnProfile}
           editable={isOwnProfile}
+        />
+      ) : tab === "participating" ? (
+        <ProfileParticipationTab
+          username={username}
+          isOwnProfile={isOwnProfile}
+          forumItems={forumItems}
+          discussionItems={discussionItems}
         />
       ) : tab === "purchases" ? (
         <ProfilePurchasesTab

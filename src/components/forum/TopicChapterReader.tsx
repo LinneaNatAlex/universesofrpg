@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   clearTopicBookmark,
@@ -10,6 +10,7 @@ import {
   subscribeTopicBookmarks,
 } from "@/lib/topic-bookmarks-store";
 import { paginateForumPosts } from "@/lib/topic-pagination";
+import { updateForumPost } from "@/lib/forums-store";
 import type { ForumChapter, TopicCharacter } from "@/types/database";
 import { formatPartLabel } from "@/lib/forum-access";
 import { findUserByUsername } from "@/lib/discover-users";
@@ -33,6 +34,7 @@ interface TopicChapterReaderProps {
   username: string | null;
   characters?: TopicCharacter[];
   jumpToLastOnNewPost?: boolean;
+  canEditOwnPosts?: boolean;
 }
 
 export function TopicChapterReader({
@@ -42,11 +44,15 @@ export function TopicChapterReader({
   username,
   characters = [],
   jumpToLastOnNewPost = false,
+  canEditOwnPosts = false,
 }: TopicChapterReaderProps) {
   const pages = useMemo(() => paginateForumPosts(chapter.posts), [chapter.posts]);
   const pageCount = pages.length;
   const [pageIndex, setPageIndex] = useState(0);
   const [bookmarkPage, setBookmarkPage] = useState<number | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
   const prevPostCount = useRef(chapter.posts.length);
   const initialized = useRef(false);
 
@@ -105,6 +111,35 @@ export function TopicChapterReader({
     setBookmarkPage(safePage);
   }
 
+  function startEdit(postId: string, body: string) {
+    setEditError(null);
+    setEditingPostId(postId);
+    setEditDraft(body);
+  }
+
+  function cancelEdit() {
+    setEditingPostId(null);
+    setEditDraft("");
+    setEditError(null);
+  }
+
+  function saveEdit(postId: string) {
+    if (!username) return;
+    setEditError(null);
+    const updated = updateForumPost(
+      forumId,
+      chapterIndex,
+      postId,
+      username,
+      editDraft
+    );
+    if (!updated) {
+      setEditError("Could not save — only your own posts can be edited.");
+      return;
+    }
+    cancelEdit();
+  }
+
   return (
     <div className="space-y-3">
       <div className="topic-a4-page comic-panel flex flex-col p-4 sm:p-6 md:p-8">
@@ -133,17 +168,72 @@ export function TopicChapterReader({
               const speakerMeta = character
                 ? `as ${character.name}${character.age ? ` · age ${character.age}` : ""} · @${post.author_username}`
                 : `@${post.author_username}`;
+              const isMine =
+                !!username &&
+                post.author_username.toLowerCase() === username.toLowerCase();
+              const isEditing = editingPostId === post.id;
+
               return (
                 <article key={post.id} className="border-l-4 border-comic-red pl-3">
                   <CommentAuthorRow
                     username={post.author_username}
                     displayName={speakerName}
                     size="xs"
-                    meta={speakerMeta}
+                    meta={
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>{speakerMeta}</span>
+                        {post.updated_at && (
+                          <span className="text-ink-muted italic">(edited)</span>
+                        )}
+                        {canEditOwnPosts && isMine && !isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(post.id, post.body)}
+                            className="inline-flex items-center gap-0.5 text-comic-red hover:underline font-comic"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit
+                          </button>
+                        )}
+                      </span>
+                    }
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink mt-2">
-                      {post.body}
-                    </p>
+                    {isEditing ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          rows={4}
+                          className="w-full border-2 border-ink bg-surface px-2.5 py-2 text-sm"
+                        />
+                        {editError && (
+                          <p className="text-xs text-comic-red">{editError}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="comic"
+                            size="sm"
+                            onClick={() => saveEdit(post.id)}
+                            disabled={!editDraft.trim()}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={cancelEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-ink mt-2">
+                        {post.body}
+                      </p>
+                    )}
                   </CommentAuthorRow>
                 </article>
               );

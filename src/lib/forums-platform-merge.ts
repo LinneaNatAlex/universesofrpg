@@ -15,12 +15,16 @@ function forumActivityTime(forum: RpgForum): number {
   return max;
 }
 
+function postRevisionTime(post: ForumPost): number {
+  return new Date(post.updated_at ?? post.created_at).getTime();
+}
+
 function mergeForumPosts(a: ForumPost[], b: ForumPost[]): ForumPost[] {
   const map = new Map<string, ForumPost>();
   for (const post of a) map.set(post.id, post);
   for (const post of b) {
     const prev = map.get(post.id);
-    if (!prev || new Date(post.created_at) >= new Date(prev.created_at)) {
+    if (!prev || postRevisionTime(post) >= postRevisionTime(prev)) {
       map.set(post.id, post);
     }
   }

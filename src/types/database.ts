@@ -310,6 +310,7 @@ export interface ForumPost {
   author_username: string;
   body: string;
   created_at: string;
+  updated_at?: string | null;
   /** In-character voice for this reply — set from the writer's topic character. */
   character_id?: string | null;
 }

@@ -1,5 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import type { ForumsPlatformState } from "@/app/api/content/forums/route";
+import { mergeForumsState } from "@/lib/content-platform-merge";
 import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
 
 export type PlatformContentKey =
@@ -40,6 +42,8 @@ export async function getPlatformContent<T>(
   key: PlatformContentKey,
   fallback: T
 ): Promise<T> {
+  const filePayload = readFilePayload(key, fallback);
+
   if (isServiceClientConfigured()) {
     try {
       const supabase = createServiceClient()!;
@@ -50,6 +54,12 @@ export async function getPlatformContent<T>(
         .maybeSingle();
 
       if (!error && data?.payload && typeof data.payload === "object") {
+        if (key === "forums") {
+          return mergeForumsState(
+            filePayload as ForumsPlatformState,
+            data.payload as ForumsPlatformState
+          ) as T;
+        }
         return data.payload as T;
       }
     } catch {
@@ -57,7 +67,7 @@ export async function getPlatformContent<T>(
     }
   }
 
-  return readFilePayload(key, fallback);
+  return filePayload;
 }
 
 export async function setPlatformContent<T>(

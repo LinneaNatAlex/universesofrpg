@@ -47,23 +47,29 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] border-2 border-ink bg-surface shadow-[4px_4px_0_#1a1a2e] z-50">
-          <div className="flex items-center justify-between px-3 py-2 border-b-2 border-ink bg-comic-yellow/50">
-            <p className="font-comic text-sm text-ink">Notifications</p>
+        <div
+          className={cn(
+            "z-50 border-2 border-ink bg-surface shadow-[4px_4px_0_#1a1a2e]",
+            "fixed left-3 right-3 top-[3.75rem] w-auto max-w-none",
+            "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1 sm:w-72 sm:max-w-[calc(100vw-2rem)]"
+          )}
+        >
+          <div className="flex items-center justify-between px-2.5 sm:px-3 py-1.5 sm:py-2 border-b-2 border-ink bg-comic-yellow/50">
+            <p className="font-comic text-xs sm:text-sm text-ink">Notifications</p>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={() => markAllNotificationsRead(identity.username)}
-                className="text-[10px] font-comic text-comic-red hover:underline"
+                className="text-[10px] font-comic text-comic-red hover:underline shrink-0"
               >
                 Mark all read
               </button>
             )}
           </div>
-          <ul className="max-h-72 overflow-y-auto">
+          <ul className="max-h-[min(14rem,45vh)] sm:max-h-60 overflow-y-auto overflow-x-hidden">
             {items.length === 0 ? (
-              <li className="px-4 py-6 text-center text-sm text-ink-muted font-comic">
-                No notifications yet — likes, comments, and topic updates show up here.
+              <li className="px-3 py-4 sm:px-4 sm:py-6 text-center text-xs sm:text-sm text-ink-muted font-comic">
+                No notifications yet.
               </li>
             ) : (
               items.map((item) => (
