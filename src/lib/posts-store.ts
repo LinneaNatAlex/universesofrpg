@@ -380,13 +380,24 @@ export function setPostModeration(
   const post = posts.find((p) => p.id === id);
   if (!post) return false;
   post.moderation_status = status;
+  post.updated_at = new Date().toISOString();
   persist();
   notify();
   if (status === "approved" || status === "rejected") {
     clearEditorReviewForPost(id);
   }
-  void syncPostsToServer();
+  void syncModerationToServer(post);
   return true;
+}
+
+async function syncModerationToServer(post: FeedPost): Promise<void> {
+  const { pushSinglePostToServer, waitForPostsHydration } =
+    await import("@/lib/content-sync");
+  await waitForPostsHydration();
+  const ok = await pushSinglePostToServer(post);
+  if (!ok) {
+    await syncPostsToServer();
+  }
 }
 
 export function adjustLikeCount(id: string, delta: number): boolean {

@@ -35,6 +35,10 @@ function mergeRecordsById<
   return [...map.values()];
 }
 
+function isPendingModeration(status: FeedPost["moderation_status"]): boolean {
+  return status === "pending";
+}
+
 export function mergeSinglePost(local: FeedPost, remote: FeedPost): FeedPost {
   const a = normalizeFreeCodeListing(local);
   const b = normalizeFreeCodeListing(remote);
@@ -44,10 +48,10 @@ export function mergeSinglePost(local: FeedPost, remote: FeedPost): FeedPost {
   if (remoteTime > localTime) return migrateFeedPost(b);
   if (a.pricing === "free" && b.pricing !== "free") return migrateFeedPost(a);
   if (b.pricing === "free" && a.pricing !== "free") return migrateFeedPost(b);
-  if (a.moderation_status === "pending" && b.moderation_status === "approved") {
+  if (!isPendingModeration(a.moderation_status) && isPendingModeration(b.moderation_status)) {
     return migrateFeedPost(a);
   }
-  if (b.moderation_status === "pending" && a.moderation_status === "approved") {
+  if (!isPendingModeration(b.moderation_status) && isPendingModeration(a.moderation_status)) {
     return migrateFeedPost(b);
   }
   return migrateFeedPost(a);
