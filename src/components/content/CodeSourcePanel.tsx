@@ -158,8 +158,11 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
                 )}
                 {missingAge && (
                   <p className="text-xs text-ink-muted">
-                    Purchases require age on your account. Re-register with your age or contact
-                    support.
+                    Add your birth date in{" "}
+                    <Link href="/settings?tab=account" className="text-comic-red hover:underline font-comic">
+                      Settings → Account
+                    </Link>{" "}
+                    before purchasing.
                   </p>
                 )}
                 <Button

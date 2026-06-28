@@ -11,6 +11,7 @@ import { CreatorPayoutSettings } from "@/components/settings/CreatorPayoutSettin
 import { VerifiedCreatorSubscribe } from "@/components/settings/VerifiedCreatorSubscribe";
 import { SettingsFriendsManager } from "@/components/settings/SettingsFriendsManager";
 import { ProfileAvatarSettings } from "@/components/settings/ProfileAvatarSettings";
+import { AccountBirthDateSettings } from "@/components/settings/AccountBirthDateSettings";
 import { ProfilePrivacySettings } from "@/components/settings/ProfilePrivacySettings";
 import { VerifiedCreatorSettings } from "@/components/settings/VerifiedCreatorSettings";
 import { getApplicationsByUsername } from "@/lib/editor-applications-store";
@@ -143,6 +144,7 @@ export default function SettingsPage() {
               <dd>{user?.email ?? "—"}</dd>
             </div>
           </dl>
+          <AccountBirthDateSettings />
           {account && (
             <Link
               href={`/profile/${account.username}`}

@@ -130,7 +130,11 @@ export function MarketplaceCard({ post }: MarketplaceCardProps) {
         )}
         {missingAge && isLoggedIn && (
           <p className="mt-2 text-xs text-ink-muted leading-snug">
-            Purchases require age on your account. Re-register with your age or contact support.
+            Add your birth date in{" "}
+            <Link href="/settings?tab=account" className="text-comic-red hover:underline font-comic">
+              Settings → Account
+            </Link>{" "}
+            before purchasing.
           </p>
         )}
         {isMinor && isLoggedIn && (
