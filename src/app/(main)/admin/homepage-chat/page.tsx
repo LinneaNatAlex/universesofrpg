@@ -25,7 +25,7 @@ export default function AdminHomepageChatPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-comic text-xl text-ink">
-          Realm chat ({messages.length} messages)
+          Chat ({messages.length} messages)
         </h2>
         {messages.length > 0 && (
           <Button

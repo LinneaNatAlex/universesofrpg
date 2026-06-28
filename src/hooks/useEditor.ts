@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
+import { useProfileDbUsername } from "@/hooks/useProfileDbUsername";
 import { canReviewPaidContent } from "@/lib/editor-constants";
+import { CONTENT_SYNCED_EVENT } from "@/lib/content-sync";
 import {
   getEditorProfile,
   subscribeEditorProfiles,
@@ -15,6 +17,7 @@ import type { User } from "@supabase/supabase-js";
 function editorLookupUsernames(
   accountUsername: string | null,
   actingUsername: string | null,
+  dbUsername: string | null,
   user: User | null
 ): string[] {
   const seen = new Set<string>();
@@ -29,6 +32,7 @@ function editorLookupUsernames(
 
   add(accountUsername);
   add(actingUsername);
+  add(dbUsername);
 
   const meta = user?.user_metadata as Record<string, unknown> | undefined;
   if (typeof meta?.username === "string") add(meta.username);
@@ -50,6 +54,10 @@ export function useEditor() {
   const { isLoggedIn, user } = useAdmin();
   const account = useAccountIdentity();
   const identity = useActingIdentity();
+  const { username: dbUsername, loading: profileDbLoading } = useProfileDbUsername(
+    user?.id,
+    isLoggedIn
+  );
   const [profile, setProfile] = useState<EditorProfile | null | undefined>(undefined);
 
   const lookupUsernames = useMemo(
@@ -57,10 +65,18 @@ export function useEditor() {
       editorLookupUsernames(
         account?.username ?? null,
         identity?.username ?? null,
+        dbUsername,
         user
       ),
-    [account?.username, identity?.username, user]
+    [account?.username, identity?.username, dbUsername, user]
   );
+
+  const identityResolving =
+    isLoggedIn &&
+    profileDbLoading &&
+    !account?.username &&
+    !identity?.username &&
+    !dbUsername;
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -68,8 +84,8 @@ export function useEditor() {
       return;
     }
 
-    if (lookupUsernames.length === 0) {
-      setProfile(null);
+    if (identityResolving) {
+      setProfile(undefined);
       return;
     }
 
@@ -78,8 +94,15 @@ export function useEditor() {
     };
 
     refresh();
-    return subscribeEditorProfiles(refresh);
-  }, [isLoggedIn, lookupUsernames]);
+    const unsub = subscribeEditorProfiles(refresh);
+    const onSync = () => refresh();
+    window.addEventListener(CONTENT_SYNCED_EVENT, onSync);
+
+    return () => {
+      unsub();
+      window.removeEventListener(CONTENT_SYNCED_EVENT, onSync);
+    };
+  }, [isLoggedIn, identityResolving, lookupUsernames]);
 
   const ready = profile !== undefined;
   const editorProfile = profile ?? null;

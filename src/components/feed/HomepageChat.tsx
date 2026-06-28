@@ -112,7 +112,7 @@ export function HomepageChat({ className }: { className?: string }) {
   }
 
   function handleDelete(id: string) {
-    if (!confirm("Remove this message from the realm chat?")) return;
+    if (!confirm("Remove this message from the chat?")) return;
     deleteHomepageChatMessage(id);
   }
 
@@ -128,7 +128,7 @@ export function HomepageChat({ className }: { className?: string }) {
       <div className="comic-panel-header px-3 py-2 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <MessageCircle className="h-4 w-4 shrink-0" />
-          <h2 className="font-comic text-sm leading-none">Realm chat</h2>
+          <h2 className="font-comic text-sm leading-none">Chat</h2>
         </div>
         <span
           className={`inline-flex items-center gap-1 text-[9px] font-comic uppercase shrink-0 ${
@@ -206,7 +206,7 @@ export function HomepageChat({ className }: { className?: string }) {
           <p className="text-xs text-ink-muted text-center font-body normal-case">Loading…</p>
         ) : !isLoggedIn ? (
           <div className="text-center space-y-1 py-0.5 font-body normal-case text-xs">
-            <p className="text-ink-muted">Log in to join the realm chat.</p>
+            <p className="text-ink-muted">Log in to join the chat.</p>
             <div className="flex justify-center gap-2">
               <Link href="/login" className="text-comic-red hover:underline">
                 Sign in

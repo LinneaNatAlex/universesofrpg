@@ -1,4 +1,6 @@
+import type { EditorsPlatformState } from "@/app/api/content/editors/route";
 import { readJson, writeJson } from "@/lib/browser-storage";
+import { scheduleEditorsPlatformPush } from "@/lib/editor-sync";
 import type { EditorLevel, EditorProfile } from "@/types/database";
 
 const STORAGE_KEY = "uorpg-editor-profiles";
@@ -41,6 +43,19 @@ function ensureLoaded() {
 
 function persist() {
   writeJson(STORAGE_KEY, profiles);
+  scheduleEditorsPlatformPush(buildEditorsPlatformState());
+}
+
+export function buildEditorsPlatformState(): EditorsPlatformState {
+  ensureLoaded();
+  return { profiles: [...profiles] };
+}
+
+export function applyEditorsPlatformState(state: EditorsPlatformState): void {
+  ensureLoaded();
+  profiles = Array.isArray(state.profiles) ? [...state.profiles] : [];
+  writeJson(STORAGE_KEY, profiles);
+  notify();
 }
 
 export function subscribeEditorProfiles(listener: Listener): () => void {

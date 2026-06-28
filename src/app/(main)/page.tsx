@@ -12,7 +12,7 @@ export default function FeedPage() {
         <div className="min-w-0 flex-1">
           <MonthlySpotlight />
         </div>
-        <aside className="w-full lg:w-[42%] xl:max-w-[480px] lg:shrink-0 flex flex-col min-h-[min(320px,50vh)] max-h-[min(380px,55vh)] lg:min-h-0 lg:max-h-none">
+        <aside className="hidden lg:flex w-full lg:w-[42%] xl:max-w-[480px] lg:shrink-0 flex-col min-h-0">
           <HomepageChat className="h-full flex-1 min-h-0" />
         </aside>
       </div>

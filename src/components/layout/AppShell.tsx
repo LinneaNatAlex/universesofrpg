@@ -24,6 +24,7 @@ import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { FriendsHydrator } from "@/components/social/FriendsHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
+import { MobileChatBubble } from "@/components/feed/MobileChatBubble";
 import { NavPrefetch } from "@/components/layout/NavPrefetch";
 
 type NavItem = {
@@ -194,6 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <SiteFooter />
+        <MobileChatBubble />
         <AppShellNav />
       </div>
     </PersonaProvider>

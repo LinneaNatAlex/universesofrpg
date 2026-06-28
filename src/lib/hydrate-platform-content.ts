@@ -10,6 +10,7 @@ import {
   mergeHomepageChatState,
   mergePostsState,
 } from "@/lib/content-sync";
+import { fetchEditorsPlatformState, mergeEditorsState } from "@/lib/editor-sync";
 import {
   applyCommentsPersistState,
   buildCommentsPersistState,
@@ -26,6 +27,10 @@ import {
   applyForumsPersistState,
   buildForumsPersistState,
 } from "@/lib/forums-store";
+import {
+  applyEditorsPlatformState,
+  buildEditorsPlatformState,
+} from "@/lib/editor-profiles-store";
 import {
   applyPostsPersistState,
   buildPostsPersistState,
@@ -52,11 +57,13 @@ export async function hydratePlatformContent(): Promise<boolean> {
     updated = true;
   }
 
-  const [remoteComments, remoteDiscussions, remoteHomepageChat] = await Promise.all([
-    fetchCommentsPlatformState(),
-    fetchDiscussionsPlatformState(),
-    fetchHomepageChatPlatformState(),
-  ]);
+  const [remoteComments, remoteDiscussions, remoteHomepageChat, remoteEditors] =
+    await Promise.all([
+      fetchCommentsPlatformState(),
+      fetchDiscussionsPlatformState(),
+      fetchHomepageChatPlatformState(),
+      fetchEditorsPlatformState(),
+    ]);
 
   if (remoteComments) {
     const local = buildCommentsPersistState();
@@ -73,6 +80,12 @@ export async function hydratePlatformContent(): Promise<boolean> {
   if (remoteHomepageChat) {
     const local = buildHomepageChatPersistState();
     applyHomepageChatPersistState(mergeHomepageChatState(local, remoteHomepageChat));
+    updated = true;
+  }
+
+  if (remoteEditors) {
+    const local = buildEditorsPlatformState();
+    applyEditorsPlatformState(mergeEditorsState(local, remoteEditors));
     updated = true;
   }
 

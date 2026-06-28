@@ -11,7 +11,8 @@ export type PlatformContentKey =
   | "discussions"
   | "homepage_chat"
   | "friend_requests"
-  | "friends";
+  | "friends"
+  | "editors";
 
 const DATA_DIR = join(process.cwd(), "data");
 
