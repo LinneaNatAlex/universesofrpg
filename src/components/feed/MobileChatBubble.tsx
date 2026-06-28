@@ -48,8 +48,8 @@ export function MobileChatBubble() {
             className={cn(
               "fixed inset-x-2 z-[61] flex flex-col overflow-hidden",
               "border-2 border-ink bg-surface shadow-[4px_4px_0_#1a1a2e]",
-              "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]",
-              "max-h-[min(72dvh,calc(100dvh-7rem-env(safe-area-inset-bottom,0px)))]"
+              "top-[max(0.5rem,env(safe-area-inset-top,0px))]",
+              "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
             )}
           >
             <div className="flex items-center justify-end shrink-0 border-b-2 border-ink bg-comic-yellow px-2 py-1">
@@ -62,7 +62,7 @@ export function MobileChatBubble() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <HomepageChat className="flex-1 min-h-0 !shadow-none !border-0 rounded-none" />
+            <HomepageChat className="flex-1 min-h-0 h-full !shadow-none !border-0 rounded-none" />
           </div>
         </>
       )}

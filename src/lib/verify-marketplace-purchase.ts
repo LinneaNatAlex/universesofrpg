@@ -41,6 +41,29 @@ function isAuthor(post: FeedPost, username: string): boolean {
   return post.author.username.toLowerCase() === username.toLowerCase();
 }
 
+export function needsPurchaseToViewContent(post: FeedPost): boolean {
+  if (post.pricing !== "free") return true;
+  return requiresCodePurchase(post);
+}
+
+/** Server-confirmed access before showing paid body text or template source. */
+export async function verifyPurchaseAccess(
+  post: FeedPost,
+  viewer: PostViewerContext,
+  buyerUsername: string | null
+): Promise<boolean> {
+  if (!needsPurchaseToViewContent(post)) {
+    return viewer.isLoggedIn;
+  }
+
+  if (!viewer.isLoggedIn || !buyerUsername) return false;
+  if (isAuthor(post, buyerUsername)) return true;
+  if (viewer.username && isAuthor(post, viewer.username)) return true;
+  if (post.moderation_status === "pending" && viewer.isEditor) return true;
+
+  return confirmServerPurchase(buyerUsername, post.id);
+}
+
 /** Server-confirmed access before showing paid template source. */
 export async function verifySourceAccess(
   post: FeedPost,
@@ -48,15 +71,5 @@ export async function verifySourceAccess(
   buyerUsername: string | null
 ): Promise<boolean> {
   if (post.type !== "code_template") return false;
-
-  if (!requiresCodePurchase(post)) {
-    return viewer.isLoggedIn;
-  }
-
-  if (!viewer.isLoggedIn || !buyerUsername) return false;
-  if (buyerUsername && isAuthor(post, buyerUsername)) return true;
-  if (viewer.username && isAuthor(post, viewer.username)) return true;
-  if (post.moderation_status === "pending" && viewer.isEditor) return true;
-
-  return confirmServerPurchase(buyerUsername, post.id);
+  return verifyPurchaseAccess(post, viewer, buyerUsername);
 }
