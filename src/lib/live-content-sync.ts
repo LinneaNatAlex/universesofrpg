@@ -1,5 +1,9 @@
 import { requiresCodePurchase } from "@/lib/posts";
 import { syncVaultedCodeToServer } from "@/lib/post-code-vault";
+import {
+  dispatchPlatformSyncFailed,
+  dispatchPlatformSyncOk,
+} from "@/lib/platform-sync-events";
 import { getPostFromStore } from "@/lib/posts-store";
 import { pushSinglePostToServer } from "@/lib/content-sync";
 import type { FeedPost } from "@/types/database";
@@ -25,24 +29,42 @@ export async function syncCreationLive(
   return { posts, source, needsSource };
 }
 
-/** Fire-and-forget live sync after local save. */
-export function scheduleCreationLiveSync(postId: string): void {
-  const post = getPostFromStore(postId);
-  if (!post) return;
-  void syncCreationLive(post);
-}
-
 export function liveSyncErrorMessage(result: LiveSyncResult): string | null {
   if (!result.posts && !result.source) {
-    return "Could not sync listing or source code to the live server.";
+    return "Could not sync to the live server. Others will not see this until sync works — check Supabase keys on Netlify.";
   }
   if (!result.posts) {
-    return "Listing saved locally but could not sync to the live server.";
+    return "Saved on this device only — could not reach the live server. Others will not see it yet.";
   }
   if (result.needsSource && !result.source) {
     return "Listing synced, but template source code did not reach the server.";
   }
   return null;
+}
+
+/** Wait for server sync, then navigate. Returns error message if sync failed. */
+export async function publishCreationLive(
+  postId: string,
+  navigate?: () => void
+): Promise<string | null> {
+  const post = getPostFromStore(postId);
+  if (!post) return "Post not found after save.";
+
+  const result = await syncCreationLive(post);
+  const error = liveSyncErrorMessage(result);
+  if (error) {
+    dispatchPlatformSyncFailed(error);
+    return error;
+  }
+
+  dispatchPlatformSyncOk();
+  navigate?.();
+  return null;
+}
+
+/** @deprecated Prefer publishCreationLive — this did not wait for sync. */
+export function scheduleCreationLiveSync(postId: string): void {
+  void publishCreationLive(postId);
 }
 
 /** RPG topics / forum stories — push to Supabase (server merges). */
@@ -53,12 +75,26 @@ export async function syncForumLive(): Promise<boolean> {
 
 export function forumLiveSyncErrorMessage(ok: boolean): string | null {
   if (ok) return null;
-  return "Topic saved locally but could not sync to the live server.";
+  return "Topic saved on this device only — could not reach the live server. Others will not see it until sync works.";
 }
 
-export function scheduleForumLiveSync(navigate?: () => void): void {
+/** Wait for server sync before navigating. Returns error message if sync failed. */
+export async function publishForumLive(navigate?: () => void): Promise<string | null> {
+  const ok = await syncForumLive();
+  const error = forumLiveSyncErrorMessage(ok);
+  if (error) {
+    dispatchPlatformSyncFailed(error);
+    return error;
+  }
+
+  dispatchPlatformSyncOk();
   navigate?.();
-  void syncForumLive();
+  return null;
+}
+
+/** @deprecated Prefer publishForumLive — this navigated before sync finished. */
+export function scheduleForumLiveSync(navigate?: () => void): void {
+  void publishForumLive(navigate);
 }
 
 /** Community discussions — push to Supabase (server merges). */
@@ -69,10 +105,22 @@ export async function syncDiscussionLive(): Promise<boolean> {
 
 export function discussionLiveSyncErrorMessage(ok: boolean): string | null {
   if (ok) return null;
-  return "Discussion saved locally but could not sync to the live server.";
+  return "Discussion saved on this device only — could not reach the live server.";
+}
+
+export async function publishDiscussionLive(navigate?: () => void): Promise<string | null> {
+  const ok = await syncDiscussionLive();
+  const error = discussionLiveSyncErrorMessage(ok);
+  if (error) {
+    dispatchPlatformSyncFailed(error);
+    return error;
+  }
+
+  dispatchPlatformSyncOk();
+  navigate?.();
+  return null;
 }
 
 export function scheduleDiscussionLiveSync(navigate?: () => void): void {
-  navigate?.();
-  void syncDiscussionLive();
+  void publishDiscussionLive(navigate);
 }

@@ -37,7 +37,7 @@ async function recordFromSession(
       : session.payment_intent?.id ?? null;
 
   await recordPlatformPurchase({
-    buyer_username: buyerUsername,
+    buyer_username: buyerUsername.trim().toLowerCase(),
     post_id: postId,
     seller_username: sellerUsername,
     amount_cents: amountCents,

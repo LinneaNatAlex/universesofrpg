@@ -9,6 +9,8 @@ import { addEditorReview } from "@/lib/editor-reviews-store";
 import { incrementEditorReviews } from "@/lib/editor-profiles-store";
 import { getEditorLevelMeta } from "@/lib/editor-constants";
 import { moderationStatusLabel } from "@/lib/moderation";
+import { CONTENT_SYNCED_EVENT } from "@/lib/content-sync";
+import { hydratePlatformContent } from "@/lib/hydrate-platform-content";
 import {
   getAllPosts,
   setPostModeration,
@@ -21,25 +23,55 @@ import { formatPrice } from "@/lib/utils";
 import type { FeedPost } from "@/types/database";
 import { Check, MessageCircle, X } from "lucide-react";
 
+function listPendingPosts(): FeedPost[] {
+  return getAllPosts().filter((p) => p.moderation_status === "pending");
+}
+
 export function EditorReviewQueue() {
   const router = useRouter();
   const { level, username, displayName, canReviewPaid } = useEditor();
   const [pending, setPending] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    let cancelled = false;
+
     const refresh = () => {
-      const posts = getAllPosts().filter((p) => p.moderation_status === "pending");
-      setPending(posts);
+      if (!cancelled) setPending(listPendingPosts());
     };
-    refresh();
-    return subscribePosts(refresh);
+
+    const pull = async () => {
+      setLoading(true);
+      await hydratePlatformContent();
+      refresh();
+      if (!cancelled) setLoading(false);
+    };
+
+    void pull();
+    const unsubPosts = subscribePosts(refresh);
+    const onSync = () => refresh();
+    window.addEventListener(CONTENT_SYNCED_EVENT, onSync);
+
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void pull();
+    }, 15_000);
+
+    return () => {
+      cancelled = true;
+      unsubPosts();
+      window.removeEventListener(CONTENT_SYNCED_EVENT, onSync);
+      clearInterval(timer);
+    };
   }, []);
 
   if (!level || !username || !displayName) return null;
 
   const meta = getEditorLevelMeta(level);
   const visible = pending.filter((p) => p.pricing === "free" || canReviewPaid);
+  const blockedPaid = pending.filter(
+    (p) => p.pricing !== "free" && !canReviewPaid
+  ).length;
 
   function handleDecision(post: FeedPost, decision: "approved" | "rejected") {
     if (!username || !displayName || !level) return;
@@ -79,10 +111,22 @@ export function EditorReviewQueue() {
           <p className="text-xs text-ink-muted mt-2">{meta.description}</p>
           <p className="text-xs text-ink-muted">Rate range: {meta.rateRange}</p>
         </div>
-        <p className="font-comic text-2xl text-comic-red">{visible.length} pending</p>
+        <p className="font-comic text-2xl text-comic-red">
+          {loading ? "…" : visible.length} pending
+        </p>
       </div>
 
-      {visible.length === 0 ? (
+      {blockedPaid > 0 && (
+        <p className="comic-panel px-4 py-2 text-xs font-comic text-comic-red text-center">
+          {blockedPaid} paid listing{blockedPaid === 1 ? "" : "s"} need Standard+ editor level.
+        </p>
+      )}
+
+      {loading ? (
+        <p className="comic-panel p-8 text-center text-ink-muted font-comic">
+          Loading review queue…
+        </p>
+      ) : visible.length === 0 ? (
         <p className="comic-panel p-8 text-center text-ink-muted font-comic">
           No posts awaiting your review.
         </p>
@@ -91,11 +135,15 @@ export function EditorReviewQueue() {
           <div key={post.id} className="comic-panel p-5 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <Link href={`/post/${post.id}`} className="font-comic text-lg text-ink hover:text-comic-red">
+                <Link
+                  href={`/post/${post.id}`}
+                  className="font-comic text-lg text-ink hover:text-comic-red"
+                >
                   {post.title}
                 </Link>
                 <p className="text-xs text-ink-muted mt-1">
-                  by @{post.author.username} · {post.type} · {moderationStatusLabel(post.moderation_status)}
+                  by @{post.author.username} · {post.type.replaceAll("_", " ")} ·{" "}
+                  {moderationStatusLabel(post.moderation_status)}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -109,11 +157,6 @@ export function EditorReviewQueue() {
             <p className="text-sm text-ink-muted italic line-clamp-3">
               {post.plot_synopsis ?? post.description}
             </p>
-            {!canReviewPaid && post.pricing !== "free" && (
-              <p className="text-xs text-comic-red font-comic">
-                Your level cannot review paid Shop listings — escalate to Standard+.
-              </p>
-            )}
             <textarea
               value={feedback[post.id] ?? ""}
               onChange={(e) => setFeedback((f) => ({ ...f, [post.id]: e.target.value }))}
@@ -131,7 +174,11 @@ export function EditorReviewQueue() {
                 <MessageCircle className="h-3.5 w-3.5 mr-1" />
                 Message creator
               </Button>
-              <Button variant="comic" size="sm" onClick={() => handleDecision(post, "approved")}>
+              <Button
+                variant="comic"
+                size="sm"
+                onClick={() => handleDecision(post, "approved")}
+              >
                 <Check className="h-3.5 w-3.5 mr-1" /> Approve
               </Button>
               <Button variant="ghost" size="sm" onClick={() => handleDecision(post, "rejected")}>

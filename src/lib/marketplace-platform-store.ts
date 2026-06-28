@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { migrateUsername } from "@/lib/persona-rename";
+import { legacyBuyerUsernameAliases, migrateUsername } from "@/lib/persona-rename";
 import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
 
 export interface ConnectAccountRecord {
@@ -32,6 +32,10 @@ const DATA_PATH = join(process.cwd(), "data", "marketplace-platform.json");
 
 function userKey(username: string) {
   return username.toLowerCase();
+}
+
+function buyerLookupKeys(buyerUsername: string): string[] {
+  return [...new Set(legacyBuyerUsernameAliases(buyerUsername).map(userKey))];
 }
 
 function emptyState(): MarketplaceFileState {
@@ -180,19 +184,23 @@ export async function recordPlatformPurchase(
 ): Promise<void> {
   const buyer = userKey(input.buyer_username);
   const postId = input.post_id;
+  const amountCents = Math.max(1, input.amount_cents ?? 0);
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
-    const { error } = await supabase.from("marketplace_purchases").upsert({
-      buyer_username: buyer,
-      post_id: postId,
-      seller_username: userKey(input.seller_username),
-      amount_cents: input.amount_cents,
-      platform_fee_cents: input.platform_fee_cents,
-      stripe_checkout_session_id: input.stripe_checkout_session_id,
-      stripe_payment_intent_id: input.stripe_payment_intent_id,
-      purchased_at: input.purchased_at,
-    });
+    const { error } = await supabase.from("marketplace_purchases").upsert(
+      {
+        buyer_username: buyer,
+        post_id: postId,
+        seller_username: userKey(input.seller_username),
+        amount_cents: amountCents,
+        platform_fee_cents: input.platform_fee_cents,
+        stripe_checkout_session_id: input.stripe_checkout_session_id,
+        stripe_payment_intent_id: input.stripe_payment_intent_id,
+        purchased_at: input.purchased_at,
+      },
+      { onConflict: "buyer_username,post_id" }
+    );
     if (error) throw new Error(error.message);
     return;
   }
@@ -206,6 +214,7 @@ export async function recordPlatformPurchase(
       ...input,
       buyer_username: buyer,
       seller_username: userKey(input.seller_username),
+      amount_cents: amountCents,
     },
     ...rest,
   ];
@@ -216,57 +225,70 @@ export async function hasPlatformPurchase(
   buyerUsername: string,
   postId: string
 ): Promise<boolean> {
-  const buyer = userKey(buyerUsername);
+  const buyers = buyerLookupKeys(buyerUsername);
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
     const { data, error } = await supabase
       .from("marketplace_purchases")
       .select("post_id")
-      .eq("buyer_username", buyer)
+      .in("buyer_username", buyers)
       .eq("post_id", postId)
-      .maybeSingle();
+      .limit(1);
     if (error) {
       console.error("[marketplace-platform] purchase lookup failed", error);
       return false;
     }
-    return Boolean(data);
+    return (data?.length ?? 0) > 0;
   }
 
   return readFileState().purchases.some(
-    (p) => userKey(p.buyer_username) === buyer && p.post_id === postId
+    (p) => buyers.includes(userKey(p.buyer_username)) && p.post_id === postId
   );
 }
 
 export async function listPlatformPurchasesForBuyer(
   buyerUsername: string
 ): Promise<PlatformPurchase[]> {
-  const buyer = userKey(buyerUsername);
+  const buyers = buyerLookupKeys(buyerUsername);
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
     const { data, error } = await supabase
       .from("marketplace_purchases")
       .select("*")
-      .eq("buyer_username", buyer)
+      .in("buyer_username", buyers)
       .order("purchased_at", { ascending: false });
     if (error) {
       console.error("[marketplace-platform] list purchases failed", error);
       return [];
     }
-    return (data ?? []).map((row) => ({
-      buyer_username: row.buyer_username,
-      post_id: row.post_id,
-      seller_username: row.seller_username,
-      amount_cents: row.amount_cents,
-      platform_fee_cents: row.platform_fee_cents,
-      stripe_checkout_session_id: row.stripe_checkout_session_id,
-      stripe_payment_intent_id: row.stripe_payment_intent_id,
-      purchased_at: row.purchased_at,
-    }));
+    const seen = new Set<string>();
+    const rows: PlatformPurchase[] = [];
+    for (const row of data ?? []) {
+      if (seen.has(row.post_id)) continue;
+      seen.add(row.post_id);
+      rows.push({
+        buyer_username: migrateUsername(row.buyer_username),
+        post_id: row.post_id,
+        seller_username: migrateUsername(row.seller_username),
+        amount_cents: row.amount_cents,
+        platform_fee_cents: row.platform_fee_cents,
+        stripe_checkout_session_id: row.stripe_checkout_session_id,
+        stripe_payment_intent_id: row.stripe_payment_intent_id,
+        purchased_at: row.purchased_at,
+      });
+    }
+    return rows;
   }
 
-  return readFileState().purchases.filter((p) => userKey(p.buyer_username) === buyer);
+  const seen = new Set<string>();
+  return readFileState().purchases.filter((p) => {
+    if (!buyers.includes(userKey(p.buyer_username))) return false;
+    if (seen.has(p.post_id)) return false;
+    seen.add(p.post_id);
+    return true;
+  });
 }
 
 export async function countPlatformPurchasesForPost(postId: string): Promise<number> {

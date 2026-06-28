@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CONTENT_SYNCED_EVENT, isContentSyncSettled } from "@/lib/content-sync";
+import { subscribeDevStore } from "@/lib/dev-store-notify";
 import { isPublicFeedPost } from "@/lib/moderation";
 import { isVisibleInPublicCatalog, type ContentViewerContext } from "@/lib/content-rating";
 import { useContentViewer } from "@/hooks/useContentViewer";
@@ -55,12 +56,14 @@ export function useFeedPosts(limit?: number): { posts: FeedPost[]; ready: boolea
     window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
     const unsubPosts = subscribePosts(refresh);
     const unsubComments = subscribeComments(refresh);
+    const unsubHotReload = subscribeDevStore("posts", refresh);
     const timeout = window.setTimeout(() => setReady(true), SYNC_FALLBACK_MS);
 
     return () => {
       window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
       unsubPosts();
       unsubComments();
+      unsubHotReload();
       window.clearTimeout(timeout);
     };
   }, [limit, ctx]);

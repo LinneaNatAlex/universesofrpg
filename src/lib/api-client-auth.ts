@@ -14,8 +14,9 @@ export async function authFetchHeaders(
     const supabase = createClient();
     const {
       data: { session },
+      error,
     } = await supabase.auth.getSession();
-    if (session?.access_token) {
+    if (!error && session?.access_token) {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
   } catch {

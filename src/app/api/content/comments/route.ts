@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { jsonLiveContent } from "@/lib/api-live-json";
 import { sanitizeCommentsPlatformState } from "@/lib/comments-platform-sanitize";
 import { getPlatformContent } from "@/lib/content-platform-store";
 import { upsertCommentsPlatformState } from "@/lib/content-platform-upsert-server";
@@ -17,7 +18,7 @@ const EMPTY: CommentsPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<CommentsPlatformState>("comments", EMPTY);
-  return NextResponse.json(
+  return jsonLiveContent(
     sanitizeCommentsPlatformState({
       custom: Array.isArray(state.custom) ? state.custom : [],
       deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],

@@ -40,7 +40,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Cookie read + refresh — avoids a network round-trip to Supabase Auth on every tab click.
-  await supabase.auth.getSession();
+  // Cookie read + refresh — avoids a network round-trip when offline.
+  try {
+    await supabase.auth.getSession();
+  } catch {
+    // Dev reload / offline — keep the request moving.
+  }
   return supabaseResponse;
 }

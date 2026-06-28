@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useProfileDbUsername } from "@/hooks/useProfileDbUsername";
 import { needsProfileCompletion, resolvePublicUsername } from "@/lib/auth-profile";
+import { isRetryableAuthFailure } from "@/lib/supabase/auth-errors";
 import { createClient } from "@/lib/supabase/client";
 
 /** Redirect incomplete OAuth signups — only sign out when the auth user no longer exists. */
@@ -32,15 +33,33 @@ export function useInvalidSessionCleanup() {
     }
 
     void (async () => {
-      const supabase = createClient();
-      const {
-        data: { user: validated },
-        error,
-      } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const {
+          data: { user: validated },
+          error,
+        } = await supabase.auth.getUser();
 
-      if (error || !validated) {
-        await supabase.auth.signOut();
-        router.refresh();
+        if (error) {
+          if (isRetryableAuthFailure(error)) return;
+          if (!validated) {
+            await supabase.auth.signOut();
+            router.refresh();
+          }
+          return;
+        }
+
+        if (!validated) {
+          await supabase.auth.signOut();
+          router.refresh();
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development" && isRetryableAuthFailure(error)) {
+          return;
+        }
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[auth] session validation skipped:", error);
+        }
       }
     })();
   }, [loading, profileLoading, isLoggedIn, user, dbUsername, router, pathname]);

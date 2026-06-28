@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { jsonLiveContent } from "@/lib/api-live-json";
 import { getPlatformContent } from "@/lib/content-platform-store";
 import { upsertDiscussionsPlatformState } from "@/lib/content-platform-upsert-server";
 import { sanitizeDiscussionsPlatformState } from "@/lib/discussions-platform-sanitize";
@@ -19,7 +20,7 @@ const EMPTY: DiscussionsPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<DiscussionsPlatformState>("discussions", EMPTY);
-  return NextResponse.json(
+  return jsonLiveContent(
     sanitizeDiscussionsPlatformState({
       customThreads: Array.isArray(state.customThreads) ? state.customThreads : [],
       customReplies: Array.isArray(state.customReplies) ? state.customReplies : [],

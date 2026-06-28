@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { canReviewPaidContent } from "@/lib/editor-constants";
 import {
@@ -12,10 +13,16 @@ import type { EditorLevel, EditorProfile } from "@/types/database";
 
 export function useEditor() {
   const { isLoggedIn, user } = useAdmin();
+  const account = useAccountIdentity();
   const identity = useActingIdentity();
   const [profile, setProfile] = useState<EditorProfile | null | undefined>(undefined);
 
-  const username = identity?.username ?? user?.email?.split("@")[0] ?? null;
+  /** Editor licence is on the signed-in account — not admin demo personas. */
+  const username =
+    account?.username ??
+    identity?.username ??
+    user?.email?.split("@")[0] ??
+    null;
 
   useEffect(() => {
     if (!username) {
@@ -39,6 +46,10 @@ export function useEditor() {
     level,
     canReviewPaid: level ? canReviewPaidContent(level) : false,
     username,
-    displayName: identity?.displayName ?? editorProfile?.display_name ?? null,
+    displayName:
+      editorProfile?.display_name ??
+      account?.displayName ??
+      identity?.displayName ??
+      null,
   };
 }

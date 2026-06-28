@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
+import { useAccountIdentity } from "@/hooks/useAccountIdentity";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationListItem } from "@/components/notifications/NotificationListItem";
@@ -9,8 +10,10 @@ import { markAllNotificationsRead } from "@/lib/notifications-store";
 import { cn } from "@/lib/utils";
 
 export function NotificationBell() {
+  const account = useAccountIdentity();
   const identity = useActingIdentity();
-  const { items, unreadCount } = useNotifications(identity?.username ?? null);
+  const notificationUsername = account?.username ?? identity?.username ?? null;
+  const { items, unreadCount } = useNotifications(notificationUsername);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -24,7 +27,7 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [open]);
 
-  if (!identity?.username) return null;
+  if (!notificationUsername) return null;
 
   return (
     <div className="relative" ref={ref}>
@@ -59,7 +62,7 @@ export function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={() => markAllNotificationsRead(identity.username)}
+                onClick={() => markAllNotificationsRead(notificationUsername)}
                 className="text-[10px] font-comic text-comic-red hover:underline shrink-0"
               >
                 Mark all read

@@ -43,15 +43,9 @@ export function getTemplatePreviewBundleForViewer(
   post: FeedPost,
   fullSourceAllowed: boolean
 ): PostCodeBundle | null {
-  const publicBundle = getPublicTemplatePreviewBundle(post);
-  if (publicBundle) return publicBundle;
-
   if (fullSourceAllowed) {
-    const listing = normalizeFreeCodeListing(post);
-    if (!requiresCodePurchase(listing)) {
-      const vaulted = getVaultedCode(post.id);
-      if (vaulted) return vaulted;
-    }
+    const vaulted = getVaultedCode(post.id);
+    if (vaulted) return vaulted;
 
     const html = post.html_code?.trim();
     const css = post.css_code?.trim();
@@ -64,7 +58,7 @@ export function getTemplatePreviewBundleForViewer(
     }
   }
 
-  return null;
+  return getPublicTemplatePreviewBundle(post);
 }
 
 /** Copy inline source into preview_* fields so live demo survives paid-code vaulting + sync. */

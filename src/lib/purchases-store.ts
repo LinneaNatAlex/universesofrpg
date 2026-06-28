@@ -56,18 +56,23 @@ export function getPurchasedPostIds(username: string): string[] {
   return [...getPurchasedSet(username)];
 }
 
-export function syncPurchasedPostIds(username: string, postIds: string[]): void {
-  const set = getPurchasedSet(username);
-  let changed = false;
-  for (const id of postIds) {
-    if (!set.has(id)) {
-      set.add(id);
-      changed = true;
-    }
+/** Replace local cache with the server-confirmed purchase list (removes stale entries). */
+export function setServerPurchasedPostIds(username: string, postIds: string[]): void {
+  const key = username.toLowerCase();
+  const next = new Set(postIds);
+  const prev = getPurchasedSet(key);
+  const changed =
+    next.size !== prev.size || [...next].some((id) => !prev.has(id));
+  purchasedByUser.set(key, next);
+  if (changed) {
+    persist(key);
+    notify();
   }
-  if (!changed) return;
-  persist(username);
-  notify();
+}
+
+/** @deprecated Prefer setServerPurchasedPostIds — this only adds and never removes stale ids. */
+export function syncPurchasedPostIds(username: string, postIds: string[]): void {
+  setServerPurchasedPostIds(username, postIds);
 }
 
 export function recordPurchase(username: string, postId: string): void {
@@ -115,17 +120,10 @@ export async function hydratePurchasesFromServer(username: string): Promise<void
     if (!res.ok) return;
 
     const data = (await res.json()) as { post_ids?: string[] };
-    const set = getPurchasedSet(key);
-    let changed = false;
-    for (const postId of data.post_ids ?? []) {
-      if (!set.has(postId)) {
-        set.add(postId);
-        changed = true;
-      }
-    }
-    if (changed) {
-      persist(key);
-      notify();
+    const postIds = data.post_ids ?? [];
+    // Only replace local cache when the server returns rows — empty may be lag or a username mismatch.
+    if (postIds.length > 0) {
+      setServerPurchasedPostIds(key, postIds);
     }
   } catch {
     // offline or auth — keep local cache

@@ -2,6 +2,7 @@ import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { isFriend } from "@/lib/friends-store";
 import { readJson, writeJson } from "@/lib/browser-storage";
 import { pushForumsPlatformState, scheduleForumsPlatformPush } from "@/lib/content-sync";
+import { notifyDevStore, pingDevStoreAfterHotReload } from "@/lib/dev-store-notify";
 import { mergeRpgForumList } from "@/lib/forums-platform-merge";
 import { findUserByUsername } from "@/lib/discover-users";
 import { MOCK_FORUMS } from "@/lib/mock-data";
@@ -37,6 +38,7 @@ const listeners = new Set<Listener>();
 
 function notify() {
   listeners.forEach((l) => l());
+  notifyDevStore("forums");
 }
 
 function sortForums(list: RpgForum[]): RpgForum[] {
@@ -156,14 +158,17 @@ export function applyForumsPersistState(state: ForumsState): void {
     deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
   });
   storageLoaded = false;
-  forums = [...MOCK_FORUMS];
-  ensureLoaded();
+  mergeForums();
+  storageLoaded = true;
   notify();
 }
 
 export async function syncForumsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const { pushForumsPlatformState } = await import("@/lib/content-sync");
+  const { pushForumsPlatformState, waitForForumsHydration } = await import(
+    "@/lib/content-sync"
+  );
+  await waitForForumsHydration();
   return pushForumsPlatformState(buildForumsPersistState());
 }
 
@@ -576,7 +581,6 @@ export function updateForumPost(
   post.updated_at = new Date().toISOString();
   saveForumChanges(forum);
   notify();
-  void syncForumsToServer();
   return post;
 }
 
@@ -719,4 +723,9 @@ export function deleteForum(forumId: string): boolean {
   notify();
   void syncForumsToServer();
   return true;
+}
+
+if (typeof window !== "undefined") {
+  ensureLoaded();
+  pingDevStoreAfterHotReload("forums");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { addPost, updatePost } from "@/lib/posts-store";
@@ -44,6 +44,21 @@ const DEFAULT_CSS = `.hero {
 
 const DEFAULT_JS = `// Interactive RPG elements`;
 
+function editorDefaults(initialValues?: CodePlaygroundInitialValues) {
+  return {
+    html: initialValues?.html?.trim() ? initialValues.html : DEFAULT_HTML,
+    css: initialValues?.css?.trim() ? initialValues.css : DEFAULT_CSS,
+    js: initialValues?.js?.trim() ? initialValues.js : DEFAULT_JS,
+    title: initialValues?.title ?? "",
+    description: initialValues?.description ?? "",
+    coverUrl: initialValues?.coverUrl ?? "",
+    musicUrl: initialValues?.musicUrl ?? "",
+    templateReadme: initialValues?.templateReadme?.trim() ?? "",
+    codeLocked: initialValues?.codeLocked ?? false,
+    containsSexualContent: initialValues?.containsSexualContent ?? false,
+  };
+}
+
 export interface CodePlaygroundInitialValues {
   title: string;
   description: string;
@@ -84,38 +99,45 @@ export function CodePlayground({
 }: CodePlaygroundProps) {
   const identity = useActingIdentity();
   const isEditing = Boolean(editPostId);
+  const seeded = editorDefaults(initialValues);
   const [tab, setTab] = useState<Tab>("html");
-  const [html, setHtml] = useState(DEFAULT_HTML);
-  const [css, setCss] = useState(DEFAULT_CSS);
-  const [js, setJs] = useState(DEFAULT_JS);
+  const [html, setHtml] = useState(seeded.html);
+  const [css, setCss] = useState(seeded.css);
+  const [js, setJs] = useState(seeded.js);
   const [showPreview, setShowPreview] = useState(true);
-  const [codeLocked, setCodeLocked] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [musicUrl, setMusicUrl] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
-  const [templateReadme, setTemplateReadme] = useState("");
-  const [containsSexualLocal, setContainsSexualLocal] = useState(false);
+  const [codeLocked, setCodeLocked] = useState(seeded.codeLocked);
+  const [title, setTitle] = useState(seeded.title);
+  const [description, setDescription] = useState(seeded.description);
+  const [musicUrl, setMusicUrl] = useState(seeded.musicUrl);
+  const [coverUrl, setCoverUrl] = useState(seeded.coverUrl);
+  const [templateReadme, setTemplateReadme] = useState(seeded.templateReadme);
+  const [containsSexualLocal, setContainsSexualLocal] = useState(seeded.containsSexualContent);
   const containsSexualContent = containsSexualProp ?? containsSexualLocal;
   const setContainsSexualContent =
     onContainsSexualContentChange ?? setContainsSexualLocal;
+  const initializedFromProps = useRef(Boolean(initialValues));
 
   useEffect(() => {
-    if (!initialValues) return;
-    setTitle(initialValues.title);
-    setDescription(initialValues.description);
-    setHtml(initialValues.html || DEFAULT_HTML);
-    setCss(initialValues.css || DEFAULT_CSS);
-    setJs(initialValues.js || DEFAULT_JS);
-    setCoverUrl(initialValues.coverUrl ?? "");
-    setMusicUrl(initialValues.musicUrl ?? "");
-    const readme = initialValues.templateReadme?.trim() ?? "";
-    setTemplateReadme(readme);
-    setCodeLocked(initialValues.codeLocked ?? false);
+    if (!initialValues || initializedFromProps.current) return;
+    const next = editorDefaults(initialValues);
+    setTitle(next.title);
+    setDescription(next.description);
+    setHtml(next.html);
+    setCss(next.css);
+    setJs(next.js);
+    setCoverUrl(next.coverUrl);
+    setMusicUrl(next.musicUrl);
+    setTemplateReadme(next.templateReadme);
+    setCodeLocked(next.codeLocked);
     if (initialValues.containsSexualContent !== undefined) {
       setContainsSexualContent(initialValues.containsSexualContent);
     }
+    initializedFromProps.current = true;
   }, [initialValues, setContainsSexualContent]);
+
+  useEffect(() => {
+    if (pricing !== "free") setCodeLocked(true);
+  }, [pricing]);
 
   async function handlePublish() {
     if (!title.trim()) {
@@ -133,7 +155,9 @@ export function CodePlayground({
       return;
     }
 
-    const moderation = initialModerationStatus(pricing);
+    const isPaidListing = pricing !== "free" || codeLocked;
+    const listingPricing: PricingType = isPaidListing ? "one_time" : "free";
+    const moderation = initialModerationStatus(listingPricing);
     const payload = {
       type: "code_template" as const,
       title: title.trim(),
@@ -147,9 +171,9 @@ export function CodePlayground({
       preview_image_url: coverUrl.trim(),
       book_cover_url: null,
       invite_token: null,
-      pricing,
-      price_cents: pricing === "free" ? 0 : priceCents,
-      is_code_locked: pricing === "free" ? false : true,
+      pricing: listingPricing,
+      price_cents: listingPricing === "free" ? 0 : priceCents,
+      is_code_locked: listingPricing !== "free",
       moderation_status: moderation,
       is_ai_generated: false,
       tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
@@ -177,9 +201,9 @@ export function CodePlayground({
           preview_image_url: coverUrl.trim(),
           book_cover_url: null,
           invite_token: null,
-          pricing,
-          price_cents: pricing === "free" ? 0 : priceCents,
-          is_code_locked: pricing === "free" ? false : true,
+          pricing: listingPricing,
+          price_cents: listingPricing === "free" ? 0 : priceCents,
+          is_code_locked: listingPricing !== "free",
           is_ai_generated: false,
           tags: saveToCharacterCreations ? ["profile", "code", "character"] : ["profile", "code"],
           style_tags: [],

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { isRetryableAuthFailure } from "@/lib/supabase/auth-errors";
 
 /** Wait until Supabase exposes an access token (or timeout). */
 export async function waitForAuthToken(maxMs = 4_000): Promise<string | null> {
@@ -13,10 +14,12 @@ export async function waitForAuthToken(maxMs = 4_000): Promise<string | null> {
     try {
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession();
+      if (error && isRetryableAuthFailure(error)) return null;
       if (session?.access_token) return session.access_token;
-    } catch {
-      // Retry.
+    } catch (error) {
+      if (isRetryableAuthFailure(error)) return null;
     }
     await new Promise((r) => setTimeout(r, 200));
   }

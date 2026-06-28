@@ -21,7 +21,9 @@ import { ContentRatingDeclaration } from "@/components/content/ContentRatingDecl
 import { MatureContentGate } from "@/components/content/MatureContentGate";
 import { isFriend } from "@/lib/friends-store";
 import {
-  scheduleForumLiveSync,
+  forumLiveSyncErrorMessage,
+  publishForumLive,
+  syncForumLive,
 } from "@/lib/live-content-sync";
 import {
   addForumChapter,
@@ -148,9 +150,10 @@ export function NewForumForm() {
     return <LoginCTA message="You must be logged in to start an RPG topic." />;
   }
 
-  function finishForumSync(navigate: () => void) {
+  async function finishForumSync(navigate: () => void) {
+    const syncError = await publishForumLive(navigate);
     setSubmitting(false);
-    scheduleForumLiveSync(navigate);
+    if (syncError) setError(syncError);
   }
 
   async function handleCreate() {
@@ -552,6 +555,7 @@ export function ForumDetail({ forumId }: { forumId: string }) {
   const [activeChapter, setActiveChapter] = useState(0);
   const [reply, setReply] = useState("");
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [replySyncing, setReplySyncing] = useState(false);
   const [purchaseTick, setPurchaseTick] = useState(0);
 
   useEffect(() => {
@@ -656,7 +660,7 @@ export function ForumDetail({ forumId }: { forumId: string }) {
     ? getUserTopicCharacter(forum, identity.username)
     : undefined;
 
-  function handleReply() {
+  async function handleReply() {
     setReplyError(null);
     if (!reply.trim()) {
       setReplyError("Write something before posting.");
@@ -671,12 +675,19 @@ export function ForumDetail({ forumId }: { forumId: string }) {
       return;
     }
 
-    const result = addForumReply(forumId, activeChapter, identity.username, reply);
+    const text = reply.trim();
+    const result = addForumReply(forumId, activeChapter, identity.username, text);
     if (!result) {
       setReplyError("Could not post reply. Only invited members can write here.");
       return;
     }
     setReply("");
+    setReplySyncing(true);
+    const ok = await syncForumLive();
+    setReplySyncing(false);
+    if (!ok) {
+      setReplyError(forumLiveSyncErrorMessage(false));
+    }
   }
 
   return (
@@ -806,8 +817,8 @@ export function ForumDetail({ forumId }: { forumId: string }) {
             className="w-full border-2 border-ink px-3 py-2 text-sm bg-surface"
           />
           {replyError && <p className="text-xs text-comic-red">{replyError}</p>}
-          <Button variant="comic" onClick={handleReply}>
-            Post reply
+          <Button variant="comic" onClick={() => void handleReply()} disabled={replySyncing}>
+            {replySyncing ? "Syncing…" : "Post reply"}
           </Button>
         </div>
       ) : forum.is_locked ? (

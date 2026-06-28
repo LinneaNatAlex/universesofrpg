@@ -1,8 +1,11 @@
 import type { User } from "@supabase/supabase-js";
 
-/** Comma-separated admin emails — set NEXT_PUBLIC_ADMIN_EMAILS in .env.local */
+/** Comma-separated admin emails — NEXT_PUBLIC_* for client; ADMIN_EMAILS for server-only fallback. */
 export function getAdminEmails(): string[] {
-  const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "";
+  const raw =
+    process.env.ADMIN_EMAILS ??
+    process.env.NEXT_PUBLIC_ADMIN_EMAILS ??
+    "";
   return raw
     .split(",")
     .map((e) => e.trim().toLowerCase())

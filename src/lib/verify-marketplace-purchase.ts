@@ -3,7 +3,7 @@ import {
   requiresCodePurchase,
   type PostViewerContext,
 } from "@/lib/posts";
-import { hasPurchased, recordPurchase, revokePurchase } from "@/lib/purchases-store";
+import { hasPurchased, recordPurchase } from "@/lib/purchases-store";
 import type { FeedPost } from "@/types/database";
 
 async function confirmServerPurchase(
@@ -21,7 +21,7 @@ async function confirmServerPurchase(
       cache: "no-store",
     });
     if (!res.ok) {
-      // Offline / auth hiccup — keep last known local state for this user only.
+      // Auth/network hiccup — keep last confirmed local cache for this persona.
       return hasPurchased(buyerUsername, postId);
     }
 
@@ -30,8 +30,8 @@ async function confirmServerPurchase(
       recordPurchase(buyerUsername, postId);
       return true;
     }
-    revokePurchase(buyerUsername, postId);
-    return false;
+    // Server empty — keep Stripe return / local cache (per-persona key) until sync catches up.
+    return hasPurchased(buyerUsername, postId);
   } catch {
     return hasPurchased(buyerUsername, postId);
   }
@@ -54,7 +54,8 @@ export async function verifySourceAccess(
   }
 
   if (!viewer.isLoggedIn || !buyerUsername) return false;
-  if (isAuthor(post, buyerUsername)) return true;
+  if (buyerUsername && isAuthor(post, buyerUsername)) return true;
+  if (viewer.username && isAuthor(post, viewer.username)) return true;
   if (post.moderation_status === "pending" && viewer.isEditor) return true;
 
   return confirmServerPurchase(buyerUsername, post.id);

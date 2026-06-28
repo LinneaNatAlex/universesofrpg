@@ -32,6 +32,7 @@ interface CodeSourcePanelProps {
 export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
+  /** Stripe records the buyer as whoever was active when checkout started (demo persona or account). */
   const buyerUsername = identity?.username ?? null;
   const { isEditor } = useEditor();
   const [tab, setTab] = useState<Tab>("html");
@@ -41,6 +42,8 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   const [parentalConsent, setParentalConsent] = useState(false);
 
   const needsPurchase = requiresCodePurchase(post);
+  const isAuthor =
+    buyerUsername?.toLowerCase() === post.author.username.toLowerCase();
   const viewer = useMemo(
     () => ({
       isLoggedIn,
@@ -54,7 +57,7 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
     post.id,
     unlocked,
     buyerUsername,
-    needsPurchase
+    needsPurchase && !isAuthor
   );
 
   const refreshAccess = useCallback(async () => {

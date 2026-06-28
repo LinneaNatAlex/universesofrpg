@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { jsonLiveContent } from "@/lib/api-live-json";
 import { sanitizeHomepageChatPlatformState } from "@/lib/homepage-chat-platform-sanitize";
 import { getPlatformContent } from "@/lib/content-platform-store";
 import { upsertHomepageChatPlatformState } from "@/lib/content-platform-upsert-server";
@@ -19,7 +20,7 @@ const EMPTY: HomepageChatPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<HomepageChatPlatformState>("homepage_chat", EMPTY);
-    return NextResponse.json(
+  return jsonLiveContent(
     sanitizeHomepageChatPlatformState({
       messages: Array.isArray(state.messages) ? state.messages : [],
       deletedIds: Array.isArray(state.deletedIds) ? state.deletedIds : [],

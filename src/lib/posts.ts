@@ -4,7 +4,7 @@ import {
 } from "@/lib/content-rating";
 import { isPublicFeedPost, normalizeFreeCodeListing } from "@/lib/moderation";
 import { getCommentCount } from "@/lib/mock-comments";
-import { getVaultedCode } from "@/lib/post-code-vault";
+import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
 import {
   getPublicTemplatePreviewBundle,
   getTemplatePreviewBundleForViewer,
@@ -39,6 +39,22 @@ export function getPostForEditing(id: string): FeedPost | undefined {
     html_code: merged.html_code ?? merged.preview_html_code ?? null,
     css_code: merged.css_code ?? merged.preview_css_code ?? null,
     js_code: merged.js_code ?? merged.preview_js_code ?? null,
+  };
+}
+
+/** Full source from this browser — vault + inline fields, no network wait. */
+export function getLocalTemplateCodeBundle(id: string): PostCodeBundle | null {
+  const post = getPostForEditing(id);
+  if (!post || post.type !== "code_template") return null;
+
+  const html = post.html_code?.trim();
+  const css = post.css_code?.trim();
+  if (!html || !css) return null;
+
+  return {
+    html_code: html,
+    css_code: css,
+    js_code: post.js_code ?? null,
   };
 }
 

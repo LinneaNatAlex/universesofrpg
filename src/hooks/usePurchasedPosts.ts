@@ -7,9 +7,9 @@ import { getPostById } from "@/lib/posts";
 import { subscribePosts } from "@/lib/posts-store";
 import {
   getPurchasedPostIds,
-  hydratePurchasesFromServer,
+  setServerPurchasedPostIds,
   subscribePurchases,
-  syncPurchasedPostIds,
+  hydratePurchasesFromServer,
 } from "@/lib/purchases-store";
 import type { PlatformPurchase } from "@/lib/marketplace-platform-store";
 import type { FeedPost } from "@/types/database";
@@ -60,6 +60,81 @@ function buildEntries(
   }));
 }
 
+function buildSyntheticPurchases(
+  postIds: string[],
+  serverPurchases: PlatformPurchase[],
+  buyerUsername: string
+): PlatformPurchase[] {
+  const byPost = new Map(serverPurchases.map((p) => [p.post_id, p]));
+
+  return postIds.map((id) => {
+    const existing = byPost.get(id);
+    if (existing) return existing;
+
+    const post = getPostById(id);
+    return {
+      buyer_username: buyerUsername,
+      post_id: id,
+      seller_username: post?.author.username ?? "",
+      amount_cents: 0,
+      platform_fee_cents: 0,
+      stripe_checkout_session_id: null,
+      stripe_payment_intent_id: null,
+      purchased_at: new Date(0).toISOString(),
+    };
+  });
+}
+
+function mergeLibraryWithLocal(
+  username: string,
+  server: {
+    postIds: string[];
+    purchases: PlatformPurchase[];
+    posts: FeedPost[];
+  } | null
+): {
+  postIds: string[];
+  purchases: PlatformPurchase[];
+  posts: FeedPost[];
+} {
+  const key = username.toLowerCase();
+  const localIds = getPurchasedPostIds(key);
+
+  if (!server) {
+    const purchases = buildSyntheticPurchases(localIds, [], key);
+    return {
+      postIds: localIds,
+      purchases,
+      posts: mergePostSources(localIds, []),
+    };
+  }
+
+  if (server.postIds.length > 0 || server.purchases.length > 0) {
+    setServerPurchasedPostIds(key, server.postIds);
+    const purchases =
+      server.purchases.length > 0
+        ? server.purchases
+        : buildSyntheticPurchases(server.postIds, [], key);
+    return {
+      postIds: server.postIds,
+      purchases,
+      posts: mergePostSources(server.postIds, server.posts),
+    };
+  }
+
+  if (localIds.length > 0) {
+    const purchases = buildSyntheticPurchases(localIds, server.purchases, key);
+    return {
+      postIds: localIds,
+      purchases,
+      posts: mergePostSources(localIds, server.posts),
+    };
+  }
+
+  setServerPurchasedPostIds(key, []);
+  return { postIds: [], purchases: [], posts: [] };
+}
+
 async function fetchPurchasesForUser(
   username: string,
   headers: Record<string, string>
@@ -83,97 +158,31 @@ async function fetchPurchasesForUser(
     posts?: FeedPost[];
   };
 
-  return {
-    postIds: data.post_ids ?? [],
-    purchases: Array.isArray(data.purchases) ? data.purchases : [],
-    posts: Array.isArray(data.posts) ? data.posts : [],
-  };
+  const postIds = data.post_ids ?? [];
+  const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+  const posts = Array.isArray(data.posts) ? data.posts : [];
+
+  return { postIds, purchases, posts };
 }
 
-function mergeLibraries(
-  libraries: Array<{
-    postIds: string[];
-    purchases: PlatformPurchase[];
-    posts: FeedPost[];
-  }>
-): { postIds: string[]; purchases: PlatformPurchase[]; posts: FeedPost[] } {
-  const postIds = new Set<string>();
-  const purchases: PlatformPurchase[] = [];
-  const posts: FeedPost[] = [];
-  const seenPosts = new Set<string>();
-
-  for (const lib of libraries) {
-    for (const id of lib.postIds) postIds.add(id);
-    for (const purchase of lib.purchases) {
-      if (!purchases.some((p) => p.post_id === purchase.post_id)) {
-        purchases.push(purchase);
-      }
-    }
-    for (const post of lib.posts) {
-      if (!seenPosts.has(post.id)) {
-        seenPosts.add(post.id);
-        posts.push(post);
-      }
-    }
-  }
-
-  return { postIds: [...postIds], purchases, posts };
-}
-
-async function fetchPurchasedLibrary(
-  username: string,
-  legacyUsername?: string | null
-): Promise<{
+/** Server is source of truth when it returns rows; otherwise keep this profile's local checkout cache. */
+async function fetchPurchasedLibrary(username: string): Promise<{
   postIds: string[];
   purchases: PlatformPurchase[];
   posts: FeedPost[];
 }> {
   await hydratePurchasesFromServer(username);
-  if (legacyUsername && legacyUsername !== username) {
-    await hydratePurchasesFromServer(legacyUsername);
-  }
 
   try {
     const headers = await authFetchHeaders();
-    const primary = await fetchPurchasesForUser(username, headers);
-    const legacy =
-      legacyUsername && legacyUsername !== username
-        ? await fetchPurchasesForUser(legacyUsername, headers)
-        : null;
-
-    if (!primary && !legacy) {
-      const postIds = [
-        ...new Set([
-          ...getPurchasedPostIds(username),
-          ...(legacyUsername ? getPurchasedPostIds(legacyUsername) : []),
-        ]),
-      ];
-      return { postIds, purchases: [], posts: mergePostSources(postIds, []) };
-    }
-
-    const merged = mergeLibraries([primary, legacy].filter(Boolean) as Array<{
-      postIds: string[];
-      purchases: PlatformPurchase[];
-      posts: FeedPost[];
-    }>);
-
-    syncPurchasedPostIds(username, merged.postIds);
-
-    return {
-      postIds: merged.postIds,
-      purchases: merged.purchases,
-      posts: mergePostSources(merged.postIds, merged.posts),
-    };
+    const library = await fetchPurchasesForUser(username, headers);
+    return mergeLibraryWithLocal(username, library);
   } catch {
-    const postIds = getPurchasedPostIds(username);
-    return { postIds, purchases: [], posts: mergePostSources(postIds, []) };
+    return mergeLibraryWithLocal(username, null);
   }
 }
 
-export function usePurchasedPosts(
-  username: string | null,
-  legacyUsername?: string | null
-): {
+export function usePurchasedPosts(username: string | null): {
   posts: FeedPost[];
   entries: PurchasedLibraryEntry[];
   purchaseCount: number;
@@ -203,18 +212,10 @@ export function usePurchasedPosts(
     }) => {
       if (cancelled) return;
       currentIds = library.postIds;
-      setPurchaseCount(library.postIds.length);
+      const nextEntries = buildEntries(library.purchases, library.posts);
+      setPurchaseCount(nextEntries.length);
       setPosts(library.posts);
-      setEntries(
-        library.purchases.length > 0
-          ? buildEntries(library.purchases, library.posts)
-          : library.postIds.map((postId) => ({
-              postId,
-              post: library.posts.find((p) => p.id === postId) ?? null,
-              sellerUsername: "",
-              purchasedAt: "",
-            }))
-      );
+      setEntries(nextEntries);
     };
 
     const refreshLocalPosts = () => {
@@ -231,7 +232,7 @@ export function usePurchasedPosts(
 
     const refreshIds = async () => {
       setLoading(true);
-      const library = await fetchPurchasedLibrary(username, legacyUsername);
+      const library = await fetchPurchasedLibrary(username);
       applyLibrary(library);
       setLoading(false);
     };
@@ -247,7 +248,7 @@ export function usePurchasedPosts(
       unsubPurchases();
       unsubPosts();
     };
-  }, [username, legacyUsername]);
+  }, [username]);
 
   return { posts, entries, purchaseCount, loading };
 }

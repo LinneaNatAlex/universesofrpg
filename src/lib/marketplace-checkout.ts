@@ -38,7 +38,11 @@ export async function startMarketplaceCheckout(
       return { ok: false, error: "Stripe checkout URL missing." };
     }
 
-    savePendingMarketplaceCheckout(item.post_id, item.seller_username);
+    savePendingMarketplaceCheckout(
+      item.post_id,
+      item.seller_username,
+      buyingAsUsername?.trim().toLowerCase() ?? ""
+    );
     window.location.href = data.url;
     return { ok: true };
   } catch {

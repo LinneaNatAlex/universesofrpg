@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { jsonLiveContent } from "@/lib/api-live-json";
 import { getPlatformContent } from "@/lib/content-platform-store";
 import { upsertForumsPlatformState } from "@/lib/content-platform-upsert-server";
 import { sanitizeForumsPlatformState } from "@/lib/forums-platform-sanitize";
@@ -19,7 +20,7 @@ const EMPTY: ForumsPlatformState = {
 
 export async function GET() {
   const state = await getPlatformContent<ForumsPlatformState>("forums", EMPTY);
-  return NextResponse.json(
+  return jsonLiveContent(
     sanitizeForumsPlatformState({
       custom: Array.isArray(state.custom) ? state.custom : [],
       deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],

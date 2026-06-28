@@ -4,7 +4,8 @@ export type NotificationType =
   | "topic_reply"
   | "topic_chapter"
   | "post_comment"
-  | "post_like";
+  | "post_like"
+  | "editor_review";
 
 interface NotificationBase {
   id: string;
@@ -56,11 +57,21 @@ export interface PostLikeNotification extends NotificationBase {
   actors: { username: string; display_name: string }[];
 }
 
+export interface EditorReviewNotification extends NotificationBase {
+  type: "editor_review";
+  post_id: string;
+  post_title: string;
+  post_type: string;
+  creator_username: string;
+  creator_display_name: string;
+}
+
 export type UserNotification =
   | TopicReplyNotification
   | TopicChapterNotification
   | PostCommentNotification
-  | PostLikeNotification;
+  | PostLikeNotification
+  | EditorReviewNotification;
 
 const STORAGE_KEY = "uorpg-notifications";
 
@@ -106,7 +117,9 @@ function migrateNotification(raw: UserNotification): UserNotification {
   };
 }
 
-function mergeCommentNotifications(list: UserNotification[]): UserNotification[] {
+function mergeCommentNotifications(
+  list: UserNotification[],
+): UserNotification[] {
   const merged = new Map<string, PostCommentNotification>();
   const rest: UserNotification[] = [];
 
@@ -129,8 +142,7 @@ function mergeCommentNotifications(list: UserNotification[]): UserNotification[]
       }
     }
     existing.actors.sort(
-      (a, b) =>
-        existing.actors.indexOf(a) - existing.actors.indexOf(b)
+      (a, b) => existing.actors.indexOf(a) - existing.actors.indexOf(b),
     );
     if (new Date(item.created_at) > new Date(existing.created_at)) {
       existing.created_at = item.created_at;
@@ -174,7 +186,10 @@ export function getNotifications(username: string): UserNotification[] {
   const key = userKey(username);
   return notifications
     .filter((n) => userKey(n.to_username) === key)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
 }
 
 export function getUnreadNotificationCount(username: string): number {
@@ -183,7 +198,7 @@ export function getUnreadNotificationCount(username: string): number {
 
 export function formatActorNames(
   actors: { display_name: string }[],
-  maxNames = 2
+  maxNames = 2,
 ): string {
   if (actors.length === 0) return "Someone";
   if (actors.length === 1) return actors[0].display_name;
@@ -204,7 +219,7 @@ export function formatActorNames(
 /** @deprecated Use formatActorNames */
 export function formatLikeActorNames(
   actors: PostLikeNotification["actors"],
-  maxNames = 2
+  maxNames = 2,
 ): string {
   return formatActorNames(actors, maxNames);
 }
@@ -224,7 +239,10 @@ export function addTopicReplyNotification(input: {
   if (to === author) return;
 
   const duplicate = notifications.some(
-    (n) => n.type === "topic_reply" && n.post_id === input.post_id && userKey(n.to_username) === to
+    (n) =>
+      n.type === "topic_reply" &&
+      n.post_id === input.post_id &&
+      userKey(n.to_username) === to,
   );
   if (duplicate) return;
 
@@ -264,7 +282,10 @@ export function addTopicChapterNotification(input: {
 
   const dedupeId = `ch-${input.forum_id}-${input.chapter_number}`;
   const duplicate = notifications.some(
-    (n) => n.type === "topic_chapter" && n.post_id === dedupeId && userKey(n.to_username) === to
+    (n) =>
+      n.type === "topic_chapter" &&
+      n.post_id === dedupeId &&
+      userKey(n.to_username) === to,
   );
   if (duplicate) return;
 
@@ -314,12 +335,12 @@ export function addPostCommentNotification(input: {
     (n): n is PostCommentNotification =>
       n.type === "post_comment" &&
       userKey(n.to_username) === to &&
-      n.post_id === input.post_id
+      n.post_id === input.post_id,
   );
 
   if (existing) {
     const duplicateComment = existing.actors.some(
-      (a) => a.comment_id === input.comment_id
+      (a) => a.comment_id === input.comment_id,
     );
     if (duplicateComment) return;
 
@@ -373,7 +394,7 @@ export function addPostLikeNotification(input: {
     (n): n is PostLikeNotification =>
       n.type === "post_like" &&
       userKey(n.to_username) === to &&
-      n.post_id === input.post_id
+      n.post_id === input.post_id,
   );
 
   if (existing) {
@@ -414,6 +435,56 @@ export function addPostLikeNotification(input: {
   notify();
 }
 
+export function addEditorReviewNotification(input: {
+  to_username: string;
+  post_id: string;
+  post_title: string;
+  post_type: string;
+  creator_username: string;
+  creator_display_name: string;
+}): void {
+  ensureLoaded();
+  const to = userKey(input.to_username);
+
+  const duplicate = notifications.some(
+    (n) =>
+      n.type === "editor_review" &&
+      n.post_id === input.post_id &&
+      userKey(n.to_username) === to
+  );
+  if (duplicate) return;
+
+  notifications = [
+    {
+      id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      to_username: to,
+      type: "editor_review",
+      post_id: input.post_id,
+      post_title: input.post_title,
+      post_type: input.post_type,
+      creator_username: input.creator_username,
+      creator_display_name: input.creator_display_name,
+      created_at: new Date().toISOString(),
+      read: false,
+    },
+    ...notifications,
+  ];
+  persist();
+  notify();
+}
+
+export function clearEditorReviewNotifications(postId: string): void {
+  ensureLoaded();
+  const before = notifications.length;
+  notifications = notifications.filter(
+    (n) => !(n.type === "editor_review" && n.post_id === postId)
+  );
+  if (notifications.length < before) {
+    persist();
+    notify();
+  }
+}
+
 export function removePostLikeNotificationActor(input: {
   to_username: string;
   post_id: string;
@@ -427,7 +498,7 @@ export function removePostLikeNotificationActor(input: {
     (n): n is PostLikeNotification =>
       n.type === "post_like" &&
       userKey(n.to_username) === to &&
-      n.post_id === input.post_id
+      n.post_id === input.post_id,
   );
   if (index < 0) return;
 
@@ -443,6 +514,9 @@ export function removePostLikeNotificationActor(input: {
 }
 
 export function notificationHref(item: UserNotification): string {
+  if (item.type === "editor_review") {
+    return `/post/${item.post_id}`;
+  }
   if (item.type === "post_comment") {
     return `/post/${item.post_id}#comments`;
   }
@@ -453,6 +527,9 @@ export function notificationHref(item: UserNotification): string {
 }
 
 export function notificationHeadline(item: UserNotification): string {
+  if (item.type === "editor_review") {
+    return "Paid listing awaiting editor review";
+  }
   if (item.type === "topic_chapter") {
     return `New chapter in ${item.forum_title}`;
   }

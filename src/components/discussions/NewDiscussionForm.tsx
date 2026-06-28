@@ -17,7 +17,7 @@ import {
 import { ContentRatingDeclaration } from "@/components/content/ContentRatingDeclaration";
 import { createDiscussionThread } from "@/lib/discussions-store";
 import {
-  scheduleDiscussionLiveSync,
+  publishDiscussionLive,
 } from "@/lib/live-content-sync";
 
 export function NewDiscussionForm() {
@@ -78,9 +78,11 @@ export function NewDiscussionForm() {
       contains_sexual_content: containsSexualContent,
     });
 
-    scheduleDiscussionLiveSync(() => {
+    const syncError = await publishDiscussionLive(() => {
       router.push(`/discussions/${thread.id}`);
     });
+    setSubmitting(false);
+    if (syncError) setError(syncError);
   }
 
   return (

@@ -4,7 +4,7 @@ function forumActivityTime(forum: RpgForum): number {
   let max = new Date(forum.created_at).getTime();
   for (const chapter of forum.chapters) {
     for (const post of chapter.posts) {
-      const t = new Date(post.created_at).getTime();
+      const t = postRevisionTime(post);
       if (t > max) max = t;
     }
   }

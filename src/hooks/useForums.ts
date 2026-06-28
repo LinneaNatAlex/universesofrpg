@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { CONTENT_SYNCED_EVENT } from "@/lib/content-sync";
+import { subscribeDevStore } from "@/lib/dev-store-notify";
 import {
   getAllForums,
   getForumById,
-  reloadForumsFromStorage,
   subscribeForums,
 } from "@/lib/forums-store";
 import type { RpgForum } from "@/types/database";
@@ -15,18 +15,15 @@ export function useForums(): RpgForum[] {
 
   useEffect(() => {
     const refresh = () => setForums(getAllForums());
-
-    const onSynced = () => {
-      reloadForumsFromStorage();
-      refresh();
-    };
-
     refresh();
-    const unsub = subscribeForums(refresh);
+    const onSynced = () => refresh();
     window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    const unsubStore = subscribeForums(refresh);
+    const unsubHotReload = subscribeDevStore("forums", refresh);
     return () => {
-      unsub();
       window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
+      unsubStore();
+      unsubHotReload();
     };
   }, []);
 
@@ -38,18 +35,15 @@ export function useForum(forumId: string): RpgForum | undefined {
 
   useEffect(() => {
     const refresh = () => setForum(getForumById(forumId));
-
-    const onSynced = () => {
-      reloadForumsFromStorage();
-      refresh();
-    };
-
     refresh();
-    const unsub = subscribeForums(refresh);
+    const onSynced = () => refresh();
     window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
+    const unsubStore = subscribeForums(refresh);
+    const unsubHotReload = subscribeDevStore("forums", refresh);
     return () => {
-      unsub();
       window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
+      unsubStore();
+      unsubHotReload();
     };
   }, [forumId]);
 

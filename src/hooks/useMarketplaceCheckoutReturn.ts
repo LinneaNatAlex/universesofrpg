@@ -97,13 +97,12 @@ export function useMarketplaceCheckoutReturn(
         }
 
         const postId = data.post_id ?? pending?.post_id;
-        const buyers = new Set<string>();
-        if (data.buyer_username) buyers.add(data.buyer_username.toLowerCase());
-        if (identity?.username) buyers.add(identity.username.toLowerCase());
-        if (postId) {
-          for (const buyer of buyers) {
-            recordPurchase(buyer, postId);
-          }
+        const buyer =
+          data.buyer_username?.trim().toLowerCase() ||
+          pending?.buyer_username ||
+          identity?.username?.toLowerCase();
+        if (postId && buyer) {
+          recordPurchase(buyer, postId);
         }
 
         sessionStorage.setItem(PROCESSED_SESSION_KEY, sessionId);

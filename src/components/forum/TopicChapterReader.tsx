@@ -11,6 +11,7 @@ import {
 } from "@/lib/topic-bookmarks-store";
 import { paginateForumPosts } from "@/lib/topic-pagination";
 import { updateForumPost } from "@/lib/forums-store";
+import { forumLiveSyncErrorMessage, syncForumLive } from "@/lib/live-content-sync";
 import type { ForumChapter, TopicCharacter } from "@/types/database";
 import { formatPartLabel } from "@/lib/forum-access";
 import { findUserByUsername } from "@/lib/discover-users";
@@ -53,6 +54,7 @@ export function TopicChapterReader({
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
+  const [editSyncing, setEditSyncing] = useState(false);
   const prevPostCount = useRef(chapter.posts.length);
   const initialized = useRef(false);
 
@@ -123,7 +125,7 @@ export function TopicChapterReader({
     setEditError(null);
   }
 
-  function saveEdit(postId: string) {
+  async function saveEdit(postId: string) {
     if (!username) return;
     setEditError(null);
     const updated = updateForumPost(
@@ -135,6 +137,13 @@ export function TopicChapterReader({
     );
     if (!updated) {
       setEditError("Could not save — only your own posts can be edited.");
+      return;
+    }
+    setEditSyncing(true);
+    const ok = await syncForumLive();
+    setEditSyncing(false);
+    if (!ok) {
+      setEditError(forumLiveSyncErrorMessage(false));
       return;
     }
     cancelEdit();
@@ -214,10 +223,10 @@ export function TopicChapterReader({
                             type="button"
                             variant="comic"
                             size="sm"
-                            onClick={() => saveEdit(post.id)}
-                            disabled={!editDraft.trim()}
+                            onClick={() => void saveEdit(post.id)}
+                            disabled={!editDraft.trim() || editSyncing}
                           >
-                            Save
+                            {editSyncing ? "Syncing…" : "Save"}
                           </Button>
                           <Button
                             type="button"

@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import {
-  scheduleCreationLiveSync,
+  publishCreationLive,
 } from "@/lib/live-content-sync";
 import { addPost } from "@/lib/posts-store";
 import { initialModerationStatus } from "@/lib/moderation";
@@ -69,10 +69,17 @@ export function CreateStudio() {
   const [publishNote, setPublishNote] = useState<string | null>(null);
   const [saveToCharacterCreations, setSaveToCharacterCreations] = useState(false);
 
-  function finishLivePublish(postId: string) {
-    scheduleCreationLiveSync(postId);
-    router.push(`/post/${postId}`);
-    router.refresh();
+  async function finishLivePublish(postId: string) {
+    setPublishNote("Syncing to live server…");
+    const syncError = await publishCreationLive(postId, () => {
+      router.push(`/post/${postId}`);
+      router.refresh();
+    });
+    if (syncError) {
+      setPublishNote(syncError);
+      return;
+    }
+    setPublishNote(null);
   }
 
   if (loading) {

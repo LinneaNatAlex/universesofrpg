@@ -43,7 +43,7 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoggedIn, loading } = useAdmin();
   const [username, setUsername] = useState<string | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(() => typeof window !== "undefined");
 
   const canSwitch = isAdmin && isLoggedIn;
 

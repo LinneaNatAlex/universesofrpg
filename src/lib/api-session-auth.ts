@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { isAdminUser } from "@/lib/admin";
+import { isAdminUser, getAdminEmails } from "@/lib/admin";
 import { getPersonaByUsername } from "@/lib/personas";
 import { legacyBuyerUsernameAliases } from "@/lib/persona-rename";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -150,6 +150,21 @@ export async function requireSessionUser(request?: Request) {
   return { ok: true as const, user };
 }
 
+function isAdminSession(user: SessionUser): boolean {
+  if (!user.email) return false;
+  const admins = getAdminEmails();
+  return admins.length > 0 && admins.includes(user.email.toLowerCase());
+}
+
+async function isAdminFromRequest(
+  user: SessionUser,
+  request?: Request
+): Promise<boolean> {
+  if (isAdminSession(user)) return true;
+  const supabaseUser = await getSupabaseUserFromRequest(request);
+  return isAdminUser(supabaseUser);
+}
+
 /**
  * Resolve which seller username Connect actions apply to.
  * Admins may pass a demo persona username while "posting as" them.
@@ -172,12 +187,10 @@ export async function resolveSellerUsername(
     return { ok: true, user: auth.user, sellerUsername: acting };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user: supabaseUser },
-  } = await supabase.auth.getUser();
-
-  if (supabaseUser && isAdminUser(supabaseUser) && getPersonaByUsername(acting)) {
+  if (
+    (await isAdminFromRequest(auth.user, undefined)) &&
+    getPersonaByUsername(acting)
+  ) {
     return { ok: true, user: auth.user, sellerUsername: acting };
   }
 
@@ -229,7 +242,7 @@ async function buyerUsernameAliasesForUser(user: SessionUser): Promise<string[]>
 
 /**
  * Resolve which buyer username marketplace purchases apply to.
- * Admins may buy as a demo persona; regular users always use their account username.
+ * Admin demo personas each have separate purchase records — buying as "chaz" does not unlock for "mira".
  */
 export async function resolveBuyerUsername(
   actingUsername?: string | null,
@@ -246,12 +259,10 @@ export async function resolveBuyerUsername(
     return { ok: true, user: auth.user, buyerUsername: auth.user.username };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user: supabaseUser },
-  } = await supabase.auth.getUser();
-
-  if (supabaseUser && isAdminUser(supabaseUser) && getPersonaByUsername(acting)) {
+  if (
+    (await isAdminFromRequest(auth.user, request)) &&
+    getPersonaByUsername(acting)
+  ) {
     return { ok: true, user: auth.user, buyerUsername: acting };
   }
 

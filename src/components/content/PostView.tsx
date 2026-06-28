@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getEditorReviewConversationForPost,
   subscribeMessages,
@@ -16,6 +16,7 @@ import {
   canViewCodePreview,
   canViewFullContent,
   getCodeTemplatePreviewBundle,
+  getLocalTemplateCodeBundle,
   requiresCodePurchase,
 } from "@/lib/posts";
 import { getPublicTemplatePreviewBundle } from "@/lib/post-template-preview";
@@ -56,6 +57,7 @@ function isStoryLike(type: FeedPost["type"]) {
 export function PostView({ post: rawPost }: PostViewProps) {
   const { isLoggedIn } = useAuth();
   const identity = useActingIdentity();
+  const buyerUsername = identity?.username ?? null;
   const { isEditor } = useEditor();
   const [editorChatId, setEditorChatId] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -76,18 +78,23 @@ export function PostView({ post: rawPost }: PostViewProps) {
   const showCodeSection = canViewCodePreview(rawPost);
   const isAuthor =
     identity?.username.toLowerCase() === rawPost.author.username.toLowerCase();
+  const localTemplateBundle = useMemo(
+    () => getLocalTemplateCodeBundle(rawPost.id),
+    [rawPost.id, rawPost.updated_at]
+  );
   const { bundle: purchasedSource } = usePostSourceCode(
     rawPost.id,
-    paidCodeTemplate
-      ? isLoggedIn && Boolean(identity?.username)
-      : false,
-    identity?.username ?? null,
-    paidCodeTemplate
+    paidCodeTemplate && !isAuthor && isLoggedIn && Boolean(buyerUsername),
+    buyerUsername,
+    true
   );
   const previewBundle = paidCodeTemplate
-    ? purchasedSource ?? getPublicTemplatePreviewBundle(rawPost)
+    ? localTemplateBundle ??
+      (isAuthor
+        ? getCodeTemplatePreviewBundle(rawPost, viewer)
+        : purchasedSource ?? getPublicTemplatePreviewBundle(rawPost))
     : getCodeTemplatePreviewBundle(rawPost, viewer);
-  const hasPaidSource = Boolean(purchasedSource);
+  const hasPaidSource = Boolean(purchasedSource || (isAuthor && localTemplateBundle));
   const showLiveCodePreview = previewBundle !== null;
   const synopsis = rawPost.plot_synopsis ?? rawPost.description ?? "";
   const writingLabel = getWritingCategoryLabel(rawPost);

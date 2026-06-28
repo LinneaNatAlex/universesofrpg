@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api-session-auth";
+import { jsonLiveContent } from "@/lib/api-live-json";
 import { sanitizePostsPlatformState } from "@/lib/content-platform-sanitize";
 import { getPlatformContent } from "@/lib/content-platform-store";
 import { upsertPostsPlatformState } from "@/lib/content-platform-upsert-server";
@@ -29,7 +30,7 @@ export async function GET() {
     likeCounts:
       state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
   });
-  return NextResponse.json(sanitized);
+  return jsonLiveContent(sanitized);
 }
 
 export async function PUT(request: Request) {

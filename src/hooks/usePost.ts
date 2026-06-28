@@ -7,6 +7,7 @@ import {
 } from "@/lib/content-sync";
 import { getPostById } from "@/lib/posts";
 import { subscribePosts } from "@/lib/posts-store";
+import { subscribeDevStore } from "@/lib/dev-store-notify";
 import type { FeedPost } from "@/types/database";
 
 const SYNC_WAIT_MS = 4_000;
@@ -35,12 +36,14 @@ export function usePost(id: string): FeedPost | undefined | null {
 
     window.addEventListener(CONTENT_SYNCED_EVENT, onSynced);
     const unsubPosts = subscribePosts(refresh);
+    const unsubHotReload = subscribeDevStore("posts", refresh);
 
     const timeout = window.setTimeout(() => setSyncSettled(true), SYNC_WAIT_MS);
 
     return () => {
       window.removeEventListener(CONTENT_SYNCED_EVENT, onSynced);
       unsubPosts();
+      unsubHotReload();
       window.clearTimeout(timeout);
     };
   }, [id]);

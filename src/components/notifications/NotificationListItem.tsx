@@ -105,6 +105,32 @@ export function NotificationListItem({ item, onNavigate }: NotificationListItemP
     onNavigate();
   }
 
+  if (item.type === "editor_review") {
+    return (
+      <li className="border-b border-dashed border-ink last:border-0">
+        <Link
+          href="/editor"
+          onClick={handleNavigate}
+          className={cn(
+            "block px-2.5 py-2 sm:px-3 sm:py-2.5 hover:bg-comic-yellow/40 transition-colors",
+            !item.read && "bg-comic-yellow/20"
+          )}
+        >
+          <p className="font-comic text-xs text-comic-red leading-snug">
+            {notificationHeadline(item)}
+          </p>
+          <p className="text-xs text-ink mt-1 leading-snug break-words">
+            <span className="font-comic">{item.post_title}</span>
+            <span className="text-ink-muted">
+              {" "}
+              · {item.post_type.replaceAll("_", " ")} by @{item.creator_username}
+            </span>
+          </p>
+        </Link>
+      </li>
+    );
+  }
+
   if (item.type === "post_like") {
     return (
       <EngagementNotificationRow

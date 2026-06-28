@@ -19,6 +19,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { useInvalidSessionCleanup } from "@/hooks/useInvalidSessionCleanup";
+import { LiveSyncBanner } from "@/components/layout/LiveSyncBanner";
 import { ContentHydrator } from "@/components/content/ContentHydrator";
 import { PurchasesHydrator } from "@/components/stripe/PurchasesHydrator";
 import { FriendsHydrator } from "@/components/social/FriendsHydrator";
@@ -184,6 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NavPrefetch />
       <div className="min-h-screen flex flex-col">
         <AppShellHeader />
+        <LiveSyncBanner />
         <ContentHydrator />
         <FriendsHydrator />
         <PurchasesHydrator />

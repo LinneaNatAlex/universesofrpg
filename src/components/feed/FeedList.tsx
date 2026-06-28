@@ -36,13 +36,13 @@ function FeedListSkeleton({ count = 4 }: { count?: number }) {
 
 export function FeedList({ limit = HOME_FEED_LIMIT }: FeedListProps) {
   const { posts, ready } = useFeedPosts(limit);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => typeof window !== "undefined");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const showPosts = mounted && ready;
+  const showPosts = mounted && (ready || posts.length > 0);
 
   return (
     <div className="space-y-4">

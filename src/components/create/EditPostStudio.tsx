@@ -8,11 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActingIdentity } from "@/hooks/useActingIdentity";
 import { usePost } from "@/hooks/usePost";
 import {
-  scheduleCreationLiveSync,
+  publishCreationLive,
 } from "@/lib/live-content-sync";
 import { updatePost } from "@/lib/posts-store";
-import { canEditPost, getPostForEditing } from "@/lib/posts";
-import { getVaultedCode, type PostCodeBundle } from "@/lib/post-code-vault";
+import { canEditPost, getLocalTemplateCodeBundle, getPostForEditing } from "@/lib/posts";
+import type { PostCodeBundle } from "@/lib/post-code-vault";
 import { fetchPostSourceCode } from "@/lib/post-source-code-client";
 import { isValidCoverSource } from "@/lib/post-cover";
 import {
@@ -57,12 +57,16 @@ interface EditPostStudioProps {
   postId: string;
 }
 
+function hasLocalTemplateSource(postId: string): boolean {
+  return getLocalTemplateCodeBundle(postId) !== null;
+}
+
 export function EditPostStudio({ postId }: EditPostStudioProps) {
   const { isLoggedIn, loading } = useAuth();
   const identity = useActingIdentity();
   const router = useRouter();
   const post = usePost(postId);
-  const [sourceReady, setSourceReady] = useState(false);
+  const [remoteLoaded, setRemoteLoaded] = useState(true);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [remoteBundle, setRemoteBundle] = useState<PostCodeBundle | null>(null);
 
@@ -75,47 +79,50 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
 
   useEffect(() => {
     if (!post || !canEdit || post.type !== "code_template") {
-      setSourceReady(true);
+      setRemoteLoaded(true);
       return;
     }
 
-    const local = getVaultedCode(post.id);
-    if (local?.html_code?.trim()) {
-      setSourceReady(true);
+    if (hasLocalTemplateSource(post.id)) {
+      setRemoteLoaded(true);
       return;
     }
 
     let cancelled = false;
-    setSourceReady(false);
+    setRemoteLoaded(false);
     setSourceError(null);
 
-    void fetchPostSourceCode(post.id).then((result) => {
+    void fetchPostSourceCode(post.id, identity?.username).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setRemoteBundle(result.bundle);
-        setSourceReady(true);
-        return;
+      } else if (!hasLocalTemplateSource(post.id)) {
+        setSourceError(result.error);
       }
-      if (editable?.html_code?.trim() && editable.css_code?.trim()) {
-        setSourceReady(true);
-        return;
-      }
-      setSourceError(result.error);
-      setSourceReady(true);
+      setRemoteLoaded(true);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [post, canEdit, editable?.html_code, editable?.css_code]);
+  }, [post, canEdit, identity?.username]);
 
   const codeInitialValues = useMemo((): CodePlaygroundInitialValues | undefined => {
     if (!editable || editable.type !== "code_template") return undefined;
     const latest = getPostForEditing(editable.id) ?? editable;
-    const vaulted = getVaultedCode(editable.id) ?? remoteBundle;
-    const rawHtml = vaulted?.html_code ?? latest.html_code ?? "";
-    const css = vaulted?.css_code ?? latest.css_code ?? "";
-    const js = vaulted?.js_code ?? latest.js_code ?? "";
+    const local = getLocalTemplateCodeBundle(editable.id);
+    const rawHtml =
+      local?.html_code?.trim()
+        ? local.html_code
+        : (remoteBundle?.html_code ?? latest.html_code ?? "");
+    const css =
+      local?.css_code?.trim()
+        ? local.css_code
+        : (remoteBundle?.css_code ?? latest.css_code ?? "");
+    const js =
+      local?.js_code?.trim()
+        ? local.js_code
+        : (remoteBundle?.js_code ?? latest.js_code ?? "");
     return {
       title: latest.title,
       description: latest.description ?? "",
@@ -128,7 +135,7 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       codeLocked: latest.is_code_locked,
       containsSexualContent: latest.contains_sexual_content ?? false,
     };
-  }, [editable, sourceReady, remoteBundle]);
+  }, [editable, remoteLoaded, remoteBundle, post?.updated_at]);
 
   const [title, setTitle] = useState("");
   const [synopsis, setSynopsis] = useState("");
@@ -201,11 +208,12 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
     );
   }
 
-  function finishLiveSave(savedPost: typeof post) {
+  async function finishLiveSave(savedPost: typeof post) {
     if (!savedPost) return;
-    scheduleCreationLiveSync(savedPost.id);
-    router.push(`/post/${savedPost.id}`);
-    router.refresh();
+    await publishCreationLive(savedPost.id, () => {
+      router.push(`/post/${savedPost.id}`);
+      router.refresh();
+    });
   }
 
   async function handleSaveWriting() {
@@ -330,8 +338,9 @@ export function EditPostStudio({ postId }: EditPostStudioProps) {
       )}
 
       {isCode ? (
-        sourceReady && codeInitialValues ? (
+        remoteLoaded && codeInitialValues ? (
           <CodePlayground
+            key={`${post.id}-${post.updated_at ?? post.created_at}`}
             loggedIn
             pricing={pricing}
             priceCents={priceCents}

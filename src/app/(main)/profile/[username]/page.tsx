@@ -60,8 +60,9 @@ export default function ProfilePage() {
   const account = useAccountIdentity();
   const isOwnProfile = identity?.username.toLowerCase() === username;
   const isOwnAccountProfile = account?.username.toLowerCase() === username;
+  const identityUsername = identity?.username ?? null;
   const [tab, setTab] = useState<ProfileTab>("persona");
-  const [clientReady, setClientReady] = useState(false);
+  const [clientReady, setClientReady] = useState(() => typeof window !== "undefined");
 
   const staticProfile = useMemo(() => resolveStaticProfile(username), [username]);
   const personaPage = usePersonaProfile(username);
@@ -72,13 +73,10 @@ export default function ProfilePage() {
     [creations]
   );
   const showPurchasesTab = isOwnProfile;
+  /** Purchases are keyed by demo persona username in Supabase (buyer_username). */
+  const purchasesUsername = showPurchasesTab ? username : null;
   const { entries: purchasedEntries, purchaseCount, loading: purchasesLoading } =
-    usePurchasedPosts(
-      showPurchasesTab && identity ? identity.username : null,
-      showPurchasesTab && identity?.isActingAsPersona && account
-        ? account.username
-        : null
-    );
+    usePurchasedPosts(purchasesUsername);
   const [dynamicProfile, setDynamicProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -95,7 +93,6 @@ export default function ProfilePage() {
     (p) => p.author.username.toLowerCase() === username
   )?.author;
   const accountUsername = account?.username ?? null;
-  const identityUsername = identity?.username ?? null;
 
   useEffect(() => {
     if (staticProfile) {

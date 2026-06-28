@@ -1,5 +1,13 @@
 import { readJson, writeJson } from "@/lib/browser-storage";
 import { schedulePostsPlatformPush } from "@/lib/content-sync";
+import {
+  notifyDevStore,
+  pingDevStoreAfterHotReload,
+} from "@/lib/dev-store-notify";
+import {
+  clearEditorReviewForPost,
+  notifyEditorsOfPendingReview,
+} from "@/lib/editor-review-notifications";
 import { MOCK_FEED } from "@/lib/mock-data";
 import { postHasCover } from "@/lib/post-cover";
 import {
@@ -11,6 +19,7 @@ import { ensureTemplatePreviewFields } from "@/lib/post-template-preview";
 import {
   codeLockOnPricingChange,
   enforceListingRules,
+  isPendingPaidListing,
   moderationStatusOnPricingChange,
   normalizeFreeCodeListing,
 } from "@/lib/moderation";
@@ -36,7 +45,7 @@ function stripPaidCodeForStorage(post: FeedPost): FeedPost {
     withPreview.id,
     withPreview.html_code,
     withPreview.css_code,
-    withPreview.js_code
+    withPreview.js_code,
   );
   return {
     ...withPreview,
@@ -68,7 +77,7 @@ function restoreFreeCodeFromVault(post: FeedPost): FeedPost {
 
 function applyPricingChangePatches(
   existing: FeedPost,
-  input: UpdatePostInput
+  input: UpdatePostInput,
 ): Partial<FeedPost> {
   if (input.pricing === undefined || input.pricing === existing.pricing) {
     return {};
@@ -78,7 +87,7 @@ function applyPricingChangePatches(
     moderation_status: moderationStatusOnPricingChange(
       existing.moderation_status,
       existing.pricing,
-      input.pricing
+      input.pricing,
     ),
   };
 
@@ -87,7 +96,7 @@ function applyPricingChangePatches(
       existing.pricing,
       input.pricing,
       existing.is_code_locked,
-      input.is_code_locked
+      input.is_code_locked,
     );
     if (input.pricing === "free") {
       patches.price_cents = 0;
@@ -117,11 +126,13 @@ const listeners = new Set<Listener>();
 
 function notify() {
   listeners.forEach((l) => l());
+  notifyDevStore("posts");
 }
 
 function sortPosts(list: FeedPost[]): FeedPost[] {
   return [...list].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 }
 
@@ -133,14 +144,23 @@ function loadState(): PostsState {
   });
   return {
     custom: Array.isArray(parsed.custom) ? parsed.custom : [],
-    deletedMockIds: Array.isArray(parsed.deletedMockIds) ? parsed.deletedMockIds : [],
-    deletedCustomIds: Array.isArray(parsed.deletedCustomIds) ? parsed.deletedCustomIds : [],
+    deletedMockIds: Array.isArray(parsed.deletedMockIds)
+      ? parsed.deletedMockIds
+      : [],
+    deletedCustomIds: Array.isArray(parsed.deletedCustomIds)
+      ? parsed.deletedCustomIds
+      : [],
     likeCounts:
-      parsed.likeCounts && typeof parsed.likeCounts === "object" ? parsed.likeCounts : {},
+      parsed.likeCounts && typeof parsed.likeCounts === "object"
+        ? parsed.likeCounts
+        : {},
   };
 }
 
-function applyLikeCount(post: FeedPost, likeCounts: Record<string, number>): FeedPost {
+function applyLikeCount(
+  post: FeedPost,
+  likeCounts: Record<string, number>,
+): FeedPost {
   const override = likeCounts[post.id];
   if (override === undefined) return post;
   return { ...post, like_count: Math.max(0, override) };
@@ -157,7 +177,7 @@ function mergePosts() {
     if (!deleted.has(mock.id)) {
       map.set(
         mock.id,
-        applyLikeCount(stripPaidCodeForStorage({ ...mock }), likeCounts)
+        applyLikeCount(stripPaidCodeForStorage({ ...mock }), likeCounts),
       );
     }
   }
@@ -165,7 +185,9 @@ function mergePosts() {
   let customNeedsPersist = false;
   for (const custom of state.custom) {
     if (deletedCustom.has(custom.id)) continue;
-    const stripped = stripPaidCodeForStorage(ensureTemplatePreviewFields(custom));
+    const stripped = stripPaidCodeForStorage(
+      ensureTemplatePreviewFields(custom),
+    );
     if (
       stripped.html_code !== custom.html_code ||
       stripped.css_code !== custom.css_code ||
@@ -173,13 +195,63 @@ function mergePosts() {
     ) {
       customNeedsPersist = true;
     }
-    map.set(stripped.id, applyLikeCount(normalizeFreeCodeListing(stripped), likeCounts));
+    map.set(
+      stripped.id,
+      applyLikeCount(normalizeFreeCodeListing(stripped), likeCounts),
+    );
   }
 
   posts = sortPosts([...map.values()]);
   if (customNeedsPersist) {
     persist();
   }
+}
+
+function mergeCustomPostList(a: FeedPost[], b: FeedPost[]): FeedPost[] {
+  const map = new Map<string, FeedPost>();
+  for (const post of a) map.set(post.id, post);
+  for (const post of b) map.set(post.id, post);
+  return [...map.values()];
+}
+
+function mockPostWasEdited(post: FeedPost): boolean {
+  const baseline = MOCK_FEED.find((m) => m.id === post.id);
+  if (!baseline) return true;
+  if (post.updated_at) return true;
+  return (
+    post.title !== baseline.title ||
+    post.description !== baseline.description ||
+    post.html_code !== baseline.html_code ||
+    post.css_code !== baseline.css_code ||
+    post.js_code !== baseline.js_code ||
+    post.preview_html_code !== baseline.preview_html_code ||
+    post.preview_css_code !== baseline.preview_css_code ||
+    post.preview_js_code !== baseline.preview_js_code
+  );
+}
+
+function stripForCustomStorage(post: FeedPost): FeedPost {
+  return stripPaidCodeForStorage(ensureTemplatePreviewFields(post));
+}
+
+/** Demo posts edited in-app — stored as custom overrides (same pattern as RPG mock forums). */
+function persistPostOverride(post: FeedPost) {
+  if (!MOCK_POST_IDS.has(post.id)) {
+    persist();
+    return;
+  }
+
+  const state = loadState();
+  const stored = stripForCustomStorage(post);
+  const overrides = state.custom.filter((p) => p.id !== post.id);
+  overrides.push(stored);
+  const next = {
+    ...state,
+    custom: overrides,
+  };
+  writeJson(STORAGE_KEY, next);
+  schedulePostsPlatformPush(next);
+  void syncPostsToServer();
 }
 
 function ensureLoaded() {
@@ -193,6 +265,11 @@ export function buildPostsPersistState(): PostsState {
   ensureLoaded();
   const existing = loadState();
   const currentIds = new Set(posts.map((p) => p.id));
+  const fromDisk = existing.custom ?? [];
+  const userCreated = posts.filter((p) => !MOCK_POST_IDS.has(p.id));
+  const mockOverrides = posts.filter(
+    (p) => MOCK_POST_IDS.has(p.id) && mockPostWasEdited(p),
+  );
   const likeCounts: Record<string, number> = {};
   for (const post of posts) {
     if (MOCK_POST_IDS.has(post.id)) {
@@ -203,8 +280,13 @@ export function buildPostsPersistState(): PostsState {
     }
   }
   return {
-    custom: posts.filter((p) => !MOCK_POST_IDS.has(p.id)),
-    deletedMockIds: MOCK_FEED.filter((p) => !currentIds.has(p.id)).map((p) => p.id),
+    custom: mergeCustomPostList(
+      mergeCustomPostList(fromDisk, userCreated),
+      mockOverrides,
+    ),
+    deletedMockIds: MOCK_FEED.filter((p) => !currentIds.has(p.id)).map(
+      (p) => p.id,
+    ),
     deletedCustomIds: existing.deletedCustomIds ?? [],
     likeCounts,
   };
@@ -214,20 +296,28 @@ export function applyPostsPersistState(state: PostsState): void {
   if (typeof window === "undefined") return;
   writeJson(STORAGE_KEY, {
     custom: Array.isArray(state.custom) ? state.custom : [],
-    deletedMockIds: Array.isArray(state.deletedMockIds) ? state.deletedMockIds : [],
-    deletedCustomIds: Array.isArray(state.deletedCustomIds) ? state.deletedCustomIds : [],
+    deletedMockIds: Array.isArray(state.deletedMockIds)
+      ? state.deletedMockIds
+      : [],
+    deletedCustomIds: Array.isArray(state.deletedCustomIds)
+      ? state.deletedCustomIds
+      : [],
     likeCounts:
-      state.likeCounts && typeof state.likeCounts === "object" ? state.likeCounts : {},
+      state.likeCounts && typeof state.likeCounts === "object"
+        ? state.likeCounts
+        : {},
   });
   storageLoaded = false;
-  posts = [...MOCK_FEED];
-  ensureLoaded();
+  mergePosts();
+  storageLoaded = true;
   notify();
 }
 
 export async function syncPostsToServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const { pushPostsPlatformState } = await import("@/lib/content-sync");
+  const { pushPostsPlatformState, waitForPostsHydration } =
+    await import("@/lib/content-sync");
+  await waitForPostsHydration();
   return pushPostsPlatformState(buildPostsPersistState());
 }
 
@@ -282,13 +372,19 @@ export function deletePost(id: string): boolean {
   return false;
 }
 
-export function setPostModeration(id: string, status: ModerationStatus): boolean {
+export function setPostModeration(
+  id: string,
+  status: ModerationStatus,
+): boolean {
   ensureLoaded();
   const post = posts.find((p) => p.id === id);
   if (!post) return false;
   post.moderation_status = status;
   persist();
   notify();
+  if (status === "approved" || status === "rejected") {
+    clearEditorReviewForPost(id);
+  }
   void syncPostsToServer();
   return true;
 }
@@ -310,24 +406,32 @@ export type NewPostInput = Omit<
 
 function applyPostRatingFields(
   existing: FeedPost,
-  input: UpdatePostInput
-): Pick<FeedPost, "contains_sexual_content" | "content_rating" | "tags"> | Record<string, never> {
-  if (input.contains_sexual_content === undefined && input.content_rating === undefined) {
+  input: UpdatePostInput,
+):
+  | Pick<FeedPost, "contains_sexual_content" | "content_rating" | "tags">
+  | Record<string, never> {
+  if (
+    input.contains_sexual_content === undefined &&
+    input.content_rating === undefined
+  ) {
     return {};
   }
-  const contains = input.contains_sexual_content ?? existing.contains_sexual_content ?? false;
+  const contains =
+    input.contains_sexual_content ?? existing.contains_sexual_content ?? false;
   const tags = input.tags ?? existing.tags;
   return {
     contains_sexual_content: contains,
-    content_rating: resolveContentRating(contains, input.content_rating ?? existing.content_rating),
+    content_rating: resolveContentRating(
+      contains,
+      input.content_rating ?? existing.content_rating,
+    ),
     tags: applySexualContentTags(tags, contains),
   };
 }
 
-function ratingFieldsForNewPost(input: NewPostInput): Pick<
-  FeedPost,
-  "contains_sexual_content" | "content_rating" | "tags"
-> {
+function ratingFieldsForNewPost(
+  input: NewPostInput,
+): Pick<FeedPost, "contains_sexual_content" | "content_rating" | "tags"> {
   const contains = input.contains_sexual_content ?? false;
   return {
     contains_sexual_content: contains,
@@ -339,7 +443,9 @@ function ratingFieldsForNewPost(input: NewPostInput): Pick<
 export function addPost(input: NewPostInput): FeedPost {
   ensureLoaded();
   if (input.pricing !== "free" && !postHasCover(input)) {
-    throw new Error("Paid listings require a cover image before they can be published.");
+    throw new Error(
+      "Paid listings require a cover image before they can be published.",
+    );
   }
   const now = new Date().toISOString();
   const id = `post-${Date.now()}`;
@@ -356,10 +462,14 @@ export function addPost(input: NewPostInput): FeedPost {
   if (!persist(false)) {
     posts = posts.filter((p) => p.id !== post.id);
     throw new Error(
-      "Could not save your post in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file."
+      "Could not save your post in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file.",
     );
   }
   notify();
+  if (isPendingPaidListing(post)) {
+    notifyEditorsOfPendingReview(post);
+  }
+  void syncPostsToServer();
   return post;
 }
 
@@ -386,11 +496,13 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
   };
 
   const withCode = normalizeFreeCodeListing(
-    restoreFreeCodeFromVault(enforceListingRules(merged, existing.pricing))
+    restoreFreeCodeFromVault(enforceListingRules(merged, existing.pricing)),
   );
 
   if (withCode.pricing !== "free" && !postHasCover(withCode)) {
-    throw new Error("Paid listings require a cover image before they can be saved.");
+    throw new Error(
+      "Paid listings require a cover image before they can be saved.",
+    );
   }
 
   const updated = stripPaidCodeForStorage({
@@ -399,11 +511,24 @@ export function updatePost(id: string, input: UpdatePostInput): FeedPost {
   });
   posts[idx] = updated;
   posts = sortPosts(posts);
-  if (!persist(false)) {
+  if (MOCK_POST_IDS.has(id)) {
+    persistPostOverride(updated);
+  } else if (!persist(false)) {
     throw new Error(
-      "Could not save your changes in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file."
+      "Could not save your changes in this browser. Try a smaller cover image or paste an image URL instead of uploading a large file.",
     );
   }
   notify();
+  if (isPendingPaidListing(updated)) {
+    notifyEditorsOfPendingReview(updated);
+  } else if (updated.moderation_status !== "pending") {
+    clearEditorReviewForPost(updated.id);
+  }
+  void syncPostsToServer();
   return updated;
+}
+
+if (typeof window !== "undefined") {
+  ensureLoaded();
+  pingDevStoreAfterHotReload("posts");
 }

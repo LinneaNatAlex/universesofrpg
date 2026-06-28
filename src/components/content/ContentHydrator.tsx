@@ -1,41 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
   CONTENT_SYNCED_EVENT,
   markForumsHydrationComplete,
-  fetchCommentsPlatformState,
-  fetchDiscussionsPlatformState,
-  fetchForumsPlatformState,
-  fetchHomepageChatPlatformState,
-  fetchPostsPlatformState,
+  markPostsHydrationComplete,
   markContentSyncSettled,
-  mergeCommentsState,
-  mergeDiscussionsState,
-  mergeForumsState,
-  mergeHomepageChatState,
-  mergePostsState,
 } from "@/lib/content-sync";
 import {
-  applyCommentsPersistState,
-  buildCommentsPersistState,
-} from "@/lib/mock-comments";
-import {
-  applyHomepageChatPersistState,
-  buildHomepageChatPersistState,
-} from "@/lib/homepage-chat-store";
-import {
-  applyDiscussionsPersistState,
-  buildDiscussionsPersistState,
-} from "@/lib/discussions-store";
-import {
-  applyForumsPersistState,
-  buildForumsPersistState,
-} from "@/lib/forums-store";
-import {
-  applyPostsPersistState,
-  buildPostsPersistState,
-} from "@/lib/posts-store";
+  markDevHydrationCompleted,
+  shouldSkipDevRehydration,
+} from "@/lib/dev-hydration-guard";
+import { hydratePlatformContent } from "@/lib/hydrate-platform-content";
+
+const LIVE_POLL_MS =
+  process.env.NODE_ENV === "development" ? 30_000 : 5_000;
 
 function notifyContentReady(): void {
   markContentSyncSettled();
@@ -43,76 +22,50 @@ function notifyContentReady(): void {
 }
 
 /**
- * Shows cached/mock content immediately and pulls live data in the background.
- * Writes are pushed when the user edits — not on every page load.
+ * Loads cached content immediately, merges live server data, and keeps polling
+ * so other users' posts/topics/discussions show up without a hard refresh.
  */
 export function ContentHydrator() {
-  const settledRef = useRef(false);
-
   useEffect(() => {
-    if (!settledRef.current) {
-      settledRef.current = true;
-      notifyContentReady();
+    if (shouldSkipDevRehydration()) {
+      markForumsHydrationComplete();
+      markPostsHydrationComplete();
+      markContentSyncSettled();
+      return;
     }
-  }, []);
 
-  useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      try {
-        const [remotePosts, remoteForums] = await Promise.all([
-          fetchPostsPlatformState(),
-          fetchForumsPlatformState(),
-        ]);
-
-        if (cancelled) return;
-
-        if (remotePosts) {
-          const local = buildPostsPersistState();
-          applyPostsPersistState(mergePostsState(local, remotePosts));
-        }
-
-        if (remoteForums) {
-          const local = buildForumsPersistState();
-          applyForumsPersistState(mergeForumsState(local, remoteForums));
-        }
-
+    const pull = async (notify: boolean) => {
+      const updated = await hydratePlatformContent();
+      if (cancelled) return;
+      if (notify || updated) {
         notifyContentReady();
-
-        const [remoteComments, remoteDiscussions, remoteHomepageChat] = await Promise.all([
-          fetchCommentsPlatformState(),
-          fetchDiscussionsPlatformState(),
-          fetchHomepageChatPlatformState(),
-        ]);
-
-        if (cancelled) return;
-
-        if (remoteComments) {
-          const local = buildCommentsPersistState();
-          applyCommentsPersistState(mergeCommentsState(local, remoteComments));
-        }
-
-        if (remoteDiscussions) {
-          const local = buildDiscussionsPersistState();
-          applyDiscussionsPersistState(mergeDiscussionsState(local, remoteDiscussions));
-        }
-
-        if (remoteHomepageChat) {
-          const local = buildHomepageChatPersistState();
-          applyHomepageChatPersistState(mergeHomepageChatState(local, remoteHomepageChat));
-        }
-
-        notifyContentReady();
-      } finally {
-        if (!cancelled) {
-          markForumsHydrationComplete();
-        }
       }
-    })();
+      markForumsHydrationComplete();
+      markPostsHydrationComplete();
+      markDevHydrationCompleted();
+    };
+
+    void pull(true);
+
+    const timer = setInterval(() => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      void pull(false);
+    }, LIVE_POLL_MS);
+
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void pull(true);
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

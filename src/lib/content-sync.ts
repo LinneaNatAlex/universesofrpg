@@ -50,14 +50,75 @@ type PushOptions = {
 let postsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let forumsPushTimer: ReturnType<typeof setTimeout> | null = null;
 /** Avoid pushing an empty local snapshot before the first server pull finishes. */
+let postsHydrationComplete = false;
+let pendingPostsPush: PostsPlatformState | null = null;
+const postsHydrationWaiters = new Set<(ready: boolean) => void>();
+
 let forumsHydrationComplete = false;
+let pendingForumsPush: ForumsPlatformState | null = null;
+const forumsHydrationWaiters = new Set<(ready: boolean) => void>();
+
+export function markPostsHydrationComplete(): void {
+  postsHydrationComplete = true;
+  for (const resolve of postsHydrationWaiters) {
+    resolve(true);
+  }
+  postsHydrationWaiters.clear();
+  if (pendingPostsPush) {
+    const state = pendingPostsPush;
+    pendingPostsPush = null;
+    schedulePostsPlatformPush(state);
+  }
+}
+
+export function waitForPostsHydration(maxMs = 10_000): Promise<boolean> {
+  if (postsHydrationComplete) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const onReady = (ready: boolean) => {
+      clearTimeout(timer);
+      postsHydrationWaiters.delete(onReady);
+      resolve(ready);
+    };
+    const timer = setTimeout(() => {
+      postsHydrationWaiters.delete(onReady);
+      resolve(postsHydrationComplete);
+    }, maxMs);
+    postsHydrationWaiters.add(onReady);
+  });
+}
 
 export function markForumsHydrationComplete(): void {
   forumsHydrationComplete = true;
+  for (const resolve of forumsHydrationWaiters) {
+    resolve(true);
+  }
+  forumsHydrationWaiters.clear();
+  if (pendingForumsPush) {
+    const state = pendingForumsPush;
+    pendingForumsPush = null;
+    scheduleForumsPlatformPush(state);
+  }
 }
 
 export function areForumsHydrationComplete(): boolean {
   return forumsHydrationComplete;
+}
+
+/** Wait until the first server pull finishes so we merge before pushing local edits. */
+export function waitForForumsHydration(maxMs = 10_000): Promise<boolean> {
+  if (forumsHydrationComplete) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const onReady = (ready: boolean) => {
+      clearTimeout(timer);
+      forumsHydrationWaiters.delete(onReady);
+      resolve(ready);
+    };
+    const timer = setTimeout(() => {
+      forumsHydrationWaiters.delete(onReady);
+      resolve(forumsHydrationComplete);
+    }, maxMs);
+    forumsHydrationWaiters.add(onReady);
+  });
 }
 let commentsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let discussionsPushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -269,19 +330,24 @@ export function pushHomepageChatPlatformState(
 /** Debounced live save after rapid local edits (likes, moderation, etc.). */
 export function schedulePostsPlatformPush(state: PostsPlatformState): void {
   if (typeof window === "undefined") return;
+  pendingPostsPush = state;
+  if (!postsHydrationComplete) return;
   if (postsPushTimer) clearTimeout(postsPushTimer);
   postsPushTimer = setTimeout(() => {
     postsPushTimer = null;
+    pendingPostsPush = null;
     void pushPostsPlatformState(state);
   }, 400);
 }
 
 export function scheduleForumsPlatformPush(state: ForumsPlatformState): void {
   if (typeof window === "undefined") return;
+  pendingForumsPush = state;
   if (!forumsHydrationComplete) return;
   if (forumsPushTimer) clearTimeout(forumsPushTimer);
   forumsPushTimer = setTimeout(() => {
     forumsPushTimer = null;
+    pendingForumsPush = null;
     void pushForumsPlatformState(state);
   }, 400);
 }
