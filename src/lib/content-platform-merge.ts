@@ -6,7 +6,16 @@ import type { ForumsPlatformState } from "@/app/api/content/forums/route";
 import { mergeRpgForumList } from "@/lib/forums-platform-merge";
 import { normalizeFreeCodeListing } from "@/lib/moderation";
 import { migrateFeedPost } from "@/lib/persona-rename";
-import type { Comment, DiscussionReply, DiscussionThread, FeedPost, HomepageChatMessage } from "@/types/database";
+import type { PrivateMessagesPlatformState } from "@/app/api/content/private-messages/route";
+import type {
+  ChatMessage,
+  Comment,
+  Conversation,
+  DiscussionReply,
+  DiscussionThread,
+  FeedPost,
+  HomepageChatMessage,
+} from "@/types/database";
 
 function itemRevisionTime(item: {
   created_at?: string;
@@ -195,5 +204,78 @@ export function mergeDiscussionsState(
       remote.customReplies ?? []
     ) as DiscussionReply[],
     deletedMockThreadIds,
+  };
+}
+
+function dmPairKey(conversation: Conversation): string | null {
+  if (conversation.type !== "dm" || conversation.participants.length !== 2) {
+    return null;
+  }
+  return conversation.participants
+    .map((p) => p.username.toLowerCase())
+    .sort()
+    .join(":");
+}
+
+export function mergePrivateMessagesState(
+  local: PrivateMessagesPlatformState,
+  remote: PrivateMessagesPlatformState,
+): PrivateMessagesPlatformState {
+  const mergedConversations = mergeRecordsById(
+    local.conversations ?? [],
+    remote.conversations ?? [],
+  ) as Conversation[];
+
+  const dmWinners = new Map<string, Conversation>();
+  const conversations: Conversation[] = [];
+
+  for (const conv of mergedConversations) {
+    const pair = dmPairKey(conv);
+    if (!pair) {
+      conversations.push(conv);
+      continue;
+    }
+    const prev = dmWinners.get(pair);
+    if (!prev || itemRevisionTime(conv) >= itemRevisionTime(prev)) {
+      dmWinners.set(pair, conv);
+    }
+  }
+
+  for (const conv of dmWinners.values()) {
+    conversations.push(conv);
+  }
+
+  const convIds = new Set(conversations.map((c) => c.id));
+  const idRemap = new Map<string, string>();
+
+  for (const conv of mergedConversations) {
+    const pair = dmPairKey(conv);
+    if (!pair) continue;
+    const winner = dmWinners.get(pair);
+    if (winner && winner.id !== conv.id) {
+      idRemap.set(conv.id, winner.id);
+    }
+  }
+
+  const mergedMessages = mergeRecordsById(
+    local.messages ?? [],
+    remote.messages ?? [],
+  ) as ChatMessage[];
+
+  const messages = mergedMessages
+    .map((msg) => {
+      const mappedId = idRemap.get(msg.conversation_id) ?? msg.conversation_id;
+      if (!convIds.has(mappedId)) return null;
+      return mappedId === msg.conversation_id
+        ? msg
+        : { ...msg, conversation_id: mappedId };
+    })
+    .filter((msg): msg is ChatMessage => msg !== null);
+
+  return {
+    conversations: conversations.sort(
+      (a, b) => itemRevisionTime(b) - itemRevisionTime(a),
+    ),
+    messages,
   };
 }

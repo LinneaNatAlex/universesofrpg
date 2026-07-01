@@ -12,6 +12,7 @@ export type PlatformContentKey =
   | "homepage_chat"
   | "friend_requests"
   | "friends"
+  | "private_messages"
   | "editors";
 
 const DATA_DIR = join(process.cwd(), "data");

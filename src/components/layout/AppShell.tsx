@@ -26,6 +26,9 @@ import { FriendsHydrator } from "@/components/social/FriendsHydrator";
 import { VerificationCheckoutReturn } from "@/components/stripe/VerificationCheckoutReturn";
 import { MobileChatBubble } from "@/components/feed/MobileChatBubble";
 import { NavPrefetch } from "@/components/layout/NavPrefetch";
+import { PrivateMessagesProvider } from "@/contexts/PrivateMessagesContext";
+import { PrivateMessagesBubble } from "@/components/messages/PrivateMessagesBubble";
+import { MessagesHydrator } from "@/components/messages/MessagesHydrator";
 
 type NavItem = {
   href: string;
@@ -139,6 +142,7 @@ function AppShellHeader() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
+            {isLoggedIn && <PrivateMessagesBubble />}
             {isLoggedIn && <NotificationBell />}
             <UserMenu />
           </div>
@@ -182,22 +186,25 @@ function SessionGuard() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PersonaProvider>
-      <SessionGuard />
-      <NavPrefetch />
-      <div className="min-h-screen flex flex-col">
-        <AppShellHeader />
-        <LiveSyncBanner />
-        <ContentHydrator />
-        <FriendsHydrator />
-        <PurchasesHydrator />
-        <VerificationCheckoutReturn />
-        <main className="flex-1 mx-auto w-full max-w-6xl px-3 sm:px-4 py-5 sm:py-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
-          {children}
-        </main>
-        <SiteFooter />
-        <MobileChatBubble />
-        <AppShellNav />
-      </div>
+      <PrivateMessagesProvider>
+        <SessionGuard />
+        <NavPrefetch />
+        <div className="min-h-screen flex flex-col">
+          <AppShellHeader />
+          <LiveSyncBanner />
+          <ContentHydrator />
+          <FriendsHydrator />
+          <MessagesHydrator />
+          <PurchasesHydrator />
+          <VerificationCheckoutReturn />
+          <main className="flex-1 mx-auto w-full max-w-6xl px-3 sm:px-4 py-5 sm:py-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+            {children}
+          </main>
+          <SiteFooter />
+          <MobileChatBubble />
+          <AppShellNav />
+        </div>
+      </PrivateMessagesProvider>
     </PersonaProvider>
   );
 }

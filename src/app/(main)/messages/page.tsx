@@ -29,7 +29,7 @@ export default function MessagesPage() {
         <div>
           <h1 className="font-comic text-3xl text-ink">Messages</h1>
           <p className="text-sm text-ink-muted mt-1">
-            Private chats with friends and editor review threads.
+            Private chats with anyone on the site, plus editor review threads.
           </p>
         </div>
         <Link href="/messages/new">

@@ -14,6 +14,8 @@ interface MessagesState {
   messages: ChatMessage[];
 }
 
+export type MessagesPersistState = MessagesState;
+
 let conversations: Conversation[] = [];
 let messages: ChatMessage[] = [];
 let storageLoaded = false;
@@ -43,6 +45,29 @@ function ensureLoaded() {
 
 function persist() {
   writeJson(STORAGE_KEY, { conversations, messages });
+  if (typeof window !== "undefined") {
+    void import("@/lib/message-sync").then(({ schedulePrivateMessagesPush }) => {
+      schedulePrivateMessagesPush({ conversations, messages });
+    });
+  }
+}
+
+export function buildMessagesPersistState(): MessagesPersistState {
+  ensureLoaded();
+  return { conversations: [...conversations], messages: [...messages] };
+}
+
+export function applyMessagesPersistState(state: MessagesPersistState): void {
+  conversations = Array.isArray(state.conversations) ? [...state.conversations] : [];
+  messages = Array.isArray(state.messages) ? [...state.messages] : [];
+  storageLoaded = true;
+  notify();
+}
+
+export async function syncMessagesToServer(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { pushPrivateMessagesPlatformState } = await import("@/lib/message-sync");
+  await pushPrivateMessagesPlatformState(buildMessagesPersistState());
 }
 
 export function subscribeMessages(listener: Listener): () => void {
@@ -154,17 +179,12 @@ export function findOrCreateDm(
   actorDisplayName: string,
   targetUsername: string,
   targetDisplayName: string,
-  options?: { allowWithoutFriendship?: boolean }
 ): Conversation | null {
   ensureLoaded();
   if (userKey(actorUsername) === userKey(targetUsername)) return null;
 
   const existing = findDmConversation(actorUsername, targetUsername);
   if (existing) return existing;
-
-  const friends =
-    isFriend(actorUsername, targetUsername) || isFriend(targetUsername, actorUsername);
-  if (!friends && !options?.allowWithoutFriendship) return null;
 
   const now = new Date().toISOString();
   return createConversation("dm", actorUsername, [

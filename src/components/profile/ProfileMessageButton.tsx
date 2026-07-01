@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { MessageCircle } from "lucide-react";
-import { useFriendStatus } from "@/hooks/useFriendStatus";
+import { usePrivateMessages } from "@/contexts/PrivateMessagesContext";
 import { findOrCreateDm } from "@/lib/messages-store";
 import { Button } from "@/components/ui/button";
 
@@ -19,25 +18,22 @@ export function ProfileMessageButton({
   targetUsername,
   targetDisplayName,
 }: ProfileMessageButtonProps) {
-  const router = useRouter();
-  const status = useFriendStatus(actorUsername, targetUsername);
-
-  if (status !== "friends") return null;
+  const { openConversation } = usePrivateMessages();
 
   function handleClick() {
     const conv = findOrCreateDm(
       actorUsername,
       actorDisplayName,
       targetUsername,
-      targetDisplayName
+      targetDisplayName,
     );
-    if (conv) router.push(`/messages/${conv.id}`);
+    if (conv) openConversation(conv.id);
   }
 
   return (
     <Button type="button" variant="comic-outline" size="sm" onClick={handleClick}>
       <MessageCircle className="h-3.5 w-3.5 mr-1" />
-      Message
+      Snakk privat
     </Button>
   );
 }

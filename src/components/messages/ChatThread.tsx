@@ -22,9 +22,11 @@ import type { Conversation } from "@/types/database";
 
 interface ChatThreadProps {
   conversationId: string;
+  embedded?: boolean;
+  onLeave?: () => void;
 }
 
-export function ChatThread({ conversationId }: ChatThreadProps) {
+export function ChatThread({ conversationId, embedded = false, onLeave }: ChatThreadProps) {
   const router = useRouter();
   const actor = useFriendActor();
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -78,6 +80,10 @@ export function ChatThread({ conversationId }: ChatThreadProps) {
     if (!actor) return;
     if (!confirm("Leave this conversation?")) return;
     leaveConversation(conversationId, actor.username);
+    if (onLeave) {
+      onLeave();
+      return;
+    }
     router.push("/messages");
   }
 
@@ -88,8 +94,20 @@ export function ChatThread({ conversationId }: ChatThreadProps) {
   }
 
   return (
-    <div className="comic-card overflow-hidden flex flex-col min-h-[28rem]">
-      <div className="comic-panel-header px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+    <div
+      className={
+        embedded
+          ? "flex flex-col flex-1 min-h-0 overflow-hidden"
+          : "comic-card overflow-hidden flex flex-col min-h-[28rem]"
+      }
+    >
+      <div
+        className={
+          embedded
+            ? "px-3 py-2 border-b-2 border-dashed border-ink flex flex-wrap items-center justify-between gap-2 shrink-0"
+            : "comic-panel-header px-4 py-3 flex flex-wrap items-center justify-between gap-2"
+        }
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <MessageSquare className="h-5 w-5 shrink-0" />
@@ -142,7 +160,13 @@ export function ChatThread({ conversationId }: ChatThreadProps) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface min-h-[16rem] max-h-[32rem]">
+      <div
+        className={
+          embedded
+            ? "flex-1 overflow-y-auto p-3 space-y-3 bg-surface min-h-0"
+            : "flex-1 overflow-y-auto p-4 space-y-3 bg-surface min-h-[16rem] max-h-[32rem]"
+        }
+      >
         {messages.length === 0 ? (
           <p className="text-center text-sm text-ink-muted italic py-8">
             No messages yet. Say hello!
