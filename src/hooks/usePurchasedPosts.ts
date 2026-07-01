@@ -9,7 +9,6 @@ import {
   getPurchasedPostIds,
   setServerPurchasedPostIds,
   subscribePurchases,
-  hydratePurchasesFromServer,
 } from "@/lib/purchases-store";
 import type { PlatformPurchase } from "@/lib/marketplace-platform-store";
 import type { FeedPost } from "@/types/database";
@@ -135,6 +134,10 @@ function mergeLibraryWithLocal(
   return { postIds: [], purchases: [], posts: [] };
 }
 
+function localLibrarySnapshot(username: string) {
+  return mergeLibraryWithLocal(username, null);
+}
+
 async function fetchPurchasesForUser(
   username: string,
   headers: Record<string, string>
@@ -165,14 +168,11 @@ async function fetchPurchasesForUser(
   return { postIds, purchases, posts };
 }
 
-/** Server is source of truth when it returns rows; otherwise keep this profile's local checkout cache. */
 async function fetchPurchasedLibrary(username: string): Promise<{
   postIds: string[];
   purchases: PlatformPurchase[];
   posts: FeedPost[];
 }> {
-  await hydratePurchasesFromServer(username);
-
   try {
     const headers = await authFetchHeaders();
     const library = await fetchPurchasesForUser(username, headers);
@@ -188,10 +188,20 @@ export function usePurchasedPosts(username: string | null): {
   purchaseCount: number;
   loading: boolean;
 } {
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [entries, setEntries] = useState<PurchasedLibraryEntry[]>([]);
-  const [purchaseCount, setPurchaseCount] = useState(0);
-  const [loading, setLoading] = useState(Boolean(username));
+  const [posts, setPosts] = useState<FeedPost[]>(() =>
+    username ? localLibrarySnapshot(username).posts : []
+  );
+  const [entries, setEntries] = useState<PurchasedLibraryEntry[]>(() => {
+    if (!username) return [];
+    const library = localLibrarySnapshot(username);
+    return buildEntries(library.purchases, library.posts);
+  });
+  const [purchaseCount, setPurchaseCount] = useState(() =>
+    username ? getPurchasedPostIds(username).length : 0
+  );
+  const [loading, setLoading] = useState(
+    () => Boolean(username) && getPurchasedPostIds(username ?? "").length === 0
+  );
 
   useEffect(() => {
     if (!username) {
@@ -203,7 +213,7 @@ export function usePurchasedPosts(username: string | null): {
     }
 
     let cancelled = false;
-    let currentIds: string[] = [];
+    let currentIds: string[] = getPurchasedPostIds(username);
 
     const applyLibrary = (library: {
       postIds: string[];
@@ -218,6 +228,10 @@ export function usePurchasedPosts(username: string | null): {
       setEntries(nextEntries);
     };
 
+    const applyLocalSnapshot = () => {
+      applyLibrary(localLibrarySnapshot(username));
+    };
+
     const refreshLocalPosts = () => {
       if (cancelled || currentIds.length === 0) return;
       const merged = mergePostSources(currentIds, []);
@@ -230,16 +244,19 @@ export function usePurchasedPosts(username: string | null): {
       );
     };
 
-    const refreshIds = async () => {
-      setLoading(true);
+    const syncFromServer = async (showSpinner: boolean) => {
+      if (showSpinner) setLoading(true);
       const library = await fetchPurchasedLibrary(username);
       applyLibrary(library);
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
-    void refreshIds();
+    applyLocalSnapshot();
+    void syncFromServer(getPurchasedPostIds(username).length === 0);
+
     const unsubPurchases = subscribePurchases(() => {
-      void refreshIds();
+      applyLocalSnapshot();
+      void syncFromServer(false);
     });
     const unsubPosts = subscribePosts(refreshLocalPosts);
 

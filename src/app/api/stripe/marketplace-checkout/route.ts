@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   if (!isStripeConnectConfigured()) {
     return NextResponse.json(
       { error: "Stripe is not configured for marketplace checkout." },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
@@ -39,9 +39,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const buyerAuth = await resolveBuyerUsername(body.buying_as_username, request);
+  const buyerAuth = await resolveBuyerUsername(
+    body.buying_as_username,
+    request,
+  );
   if (!buyerAuth.ok) {
-    return NextResponse.json({ error: buyerAuth.error }, { status: buyerAuth.status });
+    return NextResponse.json(
+      { error: buyerAuth.error },
+      { status: buyerAuth.status },
+    );
   }
 
   const postId = body.post_id?.trim();
@@ -52,20 +58,23 @@ export async function POST(request: Request) {
   if (!postId || !title || !sellerUsername) {
     return NextResponse.json(
       { error: "post_id, title, and seller_username are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (typeof priceCents !== "number" || priceCents < MIN_PRICE_CENTS) {
     return NextResponse.json(
       { error: `price_cents must be at least ${MIN_PRICE_CENTS}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const buyerUsername = buyerAuth.buyerUsername;
   if (buyerUsername === sellerUsername) {
-    return NextResponse.json({ error: "You cannot buy your own listing." }, { status: 400 });
+    return NextResponse.json(
+      { error: "You cannot buy your own listing." },
+      { status: 400 },
+    );
   }
 
   const authUser = await getSupabaseUserFromRequest(request);
@@ -80,14 +89,14 @@ export async function POST(request: Request) {
   if (!sellerConnect?.stripe_account_id) {
     return NextResponse.json(
       { error: "This creator has not set up payouts yet." },
-      { status: 422 }
+      { status: 422 },
     );
   }
 
   if (!sellerConnect.charges_enabled) {
     return NextResponse.json(
       { error: "This creator has not finished Stripe payout setup." },
-      { status: 422 }
+      { status: 422 },
     );
   }
 
@@ -127,7 +136,7 @@ export async function POST(request: Request) {
       cancel_url: `${origin}/post/${postId}?purchase=canceled`,
       metadata,
     },
-    { stripeAccount: sellerConnect.stripe_account_id }
+    { stripeAccount: sellerConnect.stripe_account_id },
   );
 
   return NextResponse.json({

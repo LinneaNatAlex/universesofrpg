@@ -70,6 +70,14 @@ export function useMarketplaceCheckoutReturn(
       pending?.seller_username ??
       null;
 
+    const optimisticBuyer =
+      pending?.buyer_username ||
+      identity?.username?.toLowerCase() ||
+      null;
+    if (pending?.post_id && optimisticBuyer) {
+      recordPurchase(optimisticBuyer, pending.post_id);
+    }
+
     if (!seller) {
       setError("Could not confirm purchase — seller info missing.");
       cleanUrl();
@@ -92,15 +100,19 @@ export function useMarketplaceCheckoutReturn(
           already_recorded?: boolean;
         };
 
-        if (!res.ok) {
-          throw new Error(data.error ?? "Could not confirm purchase.");
-        }
-
         const postId = data.post_id ?? pending?.post_id;
         const buyer =
           data.buyer_username?.trim().toLowerCase() ||
           pending?.buyer_username ||
           identity?.username?.toLowerCase();
+
+        if (!res.ok) {
+          if (postId && buyer) {
+            revokePurchase(buyer, postId);
+          }
+          throw new Error(data.error ?? "Could not confirm purchase.");
+        }
+
         if (postId && buyer) {
           recordPurchase(buyer, postId);
         }

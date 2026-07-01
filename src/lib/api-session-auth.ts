@@ -33,7 +33,7 @@ function usernameFromUser(user: {
 async function usernameFromProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  fallback: string | null
+  fallback: string | null,
 ): Promise<string | null> {
   const { data } = await supabase
     .from("profiles")
@@ -73,7 +73,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 /** Cookie session first; fall back to Authorization: Bearer for API calls from the browser. */
 export async function getSessionUserFromRequest(
-  request?: Request
+  request?: Request,
 ): Promise<SessionUser | null> {
   const fromCookies = await getSessionUser();
   if (fromCookies) return fromCookies;
@@ -109,7 +109,7 @@ export async function getSessionUserFromRequest(
 
 /** Full Supabase user (includes metadata) for age / policy checks. */
 export async function getSupabaseUserFromRequest(
-  request?: Request
+  request?: Request,
 ): Promise<User | null> {
   if (!isSupabaseConfigured()) return null;
 
@@ -158,7 +158,7 @@ function isAdminSession(user: SessionUser): boolean {
 
 async function isAdminFromRequest(
   user: SessionUser,
-  request?: Request
+  request?: Request,
 ): Promise<boolean> {
   if (isAdminSession(user)) return true;
   const supabaseUser = await getSupabaseUserFromRequest(request);
@@ -170,7 +170,7 @@ async function isAdminFromRequest(
  * Admins may pass a demo persona username while "posting as" them.
  */
 export async function resolveSellerUsername(
-  actingUsername?: string | null
+  actingUsername?: string | null,
 ): Promise<
   | { ok: true; user: SessionUser; sellerUsername: string }
   | { ok: false; status: number; error: string }
@@ -201,7 +201,9 @@ export async function resolveSellerUsername(
   };
 }
 
-async function buyerUsernameAliasesForUser(user: SessionUser): Promise<string[]> {
+async function buyerUsernameAliasesForUser(
+  user: SessionUser,
+): Promise<string[]> {
   const aliases = new Set<string>([user.username.toLowerCase()]);
   for (const leg of legacyBuyerUsernameAliases(user.username)) {
     aliases.add(leg);
@@ -246,7 +248,7 @@ async function buyerUsernameAliasesForUser(user: SessionUser): Promise<string[]>
  */
 export async function resolveBuyerUsername(
   actingUsername?: string | null,
-  request?: Request
+  request?: Request,
 ): Promise<
   | { ok: true; user: SessionUser; buyerUsername: string }
   | { ok: false; status: number; error: string }
@@ -274,6 +276,7 @@ export async function resolveBuyerUsername(
   return {
     ok: false,
     status: 403,
-    error: "You can only purchase as your own account or an admin demo persona.",
+    error:
+      "You can only purchase as your own account or an admin demo persona.",
   };
 }

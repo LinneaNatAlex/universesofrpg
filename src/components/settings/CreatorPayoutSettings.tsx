@@ -56,7 +56,9 @@ export function CreatorPayoutSettings() {
       }
       setStatus((await res.json()) as ConnectStatus);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load payout status.");
+      setError(
+        err instanceof Error ? err.message : "Could not load payout status.",
+      );
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,9 @@ export function CreatorPayoutSettings() {
 
   useEffect(() => {
     if (!sellerUsername || typeof window === "undefined") return;
-    const stored = localStorage.getItem(connectCountryStorageKey(sellerUsername));
+    const stored = localStorage.getItem(
+      connectCountryStorageKey(sellerUsername),
+    );
     if (stored && isConnectCountryCode(stored)) {
       setPayoutCountry(stored.toUpperCase());
       return;
@@ -87,7 +91,7 @@ export function CreatorPayoutSettings() {
       window.history.replaceState(
         {},
         "",
-        qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+        qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
       );
     }
   }, [refresh]);
@@ -95,7 +99,7 @@ export function CreatorPayoutSettings() {
   async function handleReset() {
     if (
       !window.confirm(
-        "Clear payout setup for this user? Use this if Stripe locked the wrong country (e.g. USA). You will pick the country again and restart Stripe onboarding."
+        "Clear payout setup for this user? Use this if Stripe locked the wrong country (e.g. USA). You will pick the country again and restart Stripe onboarding.",
       )
     ) {
       return;
@@ -112,10 +116,13 @@ export function CreatorPayoutSettings() {
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Could not reset payout setup.");
+      if (!res.ok)
+        throw new Error(data.error ?? "Could not reset payout setup.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not reset payout setup.");
+      setError(
+        err instanceof Error ? err.message : "Could not reset payout setup.",
+      );
     } finally {
       setBusy(false);
     }
@@ -165,15 +172,16 @@ export function CreatorPayoutSettings() {
 
       <p className="text-sm text-ink-muted leading-relaxed">
         Connect Stripe to sell paid listings on the Shop for{" "}
-        <strong>@{sellerUsername}</strong>. Buyers pay through Stripe Checkout; you receive
-        payouts to your bank. Universes of RPG keeps a <strong>{commission}%</strong> platform
-        fee on each sale.
+        <strong>@{sellerUsername}</strong>. Buyers pay through Stripe Checkout;
+        you receive payouts to your bank. Universes of RPG keeps a{" "}
+        <strong>{commission}%</strong> platform fee on each sale.
       </p>
 
       {actingAsDemo && (
         <p className="text-xs font-comic bg-comic-blue/15 border-2 border-ink px-3 py-2 text-ink">
-          Admin demo mode — Stripe onboarding is saved for @{sellerUsername}, not your admin
-          account. Pick the seller in the blue bar above before clicking Set up payouts.
+          Admin demo mode — Stripe onboarding is saved for @{sellerUsername},
+          not your admin account. Pick the seller in the blue bar above before
+          clicking Set up payouts.
         </p>
       )}
 
@@ -194,7 +202,8 @@ export function CreatorPayoutSettings() {
             </p>
           ) : (
             <p className="text-xs font-sans text-ink">
-              Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, then redeploy.
+              Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, then
+              redeploy.
             </p>
           )}
         </div>
@@ -203,7 +212,9 @@ export function CreatorPayoutSettings() {
       {!loading && status?.configured && (
         <dl className="text-sm space-y-2">
           <div>
-            <dt className="text-ink-muted font-comic text-xs uppercase">Status</dt>
+            <dt className="text-ink-muted font-comic text-xs uppercase">
+              Status
+            </dt>
             <dd className="font-comic">
               {ready
                 ? "Ready to accept payments"
@@ -215,11 +226,15 @@ export function CreatorPayoutSettings() {
           {status.connected && (
             <>
               <div>
-                <dt className="text-ink-muted font-comic text-xs uppercase">Charges</dt>
+                <dt className="text-ink-muted font-comic text-xs uppercase">
+                  Charges
+                </dt>
                 <dd>{status.charges_enabled ? "Enabled" : "Pending"}</dd>
               </div>
               <div>
-                <dt className="text-ink-muted font-comic text-xs uppercase">Payouts</dt>
+                <dt className="text-ink-muted font-comic text-xs uppercase">
+                  Payouts
+                </dt>
                 <dd>{status.payouts_enabled ? "Enabled" : "Pending"}</dd>
               </div>
             </>
@@ -233,17 +248,18 @@ export function CreatorPayoutSettings() {
           {error.includes("platform-profile") && (
             <p className="text-xs text-ink-normal font-sans leading-relaxed">
               In Stripe Dashboard (live mode): open{" "}
-              <strong>Settings → Connect → Platform profile</strong> and complete the
-              questionnaire about loss liability — then try again.
+              <strong>Settings → Connect → Platform profile</strong> and
+              complete the questionnaire about loss liability — then try again.
             </p>
           )}
           {error.toUpperCase().includes("HTTPS") && (
             <p className="text-xs text-ink-normal font-sans leading-relaxed">
-              <strong>localhost + live keys does not work.</strong> Either switch{" "}
-              <code className="text-[11px]">.env.local</code> to{" "}
+              <strong>localhost + live keys does not work.</strong> Either
+              switch <code className="text-[11px]">.env.local</code> to{" "}
               <code className="text-[11px]">sk_test_</code> /{" "}
-              <code className="text-[11px]">pk_test_</code> for local testing, or open
-              Settings on your <strong>Netlify URL</strong> (https://…) with live keys.
+              <code className="text-[11px]">pk_test_</code> for local testing,
+              or open Settings on your <strong>Netlify URL</strong> (https://…)
+              with live keys.
             </p>
           )}
         </div>
@@ -251,7 +267,10 @@ export function CreatorPayoutSettings() {
 
       {status?.configured && !status.connected && (
         <div className="space-y-2">
-          <label className="block text-sm font-comic text-ink" htmlFor="payout-country">
+          <label
+            className="block text-sm font-comic text-ink"
+            htmlFor="payout-country"
+          >
             Payout country
           </label>
           <select
@@ -261,7 +280,10 @@ export function CreatorPayoutSettings() {
               const code = e.target.value.toUpperCase();
               setPayoutCountry(code);
               if (sellerUsername) {
-                localStorage.setItem(connectCountryStorageKey(sellerUsername), code);
+                localStorage.setItem(
+                  connectCountryStorageKey(sellerUsername),
+                  code,
+                );
               }
             }}
             className="w-full border-2 border-ink px-3 py-2 text-sm bg-white font-sans"
@@ -273,8 +295,8 @@ export function CreatorPayoutSettings() {
             ))}
           </select>
           <p className="text-xs text-ink-muted">
-            Choose where your bank account is. Stripe locks the country when you start — it
-            cannot be changed later without setting up payouts again.
+            Choose where your bank account is. Stripe locks the country when you
+            start — it cannot be changed later without setting up payouts again.
           </p>
         </div>
       )}
@@ -296,7 +318,9 @@ export function CreatorPayoutSettings() {
             ) : (
               <>
                 <ExternalLink className="h-4 w-4 mr-1.5" />
-                {ready ? "Manage payouts in Stripe" : "Set up payouts with Stripe"}
+                {ready
+                  ? "Manage payouts in Stripe"
+                  : "Set up payouts with Stripe"}
               </>
             )}
           </Button>
@@ -315,8 +339,9 @@ export function CreatorPayoutSettings() {
       )}
 
       <p className="text-xs text-ink-muted">
-        Stripe collects identity and bank details securely — nothing is stored on Universes of
-        RPG. Paid Shop listings stay hidden from buyers until your account can accept charges.
+        Stripe collects identity and bank details securely — nothing is stored
+        on Universes of RPG. Paid Shop listings stay hidden from buyers until
+        your account can accept charges.
       </p>
     </div>
   );

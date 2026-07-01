@@ -61,6 +61,8 @@ export async function verifyPurchaseAccess(
   if (viewer.username && isAuthor(post, viewer.username)) return true;
   if (post.moderation_status === "pending" && viewer.isEditor) return true;
 
+  if (hasPurchased(buyerUsername, post.id)) return true;
+
   return confirmServerPurchase(buyerUsername, post.id);
 }
 

@@ -22,7 +22,7 @@ import {
   requiresCodePurchase,
 } from "@/lib/posts";
 import {
-  hydratePurchasesFromServer,
+  hasPurchased,
   PURCHASE_CONFIRMED_EVENT,
   type PurchaseConfirmedDetail,
   subscribePurchases,
@@ -102,20 +102,32 @@ export function PostView({ post: rawPost }: PostViewProps) {
   );
 
   const refreshPurchaseAccess = useCallback(async () => {
-    if (buyerUsername) {
-      await hydratePurchasesFromServer(buyerUsername);
+    if (!buyerUsername) return;
+    if (hasPurchased(buyerUsername, rawPost.id)) {
+      setContentUnlocked(true);
     }
     const next = await verifyPurchaseAccess(rawPost, viewer, buyerUsername);
     setContentUnlocked(next);
   }, [rawPost, viewer, buyerUsername]);
 
   useEffect(() => {
+    if (!needsPurchase) return;
+    if (!buyerUsername) {
+      setContentUnlocked(false);
+      return;
+    }
+    if (hasPurchased(buyerUsername, rawPost.id)) {
+      setContentUnlocked(true);
+    }
     void refreshPurchaseAccess();
     const unsub = subscribePurchases(() => {
+      if (hasPurchased(buyerUsername, rawPost.id)) {
+        setContentUnlocked(true);
+      }
       void refreshPurchaseAccess();
     });
     return unsub;
-  }, [refreshPurchaseAccess]);
+  }, [needsPurchase, buyerUsername, rawPost.id, refreshPurchaseAccess]);
 
   useEffect(() => {
     function onPurchaseConfirmed(event: Event) {

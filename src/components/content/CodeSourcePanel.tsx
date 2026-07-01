@@ -14,7 +14,7 @@ import { usePostSourceCode } from "@/hooks/usePostSourceCode";
 import { requiresCodePurchase } from "@/lib/posts";
 import { stripThemeMusic } from "@/lib/template-preview";
 import {
-  hydratePurchasesFromServer,
+  hasPurchased,
   PURCHASE_CONFIRMED_EVENT,
   type PurchaseConfirmedDetail,
   subscribePurchases,
@@ -61,8 +61,8 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   );
 
   const refreshAccess = useCallback(async () => {
-    if (buyerUsername) {
-      await hydratePurchasesFromServer(buyerUsername);
+    if (buyerUsername && hasPurchased(buyerUsername, post.id)) {
+      setUnlocked(true);
     }
     const next = await verifySourceAccess(post, viewer, buyerUsername);
     setUnlocked(next);
@@ -70,12 +70,18 @@ export function CodeSourcePanel({ post, inviteToken }: CodeSourcePanelProps) {
   }, [post, viewer, buyerUsername]);
 
   useEffect(() => {
+    if (buyerUsername && hasPurchased(buyerUsername, post.id)) {
+      setUnlocked(true);
+    }
     void refreshAccess();
     const unsub = subscribePurchases(() => {
+      if (buyerUsername && hasPurchased(buyerUsername, post.id)) {
+        setUnlocked(true);
+      }
       void refreshAccess();
     });
     return unsub;
-  }, [refreshAccess]);
+  }, [buyerUsername, post.id, refreshAccess]);
 
   useEffect(() => {
     function onPurchaseConfirmed(event: Event) {

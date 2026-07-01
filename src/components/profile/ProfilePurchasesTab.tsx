@@ -63,7 +63,7 @@ export function ProfilePurchasesTab({
     );
   }, [entries, query, activeTag]);
 
-  if (loading) {
+  if (loading && entries.length === 0) {
     return (
       <div className="comic-panel p-8 text-center font-comic text-ink-muted">
         Loading your library…

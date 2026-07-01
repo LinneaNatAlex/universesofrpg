@@ -1,7 +1,13 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { legacyBuyerUsernameAliases, migrateUsername } from "@/lib/persona-rename";
-import { createServiceClient, isServiceClientConfigured } from "@/lib/supabase/service";
+import {
+  legacyBuyerUsernameAliases,
+  migrateUsername,
+} from "@/lib/persona-rename";
+import {
+  createServiceClient,
+  isServiceClientConfigured,
+} from "@/lib/supabase/service";
 
 export interface ConnectAccountRecord {
   username: string;
@@ -62,7 +68,9 @@ function readFileState(): MarketplaceFileState {
     const raw = readFileSync(DATA_PATH, "utf8");
     const parsed = JSON.parse(raw) as MarketplaceFileState;
     return migrateState({
-      connectAccounts: Array.isArray(parsed.connectAccounts) ? parsed.connectAccounts : [],
+      connectAccounts: Array.isArray(parsed.connectAccounts)
+        ? parsed.connectAccounts
+        : [],
       purchases: Array.isArray(parsed.purchases) ? parsed.purchases : [],
     });
   } catch {
@@ -76,7 +84,7 @@ function writeFileState(state: MarketplaceFileState): void {
 }
 
 export async function getConnectAccount(
-  username: string
+  username: string,
 ): Promise<ConnectAccountRecord | null> {
   const key = userKey(username);
 
@@ -99,12 +107,13 @@ export async function getConnectAccount(
   }
 
   return (
-    readFileState().connectAccounts.find((a) => userKey(a.username) === key) ?? null
+    readFileState().connectAccounts.find((a) => userKey(a.username) === key) ??
+    null
   );
 }
 
 export async function getConnectAccountByStripeId(
-  stripeAccountId: string
+  stripeAccountId: string,
 ): Promise<ConnectAccountRecord | null> {
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
@@ -125,8 +134,9 @@ export async function getConnectAccountByStripeId(
   }
 
   return (
-    readFileState().connectAccounts.find((a) => a.stripe_account_id === stripeAccountId) ??
-    null
+    readFileState().connectAccounts.find(
+      (a) => a.stripe_account_id === stripeAccountId,
+    ) ?? null
   );
 }
 
@@ -144,26 +154,30 @@ export async function deleteConnectAccount(username: string): Promise<void> {
   }
 
   const state = readFileState();
-  state.connectAccounts = state.connectAccounts.filter((a) => userKey(a.username) !== key);
+  state.connectAccounts = state.connectAccounts.filter(
+    (a) => userKey(a.username) !== key,
+  );
   writeFileState(state);
 }
 
 export async function upsertConnectAccount(
-  input: ConnectAccountRecord
+  input: ConnectAccountRecord,
 ): Promise<void> {
   const key = userKey(input.username);
   const row = { ...input, username: key, updated_at: new Date().toISOString() };
 
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
-    const { error } = await supabase.from("marketplace_connect_accounts").upsert({
-      username: key,
-      stripe_account_id: row.stripe_account_id,
-      charges_enabled: row.charges_enabled,
-      payouts_enabled: row.payouts_enabled,
-      details_submitted: row.details_submitted,
-      updated_at: row.updated_at,
-    });
+    const { error } = await supabase
+      .from("marketplace_connect_accounts")
+      .upsert({
+        username: key,
+        stripe_account_id: row.stripe_account_id,
+        charges_enabled: row.charges_enabled,
+        payouts_enabled: row.payouts_enabled,
+        details_submitted: row.details_submitted,
+        updated_at: row.updated_at,
+      });
     if (error) throw new Error(error.message);
 
     void supabase
@@ -180,7 +194,7 @@ export async function upsertConnectAccount(
 }
 
 export async function recordPlatformPurchase(
-  input: PlatformPurchase
+  input: PlatformPurchase,
 ): Promise<void> {
   const buyer = userKey(input.buyer_username);
   const postId = input.post_id;
@@ -199,7 +213,7 @@ export async function recordPlatformPurchase(
         stripe_payment_intent_id: input.stripe_payment_intent_id,
         purchased_at: input.purchased_at,
       },
-      { onConflict: "buyer_username,post_id" }
+      { onConflict: "buyer_username,post_id" },
     );
     if (error) throw new Error(error.message);
     return;
@@ -207,7 +221,7 @@ export async function recordPlatformPurchase(
 
   const state = readFileState();
   const rest = state.purchases.filter(
-    (p) => !(userKey(p.buyer_username) === buyer && p.post_id === postId)
+    (p) => !(userKey(p.buyer_username) === buyer && p.post_id === postId),
   );
   state.purchases = [
     {
@@ -223,7 +237,7 @@ export async function recordPlatformPurchase(
 
 export async function hasPlatformPurchase(
   buyerUsername: string,
-  postId: string
+  postId: string,
 ): Promise<boolean> {
   const buyers = buyerLookupKeys(buyerUsername);
 
@@ -243,12 +257,12 @@ export async function hasPlatformPurchase(
   }
 
   return readFileState().purchases.some(
-    (p) => buyers.includes(userKey(p.buyer_username)) && p.post_id === postId
+    (p) => buyers.includes(userKey(p.buyer_username)) && p.post_id === postId,
   );
 }
 
 export async function listPlatformPurchasesForBuyer(
-  buyerUsername: string
+  buyerUsername: string,
 ): Promise<PlatformPurchase[]> {
   const buyers = buyerLookupKeys(buyerUsername);
 
@@ -291,7 +305,9 @@ export async function listPlatformPurchasesForBuyer(
   });
 }
 
-export async function countPlatformPurchasesForPost(postId: string): Promise<number> {
+export async function countPlatformPurchasesForPost(
+  postId: string,
+): Promise<number> {
   if (isServiceClientConfigured()) {
     const supabase = createServiceClient()!;
     const { count, error } = await supabase
@@ -309,7 +325,7 @@ export async function countPlatformPurchasesForPost(postId: string): Promise<num
 }
 
 export async function countPlatformPurchasesForPosts(
-  postIds: string[]
+  postIds: string[],
 ): Promise<Record<string, number>> {
   const unique = [...new Set(postIds.filter(Boolean))];
   const counts: Record<string, number> = {};
@@ -323,7 +339,10 @@ export async function countPlatformPurchasesForPosts(
       .select("post_id")
       .in("post_id", unique);
     if (error) {
-      console.error("[marketplace-platform] batch purchase count failed", error);
+      console.error(
+        "[marketplace-platform] batch purchase count failed",
+        error,
+      );
       return counts;
     }
     for (const row of data ?? []) {
